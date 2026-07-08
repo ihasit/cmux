@@ -114,6 +114,32 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun sharedTextSubtypeStoresPairedMacInWebView() {
+        val intent = Intent(Intent.ACTION_SEND)
+            .setType("text/x-uri")
+            .putExtra(Intent.EXTRA_TEXT, "100.64.0.79:58465")
+
+        ActivityScenario.launch<MainActivity>(intent).use {
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairedList"))
+                .check(webMatches(getText(), containsString("100.64.0.79:58465")))
+        }
+    }
+
+    @Test
+    fun processTextStoresPairedMacInWebView() {
+        val intent = Intent(Intent.ACTION_PROCESS_TEXT)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_PROCESS_TEXT, "100.64.0.78:58465")
+
+        ActivityScenario.launch<MainActivity>(intent).use {
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairedList"))
+                .check(webMatches(getText(), containsString("100.64.0.78:58465")))
+        }
+    }
+
+    @Test
     fun sharedAttachLinkFromNewIntentStoresPairedMacInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             val intent = Intent(Intent.ACTION_SEND)
