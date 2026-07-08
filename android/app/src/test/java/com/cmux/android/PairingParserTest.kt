@@ -35,6 +35,16 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseManualHostPortTrimsHostAndPortWhitespace() {
+        val mac = parser.parse(" 100.64.0.5 : 58465 ")
+
+        val route = mac.routes.single()
+        assertEquals("100.64.0.5", route.host)
+        assertEquals(58465, route.port)
+        assertEquals(route, mac.primaryRoute)
+    }
+
+    @Test
     fun parseManualIpv6HostPortKeepsHost() {
         val mac = parser.parse("[fd7a:115c:a1e0::42]:58465")
 
