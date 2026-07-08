@@ -397,6 +397,21 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseLegacyPairPayloadNormalizesRouteKindCase() {
+        val payload = JSONObject()
+            .put("host", "100.64.0.9")
+            .put("port", 58465)
+            .put("transport", " TAILSCALE ")
+            .put("mac_device_id", "mac-legacy-uppercase")
+
+        val mac = parser.parse("cmux-ios://pair?payload=${base64Url(payload)}")
+
+        assertEquals("mac-legacy-uppercase", mac.id)
+        assertEquals("tailscale", mac.routes.single().kind)
+        assertEquals(mac.routes.single(), mac.primaryRoute)
+    }
+
+    @Test
     fun pairedMacJsonRoundTripsWebSocketRoutes() {
         val mac = PairedMac(
             id = "mac-3",
