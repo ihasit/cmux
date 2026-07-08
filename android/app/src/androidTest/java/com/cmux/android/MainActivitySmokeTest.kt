@@ -536,6 +536,103 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun workspaceRefreshKeepsActiveTerminalVisibleAndCurrent() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "open"
+                  }
+                }
+                """.trimIndent()
+            )
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
+                .perform(webClick())
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "terminalTitle"))
+                .check(webMatches(getText(), containsString("Build shell")))
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 2,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA Renamed",
+                          "preview": "still ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Deploy shell",
+                              "current_directory": "/repo/deploy"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val activeTerminalState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  terminalHidden: document.getElementById('terminalView').classList.contains('hidden'),
+                  workspaceHidden: document.getElementById('workspaceView').classList.contains('hidden'),
+                  title: document.getElementById('terminalTitle').textContent,
+                  meta: document.getElementById('terminalMeta').textContent
+                })
+                """.trimIndent()
+            )
+            check(activeTerminalState.contains("\"terminalHidden\":false"))
+            check(activeTerminalState.contains("\"workspaceHidden\":true"))
+            check(activeTerminalState.contains("\"title\":\"Deploy shell\""))
+            check(activeTerminalState.contains("\"meta\":\"Android QA Renamed\""))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
