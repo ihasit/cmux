@@ -256,11 +256,14 @@ class MobileRpcSession(
             .put("id", requestId)
             .put("method", method)
             .put("params", params)
+        if (activeRoute?.let(MobileRouteAuthPolicy::routeAllowsStackAuth) != true) {
+            return request
+        }
         val stackAccessToken = stackAccessTokenProvider
             ?.likelyValidAccessToken()
             ?.accessToken
             ?.trim()
-        if (!stackAccessToken.isNullOrEmpty() && activeRoute?.let(MobileRouteAuthPolicy::routeAllowsStackAuth) == true) {
+        if (!stackAccessToken.isNullOrEmpty()) {
             request.put("auth", JSONObject().put("stack_access_token", stackAccessToken))
         }
         return request
