@@ -134,6 +134,7 @@ class MobileRpcSession(
             return
         }
         failPending("transport_error", detail)
+        clearActiveClientState()
         notifyClosed(detail)
     }
 
