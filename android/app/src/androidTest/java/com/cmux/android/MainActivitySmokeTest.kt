@@ -282,6 +282,81 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun workspaceSearchMatchesWorkspaceAndTerminalFields() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-alpha",
+                          "title": "Alpha Plan",
+                          "preview": "planning notes",
+                          "is_pinned": false,
+                          "has_unread": false,
+                          "terminals": [
+                            {
+                              "id": "terminal-alpha",
+                              "title": "Planner",
+                              "current_directory": "/repo/alpha"
+                            }
+                          ]
+                        },
+                        {
+                          "id": "workspace-build",
+                          "title": "Build Work",
+                          "preview": "compilers",
+                          "is_pinned": false,
+                          "has_unread": true,
+                          "terminals": [
+                            {
+                              "id": "terminal-build",
+                              "title": "Gradle",
+                              "current_directory": "/repo/android"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "workspaceSearch"))
+                .perform(webKeys("alpha"))
+
+            val alphaList = scenario.evaluateScript("document.getElementById('workspaceList').textContent")
+            check(alphaList.contains("Alpha Plan"))
+            check(!alphaList.contains("Build Work"))
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "workspaceSearch"))
+                .perform(clearElement())
+                .perform(webKeys("android"))
+
+            val terminalDirectoryList = scenario.evaluateScript("document.getElementById('workspaceList').textContent")
+            check(terminalDirectoryList.contains("Build Work"))
+            check(!terminalDirectoryList.contains("Alpha Plan"))
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-workspace-filter='pinned']"))
+                .perform(webClick())
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "workspaceList"))
+                .check(webMatches(getText(), containsString("No matching workspaces")))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()

@@ -22,6 +22,7 @@ const state = {
   stackAccessTokenConfigured: false,
   stackRefreshTokenConfigured: false,
   workspaceFilter: "all",
+  workspaceSearch: "",
 };
 
 const messages = {
@@ -73,6 +74,8 @@ const messages = {
     "workspaces.filterEmpty": "No matching workspaces.",
     "workspace.new": "New workspace",
     "workspace.defaultTitle": "Workspace",
+    "workspace.searchLabel": "Search workspaces",
+    "workspace.searchPlaceholder": "Search workspaces or terminals",
     "workspace.filterLabel": "Workspace filters",
     "workspace.filterAll": "All",
     "workspace.filterUnread": "Unread",
@@ -191,6 +194,8 @@ const messages = {
     "workspaces.filterEmpty": "一致するワークスペースはありません。",
     "workspace.new": "新しいワークスペース",
     "workspace.defaultTitle": "ワークスペース",
+    "workspace.searchLabel": "ワークスペースを検索",
+    "workspace.searchPlaceholder": "ワークスペースまたはターミナルを検索",
     "workspace.filterLabel": "ワークスペースフィルター",
     "workspace.filterAll": "すべて",
     "workspace.filterUnread": "未読",
@@ -292,6 +297,7 @@ const elements = {
   enableNotifications: document.getElementById("enableNotifications"),
   syncNotifications: document.getElementById("syncNotifications"),
   dismissNotifications: document.getElementById("dismissNotifications"),
+  workspaceSearch: document.getElementById("workspaceSearch"),
   workspaceFilters: document.getElementById("workspaceFilters"),
   workspaceList: document.getElementById("workspaceList"),
   terminalView: document.getElementById("terminalView"),
@@ -463,13 +469,28 @@ function renderWorkspaceFilters() {
 }
 
 function filteredWorkspaceList() {
+  const query = state.workspaceSearch.trim().toLowerCase();
   if (state.workspaceFilter === "unread") {
-    return state.workspaces.filter((workspace) => workspace.has_unread);
+    return state.workspaces.filter((workspace) => workspace.has_unread && workspaceMatchesQuery(workspace, query));
   }
   if (state.workspaceFilter === "pinned") {
-    return state.workspaces.filter((workspace) => workspace.is_pinned);
+    return state.workspaces.filter((workspace) => workspace.is_pinned && workspaceMatchesQuery(workspace, query));
   }
-  return state.workspaces;
+  return state.workspaces.filter((workspace) => workspaceMatchesQuery(workspace, query));
+}
+
+function workspaceMatchesQuery(workspace, query) {
+  if (!query) return true;
+  const fields = [
+    workspace.title,
+    workspace.preview,
+    workspace.current_directory,
+    ...(workspace.terminals || []).flatMap((terminal) => [
+      terminal.title,
+      terminal.current_directory,
+    ]),
+  ];
+  return fields.some((field) => String(field || "").toLowerCase().includes(query));
 }
 
 function updateUnreadCountFromWorkspaces() {
@@ -1451,6 +1472,10 @@ elements.workspaceFilters.addEventListener("click", (event) => {
   const nextFilter = button?.getAttribute("data-workspace-filter");
   if (!nextFilter || nextFilter === state.workspaceFilter) return;
   state.workspaceFilter = nextFilter;
+  renderWorkspaces();
+});
+elements.workspaceSearch.addEventListener("input", () => {
+  state.workspaceSearch = elements.workspaceSearch.value;
   renderWorkspaces();
 });
 elements.enableNotifications.addEventListener("click", () => bridge().requestNotificationPermission());

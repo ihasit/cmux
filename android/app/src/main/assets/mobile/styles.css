@@ -14,6 +14,7 @@ body {
 }
 
 button,
+input,
 textarea {
   font: inherit;
 }
@@ -33,6 +34,7 @@ button:active {
 }
 
 button:disabled,
+input:disabled,
 textarea:disabled {
   opacity: 0.45;
 }
@@ -151,6 +153,7 @@ label {
   font-weight: 650;
 }
 
+input,
 textarea {
   width: 100%;
   border: 1px solid #c7ced8;
@@ -158,6 +161,9 @@ textarea {
   padding: 12px;
   background: #ffffff;
   color: #15181e;
+}
+
+textarea {
   resize: vertical;
 }
 
@@ -171,6 +177,10 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.workspace-search {
+  min-height: 42px;
 }
 
 .filter-bar button {
