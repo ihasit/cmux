@@ -23,6 +23,7 @@ const state = {
   stackRefreshTokenConfigured: false,
   workspaceFilter: "all",
   workspaceSearch: "",
+  workspaceRefreshPending: false,
 };
 
 const messages = {
@@ -1278,6 +1279,7 @@ function handleRpcResult(method, result) {
     return;
   }
   if (method === "mobile.workspace.list" || method === "mobile.terminal.create" || method === "workspace.create") {
+    state.workspaceRefreshPending = false;
     state.workspaces = result.workspaces || [];
     state.groups = result.groups || [];
     renderWorkspaces();
@@ -1356,7 +1358,7 @@ function handleRpcResult(method, result) {
 
 function handlePushEvent(type, payload) {
   if (type === "workspace.updated") {
-    bridge().refreshWorkspaces();
+    refreshWorkspacesOnce();
     return;
   }
   if (type === "terminal.render_grid") {
@@ -1389,6 +1391,12 @@ function handlePushEvent(type, payload) {
   }
 }
 
+function refreshWorkspacesOnce() {
+  if (state.workspaceRefreshPending) return;
+  state.workspaceRefreshPending = true;
+  bridge().refreshWorkspaces();
+}
+
 window.cmuxNativeEvent = (event) => {
   if (event.type === "pairedMacs") {
     state.macs = event.payload.macs || [];
@@ -1414,6 +1422,7 @@ window.cmuxNativeEvent = (event) => {
     const { state: nextState, detail } = event.payload;
     state.connected = nextState === "open";
     if (!state.connected) {
+      state.workspaceRefreshPending = false;
       state.unreadNotificationCount = null;
       state.deliveredNotificationIds = [];
       renderNotificationStatus();
@@ -1437,6 +1446,9 @@ window.cmuxNativeEvent = (event) => {
     return;
   }
   if (event.type === "rpcError" || event.type === "error") {
+    if (event.payload.method === "mobile.workspace.list") {
+      state.workspaceRefreshPending = false;
+    }
     if (event.payload.code === "unauthorized") {
       showToast(t("auth.error.unauthorized"));
     } else if (event.payload.code === "account_mismatch") {

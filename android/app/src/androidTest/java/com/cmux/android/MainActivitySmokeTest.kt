@@ -357,6 +357,82 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun workspaceUpdatedPushCoalescesRefreshUntilListReturns() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.evaluateScript(
+                """
+                window.__refreshWorkspaceCount = 0;
+                window.cmuxAndroid = {
+                  initialState: function() {},
+                  refreshWorkspaces: function() {
+                    window.__refreshWorkspaceCount += 1;
+                  }
+                };
+                true;
+                """.trimIndent()
+            )
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "workspace.updated",
+                    "payload": {}
+                  }
+                }
+                """.trimIndent()
+            )
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "workspace.updated",
+                    "payload": {}
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val refreshesBeforeList = scenario.evaluateScript("window.__refreshWorkspaceCount")
+            check(refreshesBeforeList == "1")
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 2,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "workspace.updated",
+                    "payload": {}
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val refreshesAfterList = scenario.evaluateScript("window.__refreshWorkspaceCount")
+            check(refreshesAfterList == "2")
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
