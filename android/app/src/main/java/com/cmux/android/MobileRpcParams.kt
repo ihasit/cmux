@@ -7,10 +7,12 @@ object MobileRpcParams {
 
     fun createWorkspace(): JSONObject {
         return JSONObject()
+            .put("client_id", CLIENT_ID)
     }
 
     fun createTerminal(workspaceId: String): JSONObject {
         return JSONObject()
             .put("workspace_id", workspaceId)
+            .put("client_id", CLIENT_ID)
     }
 }

@@ -229,7 +229,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
 
     @JavascriptInterface
     fun createWorkspace() {
-        session.request("workspace.create")
+        session.request("workspace.create", MobileRpcParams.createWorkspace())
     }
 
     @JavascriptInterface
@@ -310,7 +310,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
 
     @JavascriptInterface
     fun createTerminal(workspaceId: String) {
-        session.request("mobile.terminal.create", JSONObject().put("workspace_id", workspaceId))
+        session.request("mobile.terminal.create", MobileRpcParams.createTerminal(workspaceId))
     }
 
     @JavascriptInterface
@@ -569,7 +569,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     private companion object {
-        const val CLIENT_ID = "cmux-android-webview"
+        const val CLIENT_ID = MobileRpcParams.CLIENT_ID
     }
 }
 
