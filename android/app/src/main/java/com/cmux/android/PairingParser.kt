@@ -47,7 +47,11 @@ class PairingParser {
     fun parse(rawValue: String): PairedMac {
         val trimmed = rawValue.trim()
         checkPairing(trimmed.isNotEmpty(), "pair.error.empty")
-        if (!trimmed.startsWith("cmux-ios://") && !trimmed.startsWith("cmux-ios-dev://") && trimmed.contains(":")) {
+        val lowered = trimmed.lowercase()
+        if (lowered.startsWith("ws://") || lowered.startsWith("wss://")) {
+            return parseManualWebSocketUrl(trimmed)
+        }
+        if (!lowered.startsWith("cmux-ios://") && !lowered.startsWith("cmux-ios-dev://") && trimmed.contains(":")) {
             return parseManualHostPort(trimmed)
         }
         val uri = runCatching { PairingUri.parse(trimmed) }
@@ -71,6 +75,32 @@ class PairingParser {
             host = host,
             port = port,
             priority = 10
+        )
+        return PairedMac(
+            id = stableMacId(null, listOf(route)),
+            displayName = null,
+            userId = null,
+            userEmail = null,
+            pairingCompatibilityVersion = null,
+            appVersion = null,
+            appBuild = null,
+            routes = listOf(route)
+        )
+    }
+
+    private fun parseManualWebSocketUrl(rawValue: String): PairedMac {
+        val uri = runCatching { URI(rawValue) }
+            .getOrElse { throw PairingException("pair.error.invalidRoute") }
+        val scheme = uri.scheme?.lowercase()
+        checkPairing(scheme == "ws" || scheme == "wss", "pair.error.invalidRoute")
+        checkPairing(!uri.host.isNullOrBlank(), "pair.error.invalidRoute")
+        val route = CmuxRoute(
+            id = "manual_websocket",
+            kind = "websocket",
+            host = "",
+            port = 0,
+            priority = 5,
+            url = rawValue
         )
         return PairedMac(
             id = stableMacId(null, listOf(route)),

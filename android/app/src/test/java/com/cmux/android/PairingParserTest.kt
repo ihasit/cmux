@@ -44,6 +44,38 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseManualWebSocketUrlKeepsWebSocketRoute() {
+        val mac = parser.parse("wss://cmux.example.test/mobile")
+
+        val route = mac.routes.single()
+        assertEquals("manual_websocket", route.id)
+        assertEquals("websocket", route.kind)
+        assertEquals("", route.host)
+        assertEquals(0, route.port)
+        assertEquals(5, route.priority)
+        assertEquals("wss://cmux.example.test/mobile", route.url)
+        assertEquals(route, mac.primaryRoute)
+    }
+
+    @Test
+    fun parseManualInsecureWebSocketUrlKeepsWebSocketRoute() {
+        val mac = parser.parse("ws://100.64.0.5:58465/mobile")
+
+        val route = mac.routes.single()
+        assertEquals("websocket", route.kind)
+        assertEquals("ws://100.64.0.5:58465/mobile", route.url)
+    }
+
+    @Test
+    fun parseManualWebSocketUrlAcceptsUppercaseScheme() {
+        val mac = parser.parse("WSS://cmux.example.test/mobile")
+
+        val route = mac.routes.single()
+        assertEquals("websocket", route.kind)
+        assertEquals("WSS://cmux.example.test/mobile", route.url)
+    }
+
+    @Test
     fun parseManualHostPortRejectsLoopbackRoutes() {
         val error = assertThrows(PairingException::class.java) {
             parser.parse("127.0.0.1:58465")
