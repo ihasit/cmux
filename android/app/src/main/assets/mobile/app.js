@@ -566,7 +566,8 @@ function refreshActiveTerminalFromWorkspaces() {
 }
 
 function workspaceListItems(workspaces) {
-  const groupsById = new Map((state.groups || []).map((group) => [group.id, group]));
+  const groups = hasCapability("workspace.groups.v1") ? state.groups || [] : [];
+  const groupsById = new Map(groups.map((group) => [group.id, group]));
   const emittedGroups = new Set();
   const items = [];
   for (const workspace of workspaces) {
@@ -705,6 +706,7 @@ function dismissSyncedNotifications() {
 }
 
 function toggleWorkspaceGroup(groupId, isCollapsed) {
+  if (!hasCapability("workspace.groups.v1")) return;
   bridge().setWorkspaceGroupCollapsed(groupId, !isCollapsed);
 }
 
