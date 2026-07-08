@@ -420,6 +420,31 @@ class PairingParserTest {
         assertEquals(decoded.routes.single(), decoded.primaryRoute)
     }
 
+    @Test
+    fun pairedMacJsonDropsStoredLoopbackHostPortRoutesUnlessExplicitDebug() {
+        val decoded = PairedMac.fromJson(
+            JSONObject()
+                .put("id", "mac-stored-loopback")
+                .put("routes", JSONArray()
+                    .put(JSONObject()
+                        .put("id", "local-tailscale")
+                        .put("kind", "tailscale")
+                        .put("host", "127.0.0.1")
+                        .put("port", 58465)
+                        .put("priority", 1))
+                    .put(JSONObject()
+                        .put("id", "local-debug")
+                        .put("kind", "debug_loopback")
+                        .put("host", "127.0.0.1")
+                        .put("port", 58465)
+                        .put("priority", 2)))
+        )
+
+        assertEquals(1, decoded.routes.size)
+        assertEquals("local-debug", decoded.routes.single().id)
+        assertEquals(decoded.routes.single(), decoded.primaryRoute)
+    }
+
     private fun base64Url(json: JSONObject): String {
         return Base64.getUrlEncoder()
             .withoutPadding()
