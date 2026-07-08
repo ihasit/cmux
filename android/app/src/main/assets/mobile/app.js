@@ -17,6 +17,8 @@ const state = {
   suppressClickUntil: 0,
   unreadNotificationCount: null,
   deliveredNotificationIds: [],
+  nativeNotificationsEnabled: false,
+  nativeNotificationsCanRequest: false,
   stackAccessTokenConfigured: false,
   stackRefreshTokenConfigured: false,
 };
@@ -81,11 +83,14 @@ const messages = {
     "notification.none": "No unread notifications.",
     "notification.unread": "{count} unread notification",
     "notification.unreadPlural": "{count} unread notifications",
+    "notification.enable": "Enable alerts",
     "notification.sync": "Sync notifications",
     "notification.dismissAll": "Dismiss synced",
     "notification.noDelivered": "No synced notifications to dismiss.",
     "notification.synced": "Notifications synced.",
     "notification.dismissed": "Notifications dismissed.",
+    "notification.enabled": "Android notifications enabled.",
+    "notification.denied": "Android notifications are off.",
     "group.defaultName": "Group",
     "group.expand": "Expand group",
     "group.collapse": "Collapse group",
@@ -174,11 +179,14 @@ const messages = {
     "notification.none": "未読通知はありません。",
     "notification.unread": "未読通知 {count} 件",
     "notification.unreadPlural": "未読通知 {count} 件",
+    "notification.enable": "通知を有効化",
     "notification.sync": "通知を同期",
     "notification.dismissAll": "同期済みを消去",
     "notification.noDelivered": "消去できる同期済み通知はありません。",
     "notification.synced": "通知を同期しました。",
     "notification.dismissed": "通知を消去しました。",
+    "notification.enabled": "Android 通知を有効にしました。",
+    "notification.denied": "Android 通知はオフです。",
     "group.defaultName": "グループ",
     "group.expand": "グループを展開",
     "group.collapse": "グループを折りたたむ",
@@ -234,6 +242,7 @@ const elements = {
   hostText: document.getElementById("hostText"),
   refreshWorkspaces: document.getElementById("refreshWorkspaces"),
   createWorkspace: document.getElementById("createWorkspace"),
+  enableNotifications: document.getElementById("enableNotifications"),
   syncNotifications: document.getElementById("syncNotifications"),
   dismissNotifications: document.getElementById("dismissNotifications"),
   workspaceList: document.getElementById("workspaceList"),
@@ -348,6 +357,9 @@ function renderNotificationStatus() {
   elements.notificationText.textContent = t(messageKey).replace("{count}", String(count));
   if (elements.dismissNotifications) {
     elements.dismissNotifications.disabled = state.deliveredNotificationIds.length === 0;
+  }
+  if (elements.enableNotifications) {
+    elements.enableNotifications.classList.toggle("hidden", state.nativeNotificationsEnabled || !state.nativeNotificationsCanRequest);
   }
 }
 
@@ -1145,6 +1157,15 @@ window.cmuxNativeEvent = (event) => {
     renderAuthStatus();
     return;
   }
+  if (event.type === "notificationPermission") {
+    state.nativeNotificationsEnabled = event.payload.enabled === true;
+    state.nativeNotificationsCanRequest = event.payload.can_request === true;
+    renderNotificationStatus();
+    if (event.payload.requested === true) {
+      showToast(t(state.nativeNotificationsEnabled ? "notification.enabled" : "notification.denied"));
+    }
+    return;
+  }
   if (event.type === "connection") {
     const { state: nextState, detail } = event.payload;
     state.connected = nextState === "open";
@@ -1225,6 +1246,7 @@ elements.workspaceList.addEventListener("click", (event) => {
 
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
 elements.createWorkspace.addEventListener("click", () => bridge().createWorkspace());
+elements.enableNotifications.addEventListener("click", () => bridge().requestNotificationPermission());
 elements.syncNotifications.addEventListener("click", syncNotifications);
 elements.dismissNotifications.addEventListener("click", dismissSyncedNotifications);
 elements.closeConnection.addEventListener("click", () => {

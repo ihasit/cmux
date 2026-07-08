@@ -1,11 +1,14 @@
 package com.cmux.android
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -15,6 +18,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var bridge: MobileWebBridge
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         bridge.handleScannedPairingCode(result.contents)
+    }
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        bridge.handleNotificationPermissionResult(granted)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -42,6 +50,14 @@ class MainActivity : ComponentActivity() {
             .setBeepEnabled(false)
             .setOrientationLocked(false)
         scanLauncher.launch(options)
+    }
+
+    fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            bridge.handleNotificationPermissionResult(true)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

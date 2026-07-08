@@ -38,6 +38,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         pageReady = true
         emit("pairedMacs", JSONObject().put("macs", pairedMacsJson()))
         emit("auth", authStateJson())
+        emitNotificationPermissionState(requested = false)
         pendingPairingURL?.let { rawValue ->
             pendingPairingURL = null
             pair(rawValue)
@@ -95,6 +96,18 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         stackAccessToken = null
         emit("auth", authStateJson())
         emit("toast", JSONObject().put("message_key", "auth.cleared"))
+    }
+
+    @JavascriptInterface
+    fun requestNotificationPermission() {
+        mainHandler.post {
+            (context as? MainActivity)?.requestNotificationPermission()
+                ?: emitNotificationPermissionState(requested = true)
+        }
+    }
+
+    fun handleNotificationPermissionResult(granted: Boolean) {
+        emitNotificationPermissionState(requested = true, overrideEnabled = granted)
     }
 
     fun handlePairingURL(rawValue: String?) {
@@ -482,6 +495,17 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         return JSONObject()
             .put("stack_access_token_configured", !stackAccessToken.isNullOrBlank())
             .put("stack_refresh_token_configured", !authStore.stackRefreshToken().isNullOrBlank())
+    }
+
+    private fun emitNotificationPermissionState(requested: Boolean, overrideEnabled: Boolean? = null) {
+        val state = notificationBridge.permissionState()
+        emit(
+            "notificationPermission",
+            JSONObject()
+                .put("enabled", overrideEnabled ?: state.enabled)
+                .put("can_request", state.canRequest)
+                .put("requested", requested)
+        )
     }
 
     private fun authOrigin(): String {

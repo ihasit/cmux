@@ -38,6 +38,10 @@ class MainActivitySmokeTest {
             onWebView()
                 .withElement(findElement(Locator.ID, "authTitle"))
                 .check(webMatches(getText(), containsString("Stack Auth token")))
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "enableNotifications"))
+                .check(webMatches(getText(), containsString("Enable alerts")))
         }
     }
 

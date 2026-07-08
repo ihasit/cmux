@@ -44,7 +44,7 @@ class MobileNotificationBridgeTest {
 
     @Test
     fun missingNotificationPermissionSkipsPosting() {
-        val backend = RecordingBackend(canPost = false)
+        val backend = RecordingBackend(canPost = false, canRequest = true)
         val bridge = MobileNotificationBridge(backend, FakeStrings)
 
         bridge.applyUnreadCount(5)
@@ -52,6 +52,19 @@ class MobileNotificationBridgeTest {
         assertTrue(backend.channels.isEmpty())
         assertTrue(backend.notifications.isEmpty())
         assertTrue(backend.cancelledIds.isEmpty())
+    }
+
+    @Test
+    fun permissionStateReportsEnabledAndRequestAvailability() {
+        val bridge = MobileNotificationBridge(
+            RecordingBackend(canPost = false, canRequest = true),
+            FakeStrings
+        )
+
+        assertEquals(
+            MobileNotificationBridge.PermissionState(enabled = false, canRequest = true),
+            bridge.permissionState()
+        )
     }
 
     @Test
@@ -75,13 +88,16 @@ class MobileNotificationBridgeTest {
     }
 
     private class RecordingBackend(
-        private val canPost: Boolean = true
+        private val canPost: Boolean = true,
+        private val canRequest: Boolean = false
     ) : MobileNotificationBridge.Backend {
         val channels = mutableListOf<RecordedChannel>()
         val notifications = mutableListOf<RecordedNotification>()
         val cancelledIds = mutableListOf<Int>()
 
         override fun canPostNotifications(): Boolean = canPost
+
+        override fun canRequestNotifications(): Boolean = canRequest
 
         override fun ensureChannel(channelId: String, channelName: String) {
             channels.add(RecordedChannel(channelId, channelName))

@@ -49,6 +49,13 @@ class MobileNotificationBridge(
         )
     }
 
+    fun permissionState(): PermissionState {
+        return PermissionState(
+            enabled = backend.canPostNotifications(),
+            canRequest = backend.canRequestNotifications()
+        )
+    }
+
     fun cancelDismissed(ids: List<String>) {
         if (ids.isNotEmpty()) {
             backend.cancel(SUMMARY_NOTIFICATION_ID)
@@ -57,6 +64,7 @@ class MobileNotificationBridge(
 
     interface Backend {
         fun canPostNotifications(): Boolean
+        fun canRequestNotifications(): Boolean
         fun ensureChannel(channelId: String, channelName: String)
         fun notify(notificationId: Int, payload: NotificationPayload)
         fun cancel(notificationId: Int)
@@ -74,6 +82,11 @@ class MobileNotificationBridge(
         val title: String,
         val body: String,
         val number: Int
+    )
+
+    data class PermissionState(
+        val enabled: Boolean,
+        val canRequest: Boolean
     )
 
     private class AndroidNotificationStrings(private val context: Context) : Strings {
@@ -98,6 +111,10 @@ class MobileNotificationBridge(
         override fun canPostNotifications(): Boolean {
             return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        }
+
+        override fun canRequestNotifications(): Boolean {
+            return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !canPostNotifications()
         }
 
         override fun ensureChannel(channelId: String, channelName: String) {
