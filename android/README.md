@@ -64,7 +64,7 @@ Implemented:
 - Render workspace rows, groups, and styled render-grid terminal output in the WebView.
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Copy the currently visible terminal output from the WebView terminal.
-- Provide terminal quick keys for Enter, Tab, Esc, Backspace, Ctrl-C, Ctrl-D, Ctrl-L, Ctrl-Z, and arrow keys in the WebView terminal.
+- Provide terminal quick keys for Enter, Tab, Esc, Backspace, Ctrl-A/C/D/E/L/U/W/Z, arrow keys, Home/End, and Page Up/Down in the WebView terminal.
 - Disable workspace and terminal controls while disconnected, while keeping paired Mac reconnect actions available.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Show a native Android summary notification for unread agent notifications when notification permission is available.
