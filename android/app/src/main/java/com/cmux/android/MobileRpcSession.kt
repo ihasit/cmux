@@ -110,7 +110,12 @@ class MobileRpcSession(
         }
         val pendingCall = pending.remove(id)
         val method = pendingCall?.method
-        if (json.optBoolean("ok", false)) {
+        val ok = strictBooleanOrNull(json, "ok")
+        if (ok == null) {
+            callback.onRpcError(id, method, "parse_error", "Invalid response status from host")
+            return
+        }
+        if (ok) {
             callback.onRpcResult(id, method ?: "unknown", json.optJSONObject("result") ?: JSONObject())
         } else {
             val error = json.optJSONObject("error") ?: JSONObject()
@@ -343,5 +348,10 @@ class MobileRpcSession(
     private fun strictIntOrNull(json: JSONObject, name: String): Int? {
         if (!json.has(name) || json.isNull(name)) return null
         return json.opt(name) as? Int
+    }
+
+    private fun strictBooleanOrNull(json: JSONObject, name: String): Boolean? {
+        if (!json.has(name) || json.isNull(name)) return null
+        return json.opt(name) as? Boolean
     }
 }
