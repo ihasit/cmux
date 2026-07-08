@@ -32,6 +32,18 @@ class MobileNotificationBridgeTest {
     }
 
     @Test
+    fun repeatedUnreadUpdatesReuseNotificationChannel() {
+        val backend = RecordingBackend()
+        val bridge = MobileNotificationBridge(backend, FakeStrings)
+
+        bridge.applyUnreadCount(2)
+        bridge.applyUnreadCount(4)
+
+        assertEquals(listOf(MobileNotificationBridge.CHANNEL_ID), backend.channels.map { it.id })
+        assertEquals(listOf(2, 4), backend.notifications.map { it.payload.number })
+    }
+
+    @Test
     fun zeroUnreadCountCancelsSummaryNotification() {
         val backend = RecordingBackend()
         val bridge = MobileNotificationBridge(backend, FakeStrings)
