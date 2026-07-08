@@ -28,7 +28,8 @@ class MobileWebSocketClient(
             readBuffer.reset()
         }
         val url = route.url?.trim().orEmpty()
-        if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
+        val lowerUrl = url.lowercase()
+        if (!lowerUrl.startsWith("ws://") && !lowerUrl.startsWith("wss://")) {
             callback.onError("invalid websocket route")
             callback.onClose("invalid websocket route")
             return
