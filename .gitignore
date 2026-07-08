@@ -62,6 +62,7 @@ web/public/pagefind/
 # Local scratch (screenshots, etc.)
 tmp/
 tmp-*/
+temp/
 build-package-local/
 build-package-local-*/
 .iter-logs/
