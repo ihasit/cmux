@@ -1074,14 +1074,18 @@ function decodeReplayText(result) {
 
 function renderTerminalReplay(result) {
   if (result.render_grid) {
-    const frame = normalizeRenderGrid(result.render_grid);
-    if (frame?.surfaceId && state.activeTerminal && frame.surfaceId !== state.activeTerminal.id) {
+    if (!renderGridTargetsActiveTerminal(result.render_grid)) {
       return;
     }
     renderTerminalFrame(result.render_grid, { reset: true });
     return;
   }
   elements.terminalOutput.textContent = decodeReplayText(result) || t("terminal.empty");
+}
+
+function renderGridTargetsActiveTerminal(renderGrid) {
+  const surfaceId = renderGrid?.surface_id || renderGrid?.surfaceID || renderGrid?.surfaceId || "";
+  return !surfaceId || !state.activeTerminal || surfaceId === state.activeTerminal.id;
 }
 
 function renderTerminalFrame(rawFrame, options = {}) {
@@ -1426,7 +1430,7 @@ function handleRpcResult(method, result) {
     return;
   }
   if (method === "mobile.terminal.scroll") {
-    if (result.render_grid) {
+    if (result.render_grid && renderGridTargetsActiveTerminal(result.render_grid)) {
       renderTerminalFrame(result.render_grid);
     }
     return;
