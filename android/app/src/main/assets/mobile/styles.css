@@ -164,6 +164,25 @@ textarea {
   gap: 8px;
 }
 
+.workspace-group {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px 0;
+}
+
+.workspace-group-title {
+  color: #697386;
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.grouped-workspace {
+  margin-left: 12px;
+}
+
 .terminal-row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -282,6 +301,10 @@ textarea {
   .card-subtitle,
   #terminalMeta,
   #toast {
+    color: #8b949e;
+  }
+
+  .workspace-group-title {
     color: #8b949e;
   }
 

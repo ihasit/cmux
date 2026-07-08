@@ -128,6 +128,16 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     }
 
     @JavascriptInterface
+    fun setWorkspaceGroupCollapsed(groupId: String, collapsed: Boolean) {
+        session.request(
+            if (collapsed) "workspace.group.collapse" else "workspace.group.expand",
+            JSONObject()
+                .put("group_id", groupId)
+                .put("client_id", CLIENT_ID)
+        )
+    }
+
+    @JavascriptInterface
     fun createTerminal(workspaceId: String) {
         session.request("mobile.terminal.create", JSONObject().put("workspace_id", workspaceId))
     }

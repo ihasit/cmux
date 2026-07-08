@@ -3,6 +3,7 @@ const state = {
   connected: false,
   hostStatus: null,
   workspaces: [],
+  groups: [],
   activeWorkspace: null,
   activeTerminal: null,
   terminalFrames: new Map(),
@@ -53,6 +54,9 @@ const messages = {
     "workspace.renameEmpty": "Workspace name is empty.",
     "workspace.actionsUnsupported": "This Mac does not support workspace actions yet.",
     "workspace.closeUnsupported": "This Mac does not support closing workspaces yet.",
+    "group.defaultName": "Group",
+    "group.expand": "Expand group",
+    "group.collapse": "Collapse group",
     "terminal.defaultTitle": "Terminal",
     "terminal.notFound": "Terminal was not found.",
     "terminal.noTerminals": "No terminals",
@@ -111,6 +115,9 @@ const messages = {
     "workspace.renameEmpty": "ワークスペース名が空です。",
     "workspace.actionsUnsupported": "この Mac はまだワークスペース操作に対応していません。",
     "workspace.closeUnsupported": "この Mac はまだワークスペースの終了に対応していません。",
+    "group.defaultName": "グループ",
+    "group.expand": "グループを展開",
+    "group.collapse": "グループを折りたたむ",
     "terminal.defaultTitle": "ターミナル",
     "terminal.notFound": "ターミナルが見つかりません。",
     "terminal.noTerminals": "ターミナルなし",
@@ -228,31 +235,64 @@ function renderWorkspaces() {
     elements.workspaceList.innerHTML = `<article class="card"><div class="card-subtitle">${escapeHtml(t("workspaces.empty"))}</div></article>`;
     return;
   }
-  elements.workspaceList.innerHTML = state.workspaces.map((workspace) => {
-    const terminals = workspace.terminals || [];
-    const workspaceActions = renderWorkspaceActions(workspace);
-    const terminalRows = terminals.length === 0
-      ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span><button data-create-terminal="${escapeHtml(workspace.id)}">${escapeHtml(t("terminal.new"))}</button></div>`
-      : terminals.map((terminal) => `
-          <div class="terminal-row">
-            <div>
-              <div class="card-title">${escapeHtml(terminal.title || t("terminal.defaultTitle"))}</div>
-              <div class="card-subtitle">${escapeHtml(terminal.current_directory || "")}</div>
-            </div>
-            <button class="primary" data-open-terminal="${escapeHtml(workspace.id)}" data-terminal-id="${escapeHtml(terminal.id)}">${escapeHtml(t("terminal.open"))}</button>
+  elements.workspaceList.innerHTML = workspaceListItems().join("");
+}
+
+function workspaceListItems() {
+  const groupsById = new Map((state.groups || []).map((group) => [group.id, group]));
+  const emittedGroups = new Set();
+  const items = [];
+  for (const workspace of state.workspaces) {
+    const groupId = workspace.group_id;
+    const group = groupId ? groupsById.get(groupId) : null;
+    if (group && !emittedGroups.has(group.id)) {
+      emittedGroups.add(group.id);
+      items.push(renderWorkspaceGroup(group));
+    }
+    if (!group?.is_collapsed) {
+      items.push(renderWorkspaceCard(workspace, group));
+    }
+  }
+  return items;
+}
+
+function renderWorkspaceGroup(group) {
+  const label = group.name || t("group.defaultName");
+  const actionKey = group.is_collapsed ? "group.expand" : "group.collapse";
+  return `
+    <div class="workspace-group">
+      <div>
+        <div class="workspace-group-title">${escapeHtml(label)}</div>
+      </div>
+      <button data-toggle-group="${escapeHtml(group.id)}" data-collapsed="${group.is_collapsed ? "true" : "false"}">${escapeHtml(t(actionKey))}</button>
+    </div>
+  `;
+}
+
+function renderWorkspaceCard(workspace, group) {
+  const terminals = workspace.terminals || [];
+  const workspaceActions = renderWorkspaceActions(workspace);
+  const terminalRows = terminals.length === 0
+    ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span><button data-create-terminal="${escapeHtml(workspace.id)}">${escapeHtml(t("terminal.new"))}</button></div>`
+    : terminals.map((terminal) => `
+        <div class="terminal-row">
+          <div>
+            <div class="card-title">${escapeHtml(terminal.title || t("terminal.defaultTitle"))}</div>
+            <div class="card-subtitle">${escapeHtml(terminal.current_directory || "")}</div>
           </div>
-        `).join("");
-    return `
-      <article class="card workspace-card">
-        <div>
-          <div class="card-title">${escapeHtml(workspace.title || t("workspace.defaultTitle"))}</div>
-          <div class="card-subtitle">${escapeHtml(workspace.preview || workspace.current_directory || "")}</div>
+          <button class="primary" data-open-terminal="${escapeHtml(workspace.id)}" data-terminal-id="${escapeHtml(terminal.id)}">${escapeHtml(t("terminal.open"))}</button>
         </div>
-        ${workspaceActions}
-        ${terminalRows}
-      </article>
-    `;
-  }).join("");
+      `).join("");
+  return `
+    <article class="card workspace-card${group ? " grouped-workspace" : ""}">
+      <div>
+        <div class="card-title">${escapeHtml(workspace.title || t("workspace.defaultTitle"))}</div>
+        <div class="card-subtitle">${escapeHtml(workspace.preview || workspace.current_directory || "")}</div>
+      </div>
+      ${workspaceActions}
+      ${terminalRows}
+    </article>
+  `;
 }
 
 function renderWorkspaceActions(workspace) {
@@ -312,6 +352,10 @@ function closeWorkspace(workspaceId) {
     return;
   }
   bridge().closeWorkspace(workspaceId);
+}
+
+function toggleWorkspaceGroup(groupId, isCollapsed) {
+  bridge().setWorkspaceGroupCollapsed(groupId, !isCollapsed);
 }
 
 function openTerminal(workspaceId, terminalId) {
@@ -801,6 +845,7 @@ function handleRpcResult(method, result) {
   }
   if (method === "mobile.workspace.list" || method === "mobile.terminal.create" || method === "workspace.create") {
     state.workspaces = result.workspaces || [];
+    state.groups = result.groups || [];
     renderWorkspaces();
     showScreen("workspaces");
     if (result.created_workspace_id && !result.created_terminal_id) {
@@ -814,6 +859,10 @@ function handleRpcResult(method, result) {
     return;
   }
   if (method === "workspace.action" || method === "workspace.close") {
+    bridge().refreshWorkspaces();
+    return;
+  }
+  if (method === "workspace.group.collapse" || method === "workspace.group.expand") {
     bridge().refreshWorkspaces();
     return;
   }
@@ -905,12 +954,14 @@ elements.workspaceList.addEventListener("click", (event) => {
   const pinWorkspaceId = event.target.getAttribute("data-pin-workspace");
   const readWorkspaceId = event.target.getAttribute("data-read-workspace");
   const closeWorkspaceId = event.target.getAttribute("data-close-workspace");
+  const toggleGroupId = event.target.getAttribute("data-toggle-group");
   if (workspaceId && terminalId) openTerminal(workspaceId, terminalId);
   if (createWorkspaceId) bridge().createTerminal(createWorkspaceId);
   if (renameWorkspaceId) renameWorkspace(renameWorkspaceId);
   if (pinWorkspaceId) toggleWorkspacePinned(pinWorkspaceId, event.target.getAttribute("data-pinned") === "true");
   if (readWorkspaceId) toggleWorkspaceUnread(readWorkspaceId, event.target.getAttribute("data-unread") === "true");
   if (closeWorkspaceId) closeWorkspace(closeWorkspaceId);
+  if (toggleGroupId) toggleWorkspaceGroup(toggleGroupId, event.target.getAttribute("data-collapsed") === "true");
 });
 
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
