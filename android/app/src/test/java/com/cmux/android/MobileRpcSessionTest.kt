@@ -732,6 +732,50 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun failoverAfterOpenResubscribesActiveEventStream() {
+        val clients = mutableListOf<RecordingFrameClient>()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val session = MobileRpcSession(
+            callback = NoopCallback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient().also { clients.add(it) }
+            }
+        )
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.onOpen()
+        val subscribeId = session.request(
+            "mobile.events.subscribe",
+            JSONObject()
+                .put("stream_id", "stream-android-1")
+                .put("topics", JSONArray().put("workspace.updated").put("terminal.frame"))
+        )
+        session.onFrame(
+            JSONObject()
+                .put("id", subscribeId)
+                .put("ok", true)
+                .put("result", JSONObject())
+                .toString()
+        )
+
+        session.onClose("lost after open")
+        session.onOpen()
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(1, clients[1].sentFrames.size)
+        val resubscribe = JSONObject(clients[1].sentFrames.single())
+        assertEquals("mobile.events.subscribe", resubscribe.getString("method"))
+        assertEquals("stream-android-1", resubscribe.getJSONObject("params").getString("stream_id"))
+        assertEquals(
+            listOf("workspace.updated", "terminal.frame"),
+            resubscribe.getJSONObject("params").getJSONArray("topics").asStrings()
+        )
+    }
+
+    @Test
     fun errorAfterOpenFailsOverToNextRouteWhenAvailable() {
         val clients = mutableListOf<RecordingFrameClient>()
         val connectedRoutes = mutableListOf<CmuxRoute>()
@@ -864,6 +908,10 @@ class MobileRpcSessionTest {
             priority = 0,
             url = url
         )
+    }
+
+    private fun JSONArray.asStrings(): List<String> {
+        return (0 until length()).map { getString(it) }
     }
 
     private class RecordingFrameClient : MobileFrameClient {
