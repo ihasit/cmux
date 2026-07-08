@@ -93,6 +93,28 @@ class MobileWebSocketClientTest {
     }
 
     @Test
+    fun acceptsUppercaseWebSocketScheme() {
+        val accepted = CountDownLatch(1)
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    accepted.countDown()
+                }
+            })
+        )
+        val callback = RecordingCallback()
+        val client = mobileClient(callback)
+        val baseRoute = route()
+        val uppercaseRoute = baseRoute.copy(url = baseRoute.url?.replace("ws://", "WS://"))
+
+        client.connect(uppercaseRoute)
+
+        assertTrue(callback.opened.await(2, TimeUnit.SECONDS))
+        assertTrue(accepted.await(2, TimeUnit.SECONDS))
+        client.close("test complete")
+    }
+
+    @Test
     fun rejectsInvalidBinaryFrameLength() {
         server.enqueue(
             MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
