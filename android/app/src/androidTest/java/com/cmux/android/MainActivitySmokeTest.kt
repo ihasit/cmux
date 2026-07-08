@@ -1422,6 +1422,9 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
+            val toastAfterLiveFrame = scenario.evaluateScript("document.getElementById('toast').textContent")
+            check(!toastAfterLiveFrame.contains("Live terminal update received"))
+
             onWebView()
                 .withElement(findElement(Locator.ID, "terminalTitle"))
                 .check(webMatches(getText(), containsString("Build shell")))
