@@ -41,21 +41,22 @@ Implemented:
 
 - Parse `cmux-ios://attach?v=2&r=host:port` pairing links.
 - Parse older `attach` / `pair` payload links enough to recover host/port routes.
-- Persist paired Macs in app `SharedPreferences`.
+- Persist paired Macs with Android Keystore-backed encrypted storage.
 - Connect to the selected host route over the length-prefixed mobile TCP protocol.
 - Call `mobile.host.status`, `mobile.workspace.list`, `mobile.terminal.replay`, `mobile.terminal.input`, `mobile.terminal.paste`, and `mobile.terminal.create`.
-- Subscribe to `workspace.updated` and `terminal.render_grid` host events for live refresh.
-- Render workspace rows and a basic terminal text view in the WebView.
+- Subscribe to `workspace.updated`, `terminal.render_grid`, `notification.badge`, and `notification.dismissed` host events for live refresh.
+- Render workspace rows, groups, and styled render-grid terminal output in the WebView.
+- Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
+- Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
+- Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
 - Provide English and Japanese WebView strings.
 
 Not implemented yet:
 
 - QR camera scanning.
-- Encrypted storage for paired Macs.
 - Stack Auth account preflight / token auth.
 - WebSocket transport.
-- Styled render-grid terminal drawing; the current view flattens text spans.
 - Android instrumentation/unit tests.
 
 ## Protocol target
@@ -89,6 +90,13 @@ Then from this directory run:
 gradle :app:assembleDebug
 ```
 
+On machines where Homebrew Gradle runs on a very new JDK, prefer JDK 17 for the
+Android Gradle Plugin:
+
+```bash
+JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home gradle :app:assembleDebug
+```
+
 If the repository later adds a Gradle wrapper, prefer:
 
 ```bash
@@ -100,7 +108,7 @@ If the repository later adds a Gradle wrapper, prefer:
 - Parse `cmux-ios://` / `cmux-ios-dev://` pairing URLs. Done for attach links.
 - Connect to a Tailscale `host:port` route. Done for TCP routes.
 - Call `mobile.host.status`. Done.
-- Persist paired Mac routes in encrypted Android storage. Basic `SharedPreferences` persistence is done; encrypted storage is still pending.
-- Render terminal output in the WebView. Basic text rendering is done; styled render-grid rendering is pending.
+- Persist paired Mac routes in encrypted Android storage. Done with Android Keystore AES-GCM.
+- Render terminal output in the WebView. Done for styled render-grid frames.
 - Add QR scanning with CameraX or a small native scanner module.
 - Add WebSocket transport once the Mac side advertises `.websocket` routes.
