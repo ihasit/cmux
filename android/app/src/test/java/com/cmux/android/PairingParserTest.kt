@@ -254,6 +254,25 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseCompactTicketTrimsRouteKind() {
+        val payload = JSONObject()
+            .put("v", 1)
+            .put("d", "mac-trimmed-kind")
+            .put("r", JSONArray().put(
+                JSONObject()
+                    .put("i", "trimmed")
+                    .put("k", " tailscale ")
+                    .put("p", 1)
+                    .put("e", JSONObject().put("h", "100.64.0.10").put("p", 58465))
+            ))
+
+        val mac = parser.parse("cmux-ios://attach?payload=${base64Url(payload)}")
+
+        assertEquals("tailscale", mac.routes.single().kind)
+        assertEquals(mac.routes.single(), mac.primaryRoute)
+    }
+
+    @Test
     fun parseCompactTicketRejectsInvalidWebSocketUrlRoute() {
         val payload = JSONObject()
             .put("v", 1)
