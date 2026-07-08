@@ -74,6 +74,7 @@ const messages = {
     "workspaces.title": "Workspaces",
     "workspaces.empty": "No workspaces reported yet.",
     "workspaces.filterEmpty": "No matching workspaces.",
+    "workspaces.error": "Could not load workspaces.",
     "workspace.new": "New workspace",
     "workspace.defaultTitle": "Workspace",
     "workspace.searchLabel": "Search workspaces",
@@ -199,6 +200,7 @@ const messages = {
     "workspaces.title": "ワークスペース",
     "workspaces.empty": "ワークスペースはまだ報告されていません。",
     "workspaces.filterEmpty": "一致するワークスペースはありません。",
+    "workspaces.error": "ワークスペースを読み込めませんでした。",
     "workspace.new": "新しいワークスペース",
     "workspace.defaultTitle": "ワークスペース",
     "workspace.searchLabel": "ワークスペースを検索",
@@ -472,6 +474,11 @@ function renderWorkspaces() {
     return;
   }
   elements.workspaceList.innerHTML = workspaceListItems(filteredWorkspaces).join("");
+  renderConnectionControls();
+}
+
+function renderWorkspaceError(message) {
+  elements.workspaceList.innerHTML = `<article class="card"><div class="card-subtitle">${escapeHtml(message || t("workspaces.error"))}</div></article>`;
   renderConnectionControls();
 }
 
@@ -1539,6 +1546,7 @@ window.cmuxNativeEvent = (event) => {
   if (event.type === "rpcError" || event.type === "error") {
     if (event.payload.method === "mobile.workspace.list") {
       state.workspaceRefreshPending = false;
+      renderWorkspaceError(t("workspaces.error"));
     }
     if (event.payload.code === "unauthorized") {
       showToast(t("auth.error.unauthorized"));
