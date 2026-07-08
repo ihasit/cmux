@@ -94,6 +94,7 @@ class PairingParser {
         val scheme = uri.scheme?.lowercase()
         checkPairing(scheme == "ws" || scheme == "wss", "pair.error.invalidRoute")
         checkPairing(!uri.host.isNullOrBlank(), "pair.error.invalidRoute")
+        checkPairing(!isLoopbackHost(uri.host), "pair.error.loopback")
         val route = CmuxRoute(
             id = "manual_websocket",
             kind = "websocket",
