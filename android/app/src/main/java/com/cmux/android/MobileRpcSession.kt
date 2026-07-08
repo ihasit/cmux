@@ -27,10 +27,12 @@ class MobileRpcSession(
     private val nextId = AtomicInteger(1)
     private val pending = ConcurrentHashMap<Int, PendingCall>()
     private var client: MobileFrameClient? = null
+    private var activeRoute: CmuxRoute? = null
 
     fun connect(route: CmuxRoute) {
         callback.onConnectionState("connecting", route.displayEndpoint())
         client?.shutdown()
+        activeRoute = route
         client = clientFactory(this, route).also { it.connect(route) }
     }
 
@@ -57,6 +59,7 @@ class MobileRpcSession(
         pending.clear()
         client?.shutdown()
         client = null
+        activeRoute = null
     }
 
     override fun onOpen() {
@@ -109,7 +112,7 @@ class MobileRpcSession(
             .put("method", method)
             .put("params", params)
         val stackAccessToken = stackAccessTokenProvider()?.trim()
-        if (!stackAccessToken.isNullOrEmpty()) {
+        if (!stackAccessToken.isNullOrEmpty() && activeRoute?.let(MobileRouteAuthPolicy::routeAllowsStackAuth) == true) {
             request.put("auth", JSONObject().put("stack_access_token", stackAccessToken))
         }
         return request

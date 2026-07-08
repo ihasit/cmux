@@ -24,6 +24,7 @@ android/
       java/com/cmux/android/
         MainActivity.kt
         MobileAuthStore.kt
+        MobileRouteAuthPolicy.kt
         MobileRpcSession.kt
         MobileWebSocketClient.kt
         MobileTcpClient.kt
@@ -52,10 +53,11 @@ Implemented:
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Save a manually pasted Stack access token in Android Keystore-backed encrypted storage and attach it to mobile RPC requests.
+- Send Stack access tokens only over trusted routes: Tailscale CGNAT/MagicDNS, debug loopback, or `wss://` WebSocket routes.
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
-- Run JVM unit tests for pairing URL parsing, WebSocket route parsing, route JSON round-trips, and mobile RPC auth envelopes.
+- Run JVM unit tests for pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, and mobile RPC auth envelopes.
 - Provide English and Japanese WebView strings.
 
 Not implemented yet:
@@ -120,6 +122,7 @@ If the repository later adds a Gradle wrapper, prefer:
 - Call `mobile.host.status`. Done.
 - Persist paired Mac routes in encrypted Android storage. Done with Android Keystore AES-GCM.
 - Attach Stack access tokens to authorized RPC requests. Done for manually saved tokens.
+- Gate Stack token transport to trusted routes. Done for Tailscale CGNAT/MagicDNS, debug loopback, and `wss://` WebSocket routes.
 - Render terminal output in the WebView. Done for styled render-grid frames.
 - Add QR scanning with CameraX or a small native scanner module. Done with ZXing embedded scanner.
 - Add WebSocket transport once the Mac side advertises `.websocket` routes. Done for compact/full attach payloads.

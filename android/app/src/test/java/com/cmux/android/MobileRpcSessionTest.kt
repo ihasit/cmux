@@ -25,6 +25,22 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun requestSendsStackAccessTokenOverSecureWebSocketRoute() {
+        val client = RecordingFrameClient()
+        val session = MobileRpcSession(
+            callback = NoopCallback,
+            stackAccessTokenProvider = { "stack-token-2" },
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(webSocketRoute("wss://cmux.example.test/mobile"))
+
+        session.request("mobile.workspace.list")
+
+        val sent = JSONObject(client.sentFrames.single())
+        assertEquals("stack-token-2", sent.getJSONObject("auth").getString("stack_access_token"))
+    }
+
+    @Test
     fun requestOmitsAuthWhenTokenIsMissing() {
         val client = RecordingFrameClient()
         val session = MobileRpcSession(
@@ -38,6 +54,47 @@ class MobileRpcSessionTest {
 
         val sent = JSONObject(client.sentFrames.single())
         assertEquals("mobile.workspace.list", sent.getString("method"))
+        assertFalse(sent.has("auth"))
+    }
+
+    @Test
+    fun requestOmitsAuthOnPlainLanRouteEvenWhenTokenIsConfigured() {
+        val client = RecordingFrameClient()
+        val session = MobileRpcSession(
+            callback = NoopCallback,
+            stackAccessTokenProvider = { "stack-token-3" },
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(
+            CmuxRoute(
+                id = "lan",
+                kind = "tailscale",
+                host = "192.168.1.20",
+                port = 58465,
+                priority = 10,
+                url = null
+            )
+        )
+
+        session.request("mobile.workspace.list")
+
+        val sent = JSONObject(client.sentFrames.single())
+        assertFalse(sent.has("auth"))
+    }
+
+    @Test
+    fun requestOmitsAuthOnPlainWebSocketRouteEvenWhenTokenIsConfigured() {
+        val client = RecordingFrameClient()
+        val session = MobileRpcSession(
+            callback = NoopCallback,
+            stackAccessTokenProvider = { "stack-token-4" },
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(webSocketRoute("ws://cmux.example.test/mobile"))
+
+        session.request("mobile.workspace.list")
+
+        val sent = JSONObject(client.sentFrames.single())
         assertFalse(sent.has("auth"))
     }
 
@@ -67,6 +124,17 @@ class MobileRpcSessionTest {
             port = 58465,
             priority = 10,
             url = null
+        )
+    }
+
+    private fun webSocketRoute(url: String): CmuxRoute {
+        return CmuxRoute(
+            id = "websocket",
+            kind = "websocket",
+            host = "",
+            port = 0,
+            priority = 0,
+            url = url
         )
     }
 
