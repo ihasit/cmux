@@ -1297,6 +1297,63 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun terminalBytesPushUpdatesActiveTerminalFallback() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
+                .perform(webClick())
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "terminal.bytes",
+                    "payload": {
+                      "surface_id": "terminal-1",
+                      "data_b64": "cmF3IGJ5dGVzIGZhbGxiYWNr"
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "terminalOutput"))
+                .check(webMatches(getText(), containsString("raw bytes fallback")))
+        }
+    }
+
+    @Test
     fun newWorkspaceButtonRequiresHostCapability() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.emitNativeEvent(
