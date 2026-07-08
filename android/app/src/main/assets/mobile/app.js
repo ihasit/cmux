@@ -8,6 +8,7 @@ const state = {
   activeTerminal: null,
   terminalFrames: new Map(),
   terminalByteEndSeqBySurface: new Map(),
+  pendingTerminalSubmit: null,
   effectiveViewport: null,
   lastViewportReport: "",
   viewportReportTimer: 0,
@@ -807,6 +808,7 @@ function clearActiveTerminalState() {
   state.effectiveViewport = null;
   state.lastViewportReport = "";
   state.pendingScrollLines = 0;
+  state.pendingTerminalSubmit = null;
   state.terminalFrames.clear();
   state.terminalByteEndSeqBySurface.clear();
   window.clearTimeout(state.viewportReportTimer);
@@ -941,6 +943,12 @@ function sendTerminalInput(mode) {
       terminalRows(),
     );
   }
+  state.pendingTerminalSubmit = {
+    method: mode === "paste" ? "mobile.terminal.paste" : "mobile.terminal.input",
+    workspaceId: state.activeWorkspace.id,
+    terminalId: state.activeTerminal.id,
+    text,
+  };
   elements.terminalInput.value = "";
   window.setTimeout(replayActiveTerminal, 250);
 }
@@ -1493,6 +1501,7 @@ function handleRpcResult(method, result) {
     return;
   }
   if (method === "mobile.terminal.input" || method === "mobile.terminal.paste") {
+    clearPendingTerminalSubmit(method);
     window.setTimeout(replayActiveTerminal, 180);
     return;
   }
@@ -1518,6 +1527,26 @@ function handleRpcResult(method, result) {
   if (method === "mobile.events.subscribe") {
     return;
   }
+}
+
+function clearPendingTerminalSubmit(method) {
+  if (state.pendingTerminalSubmit?.method === method) {
+    state.pendingTerminalSubmit = null;
+  }
+}
+
+function restorePendingTerminalSubmit(method) {
+  const pending = state.pendingTerminalSubmit;
+  if (!pending || pending.method !== method) return;
+  if (
+    state.activeWorkspace?.id === pending.workspaceId &&
+    state.activeTerminal?.id === pending.terminalId &&
+    elements.terminalInput.value === ""
+  ) {
+    elements.terminalInput.value = pending.text;
+    elements.terminalInput.focus();
+  }
+  state.pendingTerminalSubmit = null;
 }
 
 function workspaceIdForTerminal(terminalId) {
@@ -1638,6 +1667,9 @@ window.cmuxNativeEvent = (event) => {
     if (event.payload.method === "mobile.workspace.list") {
       state.workspaceRefreshPending = false;
       renderWorkspaceError(t("workspaces.error"));
+    }
+    if (event.payload.method === "mobile.terminal.input" || event.payload.method === "mobile.terminal.paste") {
+      restorePendingTerminalSubmit(event.payload.method);
     }
     if (event.payload.code === "unauthorized") {
       showToast(t("auth.error.unauthorized"));
