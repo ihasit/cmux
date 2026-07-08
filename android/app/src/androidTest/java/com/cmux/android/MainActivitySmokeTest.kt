@@ -846,6 +846,108 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun staleTerminalReplayDoesNotReplaceCurrentTerminalFrame() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            },
+                            {
+                              "id": "terminal-2",
+                              "title": "Deploy shell",
+                              "current_directory": "/repo/deploy"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-id='terminal-1']"))
+                .perform(webClick())
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-id='terminal-2']"))
+                .perform(webClick())
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 2,
+                    "method": "mobile.terminal.replay",
+                    "result": {
+                      "render_grid": {
+                        "surface_id": "terminal-2",
+                        "state_seq": 2,
+                        "full": true,
+                        "rows": 1,
+                        "columns": 22,
+                        "row_spans": [
+                          { "row": 0, "column": 0, "text": "deploy current" }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 3,
+                    "method": "mobile.terminal.replay",
+                    "result": {
+                      "render_grid": {
+                        "surface_id": "terminal-1",
+                        "state_seq": 3,
+                        "full": true,
+                        "rows": 1,
+                        "columns": 22,
+                        "row_spans": [
+                          { "row": 0, "column": 0, "text": "build stale" }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "terminalOutput"))
+                .check(webMatches(getText(), containsString("deploy current")))
+
+            val terminalText = scenario.evaluateScript("document.getElementById('terminalOutput').textContent")
+            check(!terminalText.contains("build stale"))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
