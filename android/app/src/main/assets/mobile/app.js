@@ -91,6 +91,7 @@ const messages = {
     "workspace.close": "Close",
     "workspace.renamePrompt": "Workspace name",
     "workspace.renameEmpty": "Workspace name is empty.",
+    "workspace.createUnsupported": "This Mac does not support creating workspaces yet.",
     "workspace.actionsUnsupported": "This Mac does not support workspace actions yet.",
     "workspace.closeUnsupported": "This Mac does not support closing workspaces yet.",
     "notification.none": "No unread notifications.",
@@ -220,6 +221,7 @@ const messages = {
     "workspace.close": "閉じる",
     "workspace.renamePrompt": "ワークスペース名",
     "workspace.renameEmpty": "ワークスペース名が空です。",
+    "workspace.createUnsupported": "この Mac はまだワークスペースの作成に対応していません。",
     "workspace.actionsUnsupported": "この Mac はまだワークスペース操作に対応していません。",
     "workspace.closeUnsupported": "この Mac はまだワークスペースの終了に対応していません。",
     "notification.none": "未読通知はありません。",
@@ -640,6 +642,14 @@ function hostCapabilities() {
 
 function hasCapability(capability) {
   return hostCapabilities().includes(capability);
+}
+
+function createWorkspace() {
+  if (!hasCapability("workspace.create.v1")) {
+    showToast(t("workspace.createUnsupported"));
+    return;
+  }
+  bridge().createWorkspace();
 }
 
 function renameWorkspace(workspaceId) {
@@ -1623,7 +1633,7 @@ elements.workspaceList.addEventListener("click", (event) => {
 });
 
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
-elements.createWorkspace.addEventListener("click", () => bridge().createWorkspace());
+elements.createWorkspace.addEventListener("click", createWorkspace);
 elements.showPairedMacs.addEventListener("click", () => showScreen("pairing"));
 elements.backToWorkspacesFromPairing.addEventListener("click", () => showScreen("workspaces"));
 elements.workspaceFilters.addEventListener("click", (event) => {
