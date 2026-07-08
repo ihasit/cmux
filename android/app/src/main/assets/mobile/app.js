@@ -745,7 +745,8 @@ function handleTerminalSetFont(payload) {
   elements.terminalOutput.style.fontSize = `${clamped}px`;
   state.effectiveViewport = null;
   state.lastViewportReport = "";
-  scheduleViewportReport();
+  reportActiveViewport();
+  replayActiveTerminal();
 }
 
 function closeActiveTerminal() {
@@ -1018,11 +1019,27 @@ function imageFormatForFile(file) {
 }
 
 function terminalColumns() {
-  return Math.max(20, Math.min(160, Math.floor(elements.terminalOutput.clientWidth / 7)));
+  return Math.max(20, Math.min(160, Math.floor(elements.terminalOutput.clientWidth / terminalCellWidth())));
 }
 
 function terminalRows() {
-  return Math.max(8, Math.min(80, Math.floor(elements.terminalOutput.clientHeight / 16)));
+  return Math.max(8, Math.min(80, Math.floor(elements.terminalOutput.clientHeight / terminalLineHeight())));
+}
+
+function terminalFontSize() {
+  const size = Number.parseFloat(window.getComputedStyle(elements.terminalOutput).fontSize);
+  return Number.isFinite(size) && size > 0 ? size : 12;
+}
+
+function terminalLineHeight() {
+  const styles = window.getComputedStyle(elements.terminalOutput);
+  const lineHeight = Number.parseFloat(styles.lineHeight);
+  if (Number.isFinite(lineHeight) && lineHeight > 0) return lineHeight;
+  return terminalFontSize() * 1.35;
+}
+
+function terminalCellWidth() {
+  return Math.max(4, terminalFontSize() * 0.58);
 }
 
 function decodeReplayText(result) {
