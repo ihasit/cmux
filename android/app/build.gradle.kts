@@ -6,6 +6,8 @@ plugins {
 android {
     namespace = "com.cmux.android"
     compileSdk = 35
+    val cmuxAuthOrigin = providers.gradleProperty("cmuxAuthOrigin")
+        .orElse("https://cmux.com")
 
     buildFeatures {
         buildConfig = true
@@ -18,6 +20,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "CMUX_AUTH_ORIGIN", "\"${cmuxAuthOrigin.get()}\"")
     }
 
     compileOptions {

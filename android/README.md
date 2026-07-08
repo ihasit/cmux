@@ -55,17 +55,19 @@ Implemented:
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Save a manually pasted Stack access token in Android Keystore-backed encrypted storage and attach it to mobile RPC requests.
+- Launch hosted Stack Auth sign-in and accept `cmux-ios://auth-callback` token handoff deep links.
+- Persist Stack refresh/access token handoffs encrypted with Android Keystore AES-GCM.
 - Send Stack access tokens only over trusted routes: Tailscale CGNAT/MagicDNS, debug loopback, or `wss://` WebSocket routes.
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
-- Run JVM unit tests for pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, and mobile RPC auth envelopes.
+- Run JVM unit tests for auth callback parsing, pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, and mobile RPC auth envelopes.
 - Provide an Android instrumentation smoke test for the launched WebView shell.
 - Provide English and Japanese WebView strings.
 
 Not implemented yet:
 
-- Integrated Stack Auth sign-in. The current client supports manual Stack access token entry only.
+- Automatic Stack access-token refresh from the stored refresh token.
 - Broader Android instrumentation and end-to-end tests beyond the initial launch smoke test.
 
 ## Protocol target
@@ -136,7 +138,8 @@ If the repository later adds a Gradle wrapper, prefer:
 - Connect to a Tailscale `host:port` route. Done for TCP routes.
 - Call `mobile.host.status`. Done.
 - Persist paired Mac routes in encrypted Android storage. Done with Android Keystore AES-GCM.
-- Attach Stack access tokens to authorized RPC requests. Done for manually saved tokens.
+- Attach Stack access tokens to authorized RPC requests. Done for signed-in or manually saved tokens.
+- Accept hosted Stack Auth token handoff callbacks. Done for `cmux-ios://auth-callback`.
 - Gate Stack token transport to trusted routes. Done for Tailscale CGNAT/MagicDNS, debug loopback, and `wss://` WebSocket routes.
 - Render terminal output in the WebView. Done for styled render-grid frames.
 - Add QR scanning with CameraX or a small native scanner module. Done with ZXing embedded scanner.

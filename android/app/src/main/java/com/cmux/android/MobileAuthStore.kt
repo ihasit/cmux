@@ -22,6 +22,14 @@ class MobileAuthStore(context: Context) {
             ?.takeIf { it.isNotEmpty() }
     }
 
+    fun stackRefreshToken(): String? {
+        val encrypted = preferences.getString(KEY_STACK_REFRESH_TOKEN_ENCRYPTED, null) ?: return null
+        return decrypt(encrypted)
+            .getOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+    }
+
     fun saveStackAccessToken(token: String): Boolean {
         val trimmed = token.trim()
         if (trimmed.isEmpty()) return false
@@ -31,9 +39,21 @@ class MobileAuthStore(context: Context) {
         return true
     }
 
+    fun saveStackTokens(tokens: StackAuthTokens): Boolean {
+        val refreshToken = tokens.refreshToken.trim()
+        val accessToken = tokens.accessToken.trim()
+        if (refreshToken.isEmpty() || accessToken.isEmpty()) return false
+        preferences.edit()
+            .putString(KEY_STACK_REFRESH_TOKEN_ENCRYPTED, encrypt(refreshToken))
+            .putString(KEY_STACK_ACCESS_TOKEN_ENCRYPTED, encrypt(accessToken))
+            .apply()
+        return true
+    }
+
     fun clearStackAccessToken() {
         preferences.edit()
             .remove(KEY_STACK_ACCESS_TOKEN_ENCRYPTED)
+            .remove(KEY_STACK_REFRESH_TOKEN_ENCRYPTED)
             .apply()
     }
 
@@ -80,6 +100,7 @@ class MobileAuthStore(context: Context) {
         const val GCM_TAG_BITS = 128
         const val KEY_ALIAS = "cmux_mobile_auth"
         const val KEY_STACK_ACCESS_TOKEN_ENCRYPTED = "stack_access_token_encrypted"
+        const val KEY_STACK_REFRESH_TOKEN_ENCRYPTED = "stack_refresh_token_encrypted"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
     }
 }

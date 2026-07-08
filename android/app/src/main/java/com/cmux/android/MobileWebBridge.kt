@@ -1,6 +1,8 @@
 package com.cmux.android
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
@@ -14,6 +16,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     private val store = PairedMacStore(context)
     private val authStore = MobileAuthStore(context)
     private val parser = PairingParser()
+    private val authCallbackParser = AuthCallbackParser()
     private var stackAccessToken: String? = authStore.stackAccessToken()
     private val session = MobileRpcSession(
         callback = this,
@@ -22,6 +25,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     private var activeMac: PairedMac? = null
     private var pageReady = false
     private var pendingPairingURL: String? = null
+    private var pendingAuthState: String? = null
     private var streamId = UUID.randomUUID().toString()
 
     @JavascriptInterface
@@ -52,6 +56,35 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     @JavascriptInterface
+    fun startStackSignIn() {
+        val state = UUID.randomUUID().toString()
+        pendingAuthState = state
+        val callback = Uri.Builder()
+            .scheme("cmux-ios")
+            .authority("auth-callback")
+            .appendQueryParameter("cmux_auth_state", state)
+            .build()
+        val afterSignIn = Uri.parse(authOrigin())
+            .buildUpon()
+            .appendEncodedPath("handler/after-sign-in")
+            .appendQueryParameter("native_app_return_to", callback.toString())
+            .build()
+        val signInUrl = Uri.parse(authOrigin())
+            .buildUpon()
+            .appendEncodedPath("handler/native-sign-in")
+            .appendQueryParameter("after_auth_return_to", afterSignIn.toString())
+            .build()
+        val intent = Intent(Intent.ACTION_VIEW, signInUrl)
+        mainHandler.post {
+            runCatching { context.startActivity(intent) }
+                .onFailure {
+                    pendingAuthState = null
+                    emit("error", JSONObject().put("message_key", "auth.error.openSignIn"))
+                }
+        }
+    }
+
+    @JavascriptInterface
     fun clearStackAccessToken() {
         authStore.clearStackAccessToken()
         stackAccessToken = null
@@ -62,11 +95,40 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun handlePairingURL(rawValue: String?) {
         val value = rawValue?.trim().orEmpty()
         if (value.isEmpty()) return
+        if (handleAuthCallback(value)) return
         if (pageReady) {
             pair(value)
         } else {
             pendingPairingURL = value
         }
+    }
+
+    private fun handleAuthCallback(rawValue: String): Boolean {
+        if (!authCallbackParser.isAuthCallback(rawValue)) return false
+        val expectedState = pendingAuthState
+        if (expectedState == null) {
+            emit("error", JSONObject().put("message_key", "auth.error.callback"))
+            return true
+        }
+        val tokens = authCallbackParser.parse(rawValue, expectedState)
+        if (tokens == null) {
+            pendingAuthState = null
+            emit("error", JSONObject().put("message_key", "auth.error.callback"))
+            return true
+        }
+        pendingAuthState = null
+        if (!authStore.saveStackTokens(tokens)) {
+            emit("error", JSONObject().put("message_key", "auth.error.callback"))
+            return true
+        }
+        stackAccessToken = authStore.stackAccessToken()
+        emit("auth", authStateJson())
+        emit("toast", JSONObject().put("message_key", "auth.signedIn"))
+        if (activeMac != null) {
+            session.request("mobile.host.status")
+            session.request("mobile.workspace.list")
+        }
+        return true
     }
 
     @JavascriptInterface
@@ -403,7 +465,13 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     private fun authStateJson(): JSONObject {
-        return JSONObject().put("stack_access_token_configured", !stackAccessToken.isNullOrBlank())
+        return JSONObject()
+            .put("stack_access_token_configured", !stackAccessToken.isNullOrBlank())
+            .put("stack_refresh_token_configured", !authStore.stackRefreshToken().isNullOrBlank())
+    }
+
+    private fun authOrigin(): String {
+        return BuildConfig.CMUX_AUTH_ORIGIN.trim().trimEnd('/').ifEmpty { "https://cmux.com" }
     }
 
     private companion object {

@@ -18,6 +18,7 @@ const state = {
   unreadNotificationCount: null,
   deliveredNotificationIds: [],
   stackAccessTokenConfigured: false,
+  stackRefreshTokenConfigured: false,
 };
 
 const messages = {
@@ -44,15 +45,20 @@ const messages = {
     "pair.scanCanceled": "QR scan canceled.",
     "pair.scanUnavailable": "QR scanning is unavailable on this device.",
     "auth.title": "Stack Auth token",
-    "auth.subtitleConfigured": "Stack access token is configured.",
+    "auth.subtitleConfigured": "Signed in with a Stack session.",
+    "auth.subtitleAccessOnly": "Stack access token is configured. Sign in to enable refresh.",
     "auth.subtitleMissing": "Add a Stack access token before opening workspaces or terminals.",
     "auth.token": "Access token",
     "auth.placeholder": "Paste Stack access token",
+    "auth.signIn": "Sign in",
     "auth.save": "Save token",
     "auth.clear": "Clear token",
     "auth.saved": "Stack access token saved.",
+    "auth.signedIn": "Signed in to Stack Auth.",
     "auth.cleared": "Stack access token cleared.",
     "auth.error.empty": "Stack access token is empty.",
+    "auth.error.callback": "Stack Auth callback did not include usable tokens.",
+    "auth.error.openSignIn": "Could not open Stack sign-in.",
     "auth.error.unauthorized": "Stack authorization failed. Save a fresh token, then try again.",
     "auth.error.accountMismatch": "This token belongs to a different Stack account.",
     "paired.defaultTitle": "Paired Mac",
@@ -132,15 +138,20 @@ const messages = {
     "pair.scanCanceled": "QR スキャンをキャンセルしました。",
     "pair.scanUnavailable": "このデバイスでは QR スキャンを利用できません。",
     "auth.title": "Stack Auth トークン",
-    "auth.subtitleConfigured": "Stack アクセストークンは設定済みです。",
+    "auth.subtitleConfigured": "Stack セッションでサインイン済みです。",
+    "auth.subtitleAccessOnly": "Stack アクセストークンは設定済みです。更新を有効にするにはサインインしてください。",
     "auth.subtitleMissing": "ワークスペースやターミナルを開く前に Stack アクセストークンを追加してください。",
     "auth.token": "アクセストークン",
     "auth.placeholder": "Stack アクセストークンを貼り付け",
+    "auth.signIn": "サインイン",
     "auth.save": "トークンを保存",
     "auth.clear": "トークンを消去",
     "auth.saved": "Stack アクセストークンを保存しました。",
+    "auth.signedIn": "Stack Auth にサインインしました。",
     "auth.cleared": "Stack アクセストークンを消去しました。",
     "auth.error.empty": "Stack アクセストークンが空です。",
+    "auth.error.callback": "Stack Auth コールバックに利用可能なトークンが含まれていません。",
+    "auth.error.openSignIn": "Stack サインインを開けませんでした。",
     "auth.error.unauthorized": "Stack 認証に失敗しました。新しいトークンを保存してから再試行してください。",
     "auth.error.accountMismatch": "このトークンは別の Stack アカウントに属しています。",
     "paired.defaultTitle": "ペアリング済み Mac",
@@ -215,6 +226,7 @@ const elements = {
   pairButton: document.getElementById("pairButton"),
   authStatusText: document.getElementById("authStatusText"),
   stackAccessToken: document.getElementById("stackAccessToken"),
+  startStackSignIn: document.getElementById("startStackSignIn"),
   saveStackAccessToken: document.getElementById("saveStackAccessToken"),
   clearStackAccessToken: document.getElementById("clearStackAccessToken"),
   pairedList: document.getElementById("pairedList"),
@@ -259,9 +271,13 @@ function localizeStaticText() {
 }
 
 function renderAuthStatus() {
-  elements.authStatusText.textContent = state.stackAccessTokenConfigured
-    ? t("auth.subtitleConfigured")
-    : t("auth.subtitleMissing");
+  if (state.stackAccessTokenConfigured && state.stackRefreshTokenConfigured) {
+    elements.authStatusText.textContent = t("auth.subtitleConfigured");
+  } else if (state.stackAccessTokenConfigured) {
+    elements.authStatusText.textContent = t("auth.subtitleAccessOnly");
+  } else {
+    elements.authStatusText.textContent = t("auth.subtitleMissing");
+  }
 }
 
 function bridge() {
@@ -1125,6 +1141,7 @@ window.cmuxNativeEvent = (event) => {
   }
   if (event.type === "auth") {
     state.stackAccessTokenConfigured = event.payload.stack_access_token_configured === true;
+    state.stackRefreshTokenConfigured = event.payload.stack_refresh_token_configured === true;
     renderAuthStatus();
     return;
   }
@@ -1168,6 +1185,9 @@ elements.pairButton.addEventListener("click", () => {
 });
 elements.scanPairingCode.addEventListener("click", () => {
   bridge().scanPairingCode();
+});
+elements.startStackSignIn.addEventListener("click", () => {
+  bridge().startStackSignIn();
 });
 elements.saveStackAccessToken.addEventListener("click", () => {
   bridge().saveStackAccessToken(elements.stackAccessToken.value);
