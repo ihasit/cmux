@@ -4,7 +4,17 @@ import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class MobileRpcSession(private val callback: Callback) : MobileFrameClient.Callback {
+class MobileRpcSession(
+    private val callback: Callback,
+    private val stackAccessTokenProvider: () -> String? = { null },
+    private val clientFactory: (MobileFrameClient.Callback, CmuxRoute) -> MobileFrameClient = { callback, route ->
+        if (route.kind == "websocket") {
+            MobileWebSocketClient(callback)
+        } else {
+            MobileTcpClient(callback)
+        }
+    }
+) : MobileFrameClient.Callback {
     interface Callback {
         fun onConnectionState(state: String, detail: String? = null)
         fun onRpcResult(requestId: Int, method: String, result: JSONObject)
@@ -21,16 +31,13 @@ class MobileRpcSession(private val callback: Callback) : MobileFrameClient.Callb
     fun connect(route: CmuxRoute) {
         callback.onConnectionState("connecting", route.displayEndpoint())
         client?.shutdown()
-        client = clientFor(route).also { it.connect(route) }
+        client = clientFactory(this, route).also { it.connect(route) }
     }
 
     fun request(method: String, params: JSONObject = JSONObject()): Int {
         val requestId = nextId.getAndIncrement()
         pending[requestId] = PendingCall(method)
-        val request = JSONObject()
-            .put("id", requestId)
-            .put("method", method)
-            .put("params", params)
+        val request = requestEnvelope(requestId, method, params)
         val activeClient = client
         if (activeClient == null) {
             pending.remove(requestId)
@@ -92,15 +99,19 @@ class MobileRpcSession(private val callback: Callback) : MobileFrameClient.Callb
         callback.onRpcError(null, null, "transport_error", message)
     }
 
-    private fun clientFor(route: CmuxRoute): MobileFrameClient {
-        return if (route.kind == "websocket") {
-            MobileWebSocketClient(this)
-        } else {
-            MobileTcpClient(this)
-        }
-    }
-
     private fun CmuxRoute.displayEndpoint(): String {
         return url ?: "${host}:${port}"
+    }
+
+    private fun requestEnvelope(requestId: Int, method: String, params: JSONObject): JSONObject {
+        val request = JSONObject()
+            .put("id", requestId)
+            .put("method", method)
+            .put("params", params)
+        val stackAccessToken = stackAccessTokenProvider()?.trim()
+        if (!stackAccessToken.isNullOrEmpty()) {
+            request.put("auth", JSONObject().put("stack_access_token", stackAccessToken))
+        }
+        return request
     }
 }

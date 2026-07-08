@@ -17,6 +17,7 @@ const state = {
   suppressClickUntil: 0,
   unreadNotificationCount: null,
   deliveredNotificationIds: [],
+  stackAccessTokenConfigured: false,
 };
 
 const messages = {
@@ -42,6 +43,18 @@ const messages = {
     "pair.error.failed": "Pairing failed.",
     "pair.scanCanceled": "QR scan canceled.",
     "pair.scanUnavailable": "QR scanning is unavailable on this device.",
+    "auth.title": "Stack Auth token",
+    "auth.subtitleConfigured": "Stack access token is configured.",
+    "auth.subtitleMissing": "Add a Stack access token before opening workspaces or terminals.",
+    "auth.token": "Access token",
+    "auth.placeholder": "Paste Stack access token",
+    "auth.save": "Save token",
+    "auth.clear": "Clear token",
+    "auth.saved": "Stack access token saved.",
+    "auth.cleared": "Stack access token cleared.",
+    "auth.error.empty": "Stack access token is empty.",
+    "auth.error.unauthorized": "Stack authorization failed. Save a fresh token, then try again.",
+    "auth.error.accountMismatch": "This token belongs to a different Stack account.",
     "paired.defaultTitle": "Paired Mac",
     "paired.noRoute": "No supported route",
     "paired.notFound": "Paired Mac was not found.",
@@ -118,6 +131,18 @@ const messages = {
     "pair.error.failed": "ペアリングに失敗しました。",
     "pair.scanCanceled": "QR スキャンをキャンセルしました。",
     "pair.scanUnavailable": "このデバイスでは QR スキャンを利用できません。",
+    "auth.title": "Stack Auth トークン",
+    "auth.subtitleConfigured": "Stack アクセストークンは設定済みです。",
+    "auth.subtitleMissing": "ワークスペースやターミナルを開く前に Stack アクセストークンを追加してください。",
+    "auth.token": "アクセストークン",
+    "auth.placeholder": "Stack アクセストークンを貼り付け",
+    "auth.save": "トークンを保存",
+    "auth.clear": "トークンを消去",
+    "auth.saved": "Stack アクセストークンを保存しました。",
+    "auth.cleared": "Stack アクセストークンを消去しました。",
+    "auth.error.empty": "Stack アクセストークンが空です。",
+    "auth.error.unauthorized": "Stack 認証に失敗しました。新しいトークンを保存してから再試行してください。",
+    "auth.error.accountMismatch": "このトークンは別の Stack アカウントに属しています。",
     "paired.defaultTitle": "ペアリング済み Mac",
     "paired.noRoute": "対応する経路がありません",
     "paired.notFound": "ペアリング済み Mac が見つかりません。",
@@ -188,6 +213,10 @@ const elements = {
   pairingCode: document.getElementById("pairingCode"),
   scanPairingCode: document.getElementById("scanPairingCode"),
   pairButton: document.getElementById("pairButton"),
+  authStatusText: document.getElementById("authStatusText"),
+  stackAccessToken: document.getElementById("stackAccessToken"),
+  saveStackAccessToken: document.getElementById("saveStackAccessToken"),
+  clearStackAccessToken: document.getElementById("clearStackAccessToken"),
   pairedList: document.getElementById("pairedList"),
   workspaceView: document.getElementById("workspaceView"),
   hostText: document.getElementById("hostText"),
@@ -224,8 +253,15 @@ function localizeStaticText() {
   });
   elements.connectionText.textContent = t("app.disconnected");
   renderNotificationStatus();
+  renderAuthStatus();
   elements.hostText.textContent = t("host.connected");
   elements.terminalTitle.textContent = t("terminal.defaultTitle");
+}
+
+function renderAuthStatus() {
+  elements.authStatusText.textContent = state.stackAccessTokenConfigured
+    ? t("auth.subtitleConfigured")
+    : t("auth.subtitleMissing");
 }
 
 function bridge() {
@@ -1087,6 +1123,11 @@ window.cmuxNativeEvent = (event) => {
     renderPairedMacs();
     return;
   }
+  if (event.type === "auth") {
+    state.stackAccessTokenConfigured = event.payload.stack_access_token_configured === true;
+    renderAuthStatus();
+    return;
+  }
   if (event.type === "connection") {
     const { state: nextState, detail } = event.payload;
     state.connected = nextState === "open";
@@ -1107,8 +1148,18 @@ window.cmuxNativeEvent = (event) => {
     handlePushEvent(event.payload.type, event.payload.payload || {});
     return;
   }
+  if (event.type === "toast") {
+    showToast(t(event.payload.message_key) || event.payload.message || "");
+    return;
+  }
   if (event.type === "rpcError" || event.type === "error") {
-    showToast(event.payload.message || t(event.payload.message_key) || t("request.failed"));
+    if (event.payload.code === "unauthorized") {
+      showToast(t("auth.error.unauthorized"));
+    } else if (event.payload.code === "account_mismatch") {
+      showToast(t("auth.error.accountMismatch"));
+    } else {
+      showToast(event.payload.message || t(event.payload.message_key) || t("request.failed"));
+    }
   }
 };
 
@@ -1117,6 +1168,14 @@ elements.pairButton.addEventListener("click", () => {
 });
 elements.scanPairingCode.addEventListener("click", () => {
   bridge().scanPairingCode();
+});
+elements.saveStackAccessToken.addEventListener("click", () => {
+  bridge().saveStackAccessToken(elements.stackAccessToken.value);
+  elements.stackAccessToken.value = "";
+});
+elements.clearStackAccessToken.addEventListener("click", () => {
+  bridge().clearStackAccessToken();
+  elements.stackAccessToken.value = "";
 });
 
 elements.pairedList.addEventListener("click", (event) => {

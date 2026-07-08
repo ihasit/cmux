@@ -31,6 +31,21 @@
           <button id="pairButton" class="primary" data-i18n="pair.connect"></button>
         </div>
 
+        <section class="auth-panel" aria-labelledby="authTitle">
+          <div class="section-header">
+            <h3 id="authTitle" data-i18n="auth.title"></h3>
+            <p id="authStatusText"></p>
+          </div>
+          <label>
+            <span data-i18n="auth.token"></span>
+            <textarea id="stackAccessToken" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" data-i18n-placeholder="auth.placeholder"></textarea>
+          </label>
+          <div class="auth-actions">
+            <button id="saveStackAccessToken" class="primary" data-i18n="auth.save"></button>
+            <button id="clearStackAccessToken" data-i18n="auth.clear"></button>
+          </div>
+        </section>
+
         <div id="pairedList" class="paired-list"></div>
       </section>
 

@@ -76,6 +76,12 @@ h2 {
   line-height: 1.2;
 }
 
+h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
 p,
 label,
 #terminalMeta {
@@ -111,6 +117,20 @@ label,
 }
 
 .pair-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.auth-panel {
+  border-top: 1px solid #d9dee8;
+  border-bottom: 1px solid #d9dee8;
+  padding: 14px 0;
+  display: grid;
+  gap: 12px;
+}
+
+.auth-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -330,5 +350,9 @@ textarea {
 
   .workspace-actions {
     border-top-color: #30363d;
+  }
+
+  .auth-panel {
+    border-color: #30363d;
   }
 }

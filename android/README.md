@@ -23,7 +23,9 @@ android/
       AndroidManifest.xml
       java/com/cmux/android/
         MainActivity.kt
+        MobileAuthStore.kt
         MobileRpcSession.kt
+        MobileWebSocketClient.kt
         MobileTcpClient.kt
         MobileWebBridge.kt
         PairedMac.kt
@@ -49,15 +51,16 @@ Implemented:
 - Render workspace rows, groups, and styled render-grid terminal output in the WebView.
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
+- Save a manually pasted Stack access token in Android Keystore-backed encrypted storage and attach it to mobile RPC requests.
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
-- Run JVM unit tests for pairing URL parsing, WebSocket route parsing, and route JSON round-trips.
+- Run JVM unit tests for pairing URL parsing, WebSocket route parsing, route JSON round-trips, and mobile RPC auth envelopes.
 - Provide English and Japanese WebView strings.
 
 Not implemented yet:
 
-- Stack Auth account preflight / token auth.
+- Integrated Stack Auth sign-in. The current client supports manual Stack access token entry only.
 - Android instrumentation tests.
 
 ## Protocol target
@@ -116,6 +119,7 @@ If the repository later adds a Gradle wrapper, prefer:
 - Connect to a Tailscale `host:port` route. Done for TCP routes.
 - Call `mobile.host.status`. Done.
 - Persist paired Mac routes in encrypted Android storage. Done with Android Keystore AES-GCM.
+- Attach Stack access tokens to authorized RPC requests. Done for manually saved tokens.
 - Render terminal output in the WebView. Done for styled render-grid frames.
 - Add QR scanning with CameraX or a small native scanner module. Done with ZXing embedded scanner.
 - Add WebSocket transport once the Mac side advertises `.websocket` routes. Done for compact/full attach payloads.

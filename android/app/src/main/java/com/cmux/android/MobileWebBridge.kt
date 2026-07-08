@@ -12,8 +12,13 @@ import java.util.UUID
 class MobileWebBridge(private val context: Context, private val webView: WebView) : MobileRpcSession.Callback {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val store = PairedMacStore(context)
+    private val authStore = MobileAuthStore(context)
     private val parser = PairingParser()
-    private val session = MobileRpcSession(this)
+    private var stackAccessToken: String? = authStore.stackAccessToken()
+    private val session = MobileRpcSession(
+        callback = this,
+        stackAccessTokenProvider = { stackAccessToken }
+    )
     private var activeMac: PairedMac? = null
     private var pageReady = false
     private var pendingPairingURL: String? = null
@@ -23,10 +28,35 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun initialState() {
         pageReady = true
         emit("pairedMacs", JSONObject().put("macs", pairedMacsJson()))
+        emit("auth", authStateJson())
         pendingPairingURL?.let { rawValue ->
             pendingPairingURL = null
             pair(rawValue)
         }
+    }
+
+    @JavascriptInterface
+    fun saveStackAccessToken(token: String) {
+        val saved = authStore.saveStackAccessToken(token)
+        if (!saved) {
+            emit("error", JSONObject().put("message_key", "auth.error.empty"))
+            return
+        }
+        stackAccessToken = authStore.stackAccessToken()
+        emit("auth", authStateJson())
+        emit("toast", JSONObject().put("message_key", "auth.saved"))
+        if (activeMac != null) {
+            session.request("mobile.host.status")
+            session.request("mobile.workspace.list")
+        }
+    }
+
+    @JavascriptInterface
+    fun clearStackAccessToken() {
+        authStore.clearStackAccessToken()
+        stackAccessToken = null
+        emit("auth", authStateJson())
+        emit("toast", JSONObject().put("message_key", "auth.cleared"))
     }
 
     fun handlePairingURL(rawValue: String?) {
@@ -370,6 +400,10 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         val array = JSONArray()
         macs.forEach { array.put(it.toJson()) }
         return array
+    }
+
+    private fun authStateJson(): JSONObject {
+        return JSONObject().put("stack_access_token_configured", !stackAccessToken.isNullOrBlank())
     }
 
     private companion object {
