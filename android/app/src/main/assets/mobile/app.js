@@ -1057,6 +1057,10 @@ function decodeReplayText(result) {
 
 function renderTerminalReplay(result) {
   if (result.render_grid) {
+    const frame = normalizeRenderGrid(result.render_grid);
+    if (frame?.surfaceId && state.activeTerminal && frame.surfaceId !== state.activeTerminal.id) {
+      return;
+    }
     renderTerminalFrame(result.render_grid, { reset: true });
     return;
   }
