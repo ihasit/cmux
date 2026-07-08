@@ -433,6 +433,109 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun workspaceListKeepsInferredUnreadCountFreshUntilBadgeArrives() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-unread",
+                          "title": "Unread Work",
+                          "preview": "needs attention",
+                          "has_unread": true,
+                          "terminals": []
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "notificationText"))
+                .check(webMatches(getText(), containsString("1 unread notification")))
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 2,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-unread",
+                          "title": "Unread Work",
+                          "preview": "caught up",
+                          "has_unread": false,
+                          "terminals": []
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "notificationText"))
+                .check(webMatches(getText(), containsString("No unread notifications")))
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "notification.badge",
+                    "payload": {
+                      "unread_count": 3
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 3,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-unread",
+                          "title": "Unread Work",
+                          "preview": "still caught up",
+                          "has_unread": false,
+                          "terminals": []
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "notificationText"))
+                .check(webMatches(getText(), containsString("3 unread notifications")))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
