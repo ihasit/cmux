@@ -15,7 +15,8 @@ const state = {
   lastTouchY: null,
   touchStart: null,
   suppressClickUntil: 0,
-  unreadNotificationCount: null,
+  inferredUnreadNotificationCount: 0,
+  authoritativeUnreadNotificationCount: null,
   deliveredNotificationIds: [],
   nativeNotificationsEnabled: false,
   nativeNotificationsCanRequest: false,
@@ -508,14 +509,15 @@ function workspaceMatchesQuery(workspace, query) {
 }
 
 function updateUnreadCountFromWorkspaces() {
-  if (state.unreadNotificationCount != null) return;
   const count = state.workspaces.filter((workspace) => workspace.has_unread).length;
-  state.unreadNotificationCount = count;
+  state.inferredUnreadNotificationCount = count;
 }
 
 function renderNotificationStatus() {
   if (!elements.notificationText) return;
-  const count = Number.isInteger(state.unreadNotificationCount) ? state.unreadNotificationCount : 0;
+  const count = Number.isInteger(state.authoritativeUnreadNotificationCount)
+    ? state.authoritativeUnreadNotificationCount
+    : state.inferredUnreadNotificationCount;
   const messageKey = count === 0
     ? "notification.none"
     : count === 1
@@ -1304,7 +1306,7 @@ function handleRpcResult(method, result) {
   }
   if (method === "notification.reconcile") {
     if (Number.isInteger(result.unread_count)) {
-      state.unreadNotificationCount = result.unread_count;
+      state.authoritativeUnreadNotificationCount = result.unread_count;
     }
     const handledIds = Array.isArray(result.handled_ids) ? result.handled_ids : [];
     if (handledIds.length > 0) {
@@ -1372,7 +1374,7 @@ function handlePushEvent(type, payload) {
   }
   if (type === "notification.badge") {
     if (Number.isInteger(payload.unread_count)) {
-      state.unreadNotificationCount = payload.unread_count;
+      state.authoritativeUnreadNotificationCount = payload.unread_count;
       renderNotificationStatus();
     }
     return;
@@ -1384,7 +1386,7 @@ function handlePushEvent(type, payload) {
       state.deliveredNotificationIds = state.deliveredNotificationIds.filter((id) => !dismissed.has(id));
     }
     if (Number.isInteger(payload.unread_count)) {
-      state.unreadNotificationCount = payload.unread_count;
+      state.authoritativeUnreadNotificationCount = payload.unread_count;
     }
     renderNotificationStatus();
     bridge().refreshWorkspaces();
@@ -1423,7 +1425,8 @@ window.cmuxNativeEvent = (event) => {
     state.connected = nextState === "open";
     if (!state.connected) {
       state.workspaceRefreshPending = false;
-      state.unreadNotificationCount = null;
+      state.inferredUnreadNotificationCount = 0;
+      state.authoritativeUnreadNotificationCount = null;
       state.deliveredNotificationIds = [];
       renderNotificationStatus();
     }
