@@ -134,6 +134,15 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseAttachV2AcceptsUppercaseHost() {
+        val mac = parser.parse("cmux-ios://ATTACH?v=2&r=100.64.0.5:58465")
+
+        assertEquals("tailscale", mac.routes.single().kind)
+        assertEquals("100.64.0.5", mac.routes.single().host)
+        assertEquals(58465, mac.routes.single().port)
+    }
+
+    @Test
     fun parseAttachV2RejectsLoopbackRoutes() {
         val error = assertThrows(PairingException::class.java) {
             parser.parse("cmux-ios://attach?v=2&r=127.0.0.1:58465")
