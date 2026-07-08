@@ -17,6 +17,8 @@ function classList() {
 }
 
 function element(id) {
+  const listeners = new Map();
+  const attributes = new Map();
   return {
     id,
     value: "",
@@ -27,15 +29,36 @@ function element(id) {
     files: [],
     style: {},
     classList: classList(),
-    setAttribute: () => {},
-    removeAttribute: () => {},
-    addEventListener: () => {},
+    setAttribute: (name, value) => attributes.set(name, String(value)),
+    removeAttribute: (name) => attributes.delete(name),
+    getAttribute: (name) => attributes.get(name) || null,
+    addEventListener: (type, listener) => {
+      if (!listeners.has(type)) listeners.set(type, []);
+      listeners.get(type).push(listener);
+    },
+    dispatchEvent: (type, event = {}) => {
+      for (const listener of listeners.get(type) || []) {
+        listener({ target: event.target || null, ...event });
+      }
+    },
     focus: () => {},
     click: () => {},
     querySelectorAll: () => [],
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 400 }),
     clientWidth: 800,
     clientHeight: 400,
+  };
+}
+
+function eventTarget(attributes = {}, closestTarget = null) {
+  return {
+    getAttribute: (name) => attributes[name] || null,
+    closest: (selector) => {
+      const match = selector.match(/^\[([^\]]+)\]$/);
+      if (!match) return null;
+      if (attributes[match[1]]) return eventTarget(attributes, closestTarget);
+      return closestTarget;
+    },
   };
 }
 
@@ -176,8 +199,35 @@ function testTerminalBytesGapRequestsReplay() {
   );
 }
 
+function testNestedTerminalOpenClickUsesClosestButton() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.state.workspaces = [{
+    id: "workspace-1",
+    title: "Workspace",
+    terminals: [{ id: "terminal-1", title: "Terminal" }],
+  }];
+  const button = eventTarget({
+    "data-open-terminal": "workspace-1",
+    "data-terminal-id": "terminal-1",
+  });
+  const child = eventTarget({}, button);
+
+  hooks.elements.workspaceList.dispatchEvent("click", { target: child });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "replayTerminal" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1"
+    )),
+    `expected nested terminal button click to open and replay terminal, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
 testTerminalBytesGapRequestsReplay();
+testNestedTerminalOpenClickUsesClosestButton();
 console.log("mobile app js tests passed");
