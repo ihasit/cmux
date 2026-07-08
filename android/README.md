@@ -55,6 +55,7 @@ Implemented:
 - Parse older `attach` / `pair` payload links enough to recover host/port routes.
 - Persist paired Macs with Android Keystore-backed encrypted storage.
 - Connect to host routes over the length-prefixed mobile TCP protocol, automatically trying the next advertised route if the first route fails before opening.
+- Automatically reconnect to the active paired Mac after unexpected connection drops with bounded retry backoff.
 - Connect to WebSocket attach routes when a pairing payload advertises one.
 - Call `mobile.host.status`, `mobile.workspace.list`, `mobile.terminal.replay`, `mobile.terminal.input`, `mobile.terminal.paste`, and `mobile.terminal.create`.
 - Subscribe to `workspace.updated`, `terminal.render_grid`, `notification.badge`, and `notification.dismissed` host events for live refresh.
@@ -75,6 +76,7 @@ Implemented:
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
 - Fail pending mobile RPCs with explicit transport errors when the connection closes.
+- Avoid automatic reconnect after manual disconnects, forgotten Macs, or pairing payloads with no supported routes.
 - Run JVM unit tests for auth callback parsing, pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, mobile TCP/WebSocket framing, and mobile RPC auth envelopes.
 - Provide Android instrumentation coverage for the launched WebView shell, Stack token save/clear bridge, attach deep links, workspace list rendering, and terminal render-grid updates.
 - Provide English and Japanese WebView strings.

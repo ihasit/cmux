@@ -23,11 +23,14 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         stackAccessToken = authStore.stackAccessToken()
         emit("auth", authStateJson())
     }
+    private val reconnectPolicy = MobileReconnectPolicy()
     private val session = MobileRpcSession(
         callback = this,
         stackAccessTokenProvider = stackTokenProvider
     )
     private var activeMac: PairedMac? = null
+    private var reconnectRunnable: Runnable? = null
+    private var userRequestedDisconnect = false
     private var pageReady = false
     private var pendingPairingURL: String? = null
     private var pendingAuthState: String? = null
@@ -153,6 +156,9 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun pair(rawValue: String) {
         runCatching {
             val mac = parser.parse(rawValue)
+            userRequestedDisconnect = false
+            cancelReconnect()
+            reconnectPolicy.reset()
             activeMac = mac
             emit("pairedMacs", JSONObject().put("macs", pairedMacsJson(store.save(mac))))
             emit("paired", JSONObject().put("mac", mac.toJson()))
@@ -188,12 +194,17 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
             return
         }
         activeMac = mac
+        userRequestedDisconnect = false
+        cancelReconnect()
+        reconnectPolicy.reset()
         connectMac(mac)
     }
 
     @JavascriptInterface
     fun forget(macId: String) {
         if (activeMac?.id == macId) {
+            userRequestedDisconnect = true
+            cancelReconnect()
             session.close("forgotten")
             activeMac = null
         }
@@ -392,10 +403,14 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
 
     @JavascriptInterface
     fun closeConnection() {
+        userRequestedDisconnect = true
+        cancelReconnect()
         session.close("closed by webview")
     }
 
     fun close(reason: String = "activity destroyed") {
+        userRequestedDisconnect = true
+        cancelReconnect()
         session.close(reason)
         session.shutdown()
     }
@@ -406,9 +421,14 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         }
         emit("connection", JSONObject().put("state", state).put("detail", detail))
         if (state == "open") {
+            reconnectPolicy.reset()
+            cancelReconnect()
+            userRequestedDisconnect = false
             subscribeToEvents()
             session.request("mobile.host.status")
             session.request("mobile.workspace.list")
+        } else if (state == "closed") {
+            scheduleReconnectIfNeeded(detail)
         }
     }
 
@@ -457,7 +477,28 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
             emit("error", JSONObject().put("message_key", "paired.noRoute"))
             return
         }
+        cancelReconnect()
         session.connect(routes)
+    }
+
+    private fun scheduleReconnectIfNeeded(detail: String?) {
+        val mac = activeMac ?: return
+        if (!reconnectPolicy.shouldReconnect(detail, hasActiveMac = true, userRequestedDisconnect)) return
+        cancelReconnect()
+        val runnable = Runnable {
+            reconnectRunnable = null
+            if (activeMac?.id == mac.id && !userRequestedDisconnect) {
+                connectMac(mac)
+            }
+        }
+        reconnectRunnable = runnable
+        mainHandler.postDelayed(runnable, reconnectPolicy.nextDelayMillis())
+    }
+
+    private fun cancelReconnect() {
+        val runnable = reconnectRunnable ?: return
+        mainHandler.removeCallbacks(runnable)
+        reconnectRunnable = null
     }
 
     private fun terminalParams(workspaceId: String, terminalId: String, columns: Int, rows: Int): JSONObject {
