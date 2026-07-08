@@ -26,12 +26,15 @@ android/
         MobileAuthStore.kt
         MobileRouteAuthPolicy.kt
         MobileRpcSession.kt
+        MobileStackTokenProvider.kt
         MobileWebSocketClient.kt
         MobileTcpClient.kt
         MobileWebBridge.kt
         PairedMac.kt
         PairedMacStore.kt
         PairingParser.kt
+      test/java/com/cmux/android/
+        StackTokenRefresherTest.kt
       androidTest/java/com/cmux/android/
         MainActivitySmokeTest.kt
       assets/mobile/
