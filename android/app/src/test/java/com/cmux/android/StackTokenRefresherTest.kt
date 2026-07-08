@@ -56,6 +56,15 @@ class StackTokenRefresherTest {
     }
 
     @Test
+    fun refreshTreatsNonInvalidGrantClientErrorsAsTransientFailure() {
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":"temporarily_unavailable"}"""))
+
+        val outcome = refresher().refresh("refresh-token")
+
+        assertEquals(StackRefreshOutcome.TransientFailure, outcome)
+    }
+
+    @Test
     fun refreshTreatsServerErrorsAsTransientFailure() {
         server.enqueue(MockResponse().setResponseCode(503).setBody("unavailable"))
 
