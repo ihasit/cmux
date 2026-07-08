@@ -152,6 +152,20 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     }
 
     @JavascriptInterface
+    fun clickTerminal(workspaceId: String, terminalId: String, column: Int, row: Int) {
+        session.request(
+            "mobile.terminal.mouse",
+            JSONObject()
+                .put("workspace_id", workspaceId)
+                .put("surface_id", terminalId)
+                .put("terminal_id", terminalId)
+                .put("client_id", CLIENT_ID)
+                .put("col", column.coerceAtLeast(0))
+                .put("row", row.coerceAtLeast(0))
+        )
+    }
+
+    @JavascriptInterface
     fun closeConnection() {
         session.close("closed by webview")
     }

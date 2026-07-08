@@ -12,6 +12,8 @@ const state = {
   pendingScrollLines: 0,
   scrollFlushTimer: 0,
   lastTouchY: null,
+  touchStart: null,
+  suppressClickUntil: 0,
 };
 
 const messages = {
@@ -345,7 +347,11 @@ function handleTerminalWheel(event) {
 }
 
 function handleTerminalTouchStart(event) {
-  state.lastTouchY = event.touches?.[0]?.clientY ?? null;
+  const touch = event.touches?.[0];
+  state.lastTouchY = touch?.clientY ?? null;
+  state.touchStart = touch
+    ? { clientX: touch.clientX, clientY: touch.clientY, moved: false }
+    : null;
 }
 
 function handleTerminalTouchMove(event) {
@@ -355,11 +361,36 @@ function handleTerminalTouchMove(event) {
   event.preventDefault();
   const deltaPixels = state.lastTouchY - touch.clientY;
   state.lastTouchY = touch.clientY;
+  if (state.touchStart) {
+    const distance = Math.hypot(touch.clientX - state.touchStart.clientX, touch.clientY - state.touchStart.clientY);
+    if (distance > 8) state.touchStart.moved = true;
+  }
   queueTerminalScroll(deltaPixels / 16, { clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function handleTerminalTouchEnd() {
+  if (state.touchStart && !state.touchStart.moved) {
+    clickTerminalAt(state.touchStart.clientX, state.touchStart.clientY);
+    state.suppressClickUntil = Date.now() + 500;
+  }
   state.lastTouchY = null;
+  state.touchStart = null;
+}
+
+function handleTerminalClick(event) {
+  if (Date.now() < state.suppressClickUntil) return;
+  clickTerminalAt(event.clientX, event.clientY);
+}
+
+function clickTerminalAt(clientX, clientY) {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  const pointer = terminalPointerCell(clientX, clientY);
+  bridge().clickTerminal(
+    state.activeWorkspace.id,
+    state.activeTerminal.id,
+    pointer.column,
+    pointer.row,
+  );
 }
 
 function sendTerminalInput(mode) {
@@ -714,6 +745,9 @@ function handleRpcResult(method, result) {
     }
     return;
   }
+  if (method === "mobile.terminal.mouse") {
+    return;
+  }
   if (method === "mobile.events.subscribe") {
     return;
   }
@@ -794,6 +828,7 @@ elements.sendInput.addEventListener("click", () => sendTerminalInput("input"));
 elements.pasteInput.addEventListener("click", () => sendTerminalInput("paste"));
 window.addEventListener("resize", scheduleViewportReport);
 elements.terminalOutput.addEventListener("wheel", handleTerminalWheel, { passive: false });
+elements.terminalOutput.addEventListener("click", handleTerminalClick);
 elements.terminalOutput.addEventListener("touchstart", handleTerminalTouchStart, { passive: true });
 elements.terminalOutput.addEventListener("touchmove", handleTerminalTouchMove, { passive: false });
 elements.terminalOutput.addEventListener("touchend", handleTerminalTouchEnd);
