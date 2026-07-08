@@ -627,6 +627,70 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun notificationControlsRequireHostCapabilities() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.evaluateScript(
+                """
+                window.cmuxNativeEvent({
+                  type: 'connection',
+                  payload: { state: 'open' }
+                });
+                window.cmuxNativeEvent({
+                  type: 'rpcResult',
+                  payload: {
+                    id: 1,
+                    method: 'mobile.host.status',
+                    result: { capabilities: [] }
+                  }
+                });
+                state.deliveredNotificationIds = ['notification-1'];
+                renderNotificationStatus();
+                true;
+                """.trimIndent()
+            )
+
+            val disabledState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  syncDisabled: document.getElementById('syncNotifications').disabled,
+                  dismissDisabled: document.getElementById('dismissNotifications').disabled
+                })
+                """.trimIndent()
+            )
+            check(disabledState.contains("\"syncDisabled\":true"))
+            check(disabledState.contains("\"dismissDisabled\":true"))
+
+            scenario.evaluateScript(
+                """
+                window.cmuxNativeEvent({
+                  type: 'rpcResult',
+                  payload: {
+                    id: 2,
+                    method: 'mobile.host.status',
+                    result: {
+                      capabilities: ['notification.reconcile.v1', 'notification.dismiss.v1']
+                    }
+                  }
+                });
+                renderNotificationStatus();
+                true;
+                """.trimIndent()
+            )
+
+            val enabledState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  syncDisabled: document.getElementById('syncNotifications').disabled,
+                  dismissDisabled: document.getElementById('dismissNotifications').disabled
+                })
+                """.trimIndent()
+            )
+            check(enabledState.contains("\"syncDisabled\":false"))
+            check(enabledState.contains("\"dismissDisabled\":false"))
+        }
+    }
+
+    @Test
     fun workspaceRefreshKeepsActiveTerminalVisibleAndCurrent() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.emitNativeEvent(
