@@ -172,6 +172,39 @@ function testRenderGridPushWithoutSurfaceTargetsActiveTerminal() {
   );
 }
 
+function testRenderGridReplayIgnoresPreviousStateSequence() {
+  const { hooks } = loadApp();
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
+  hooks.showScreen("terminal");
+
+  hooks.handlePushEvent("terminal.render_grid", {
+    surface_id: "terminal-1",
+    state_seq: 99,
+    rows: 1,
+    columns: 8,
+    row_spans: [
+      { row: 0, column: 0, text: "old" },
+    ],
+  });
+  hooks.handleRpcResult("mobile.terminal.replay", {
+    render_grid: {
+      surface_id: "terminal-1",
+      state_seq: 1,
+      rows: 1,
+      columns: 8,
+      row_spans: [
+        { row: 0, column: 0, text: "new" },
+      ],
+    },
+  });
+
+  assert(
+    hooks.elements.terminalOutput.innerHTML.includes("new"),
+    `expected lower-sequence replay to replace terminal grid, got ${hooks.elements.terminalOutput.innerHTML}`
+  );
+}
+
 function testTerminalBytesGapRequestsReplay() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.activeWorkspace = { id: "workspace-1" };
@@ -255,6 +288,7 @@ function testNestedTerminalOpenClickUsesClosestButton() {
 testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
+testRenderGridReplayIgnoresPreviousStateSequence();
 testTerminalBytesGapRequestsReplay();
 testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
