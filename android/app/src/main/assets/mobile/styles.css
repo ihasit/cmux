@@ -32,6 +32,15 @@ button:active {
   transform: translateY(1px);
 }
 
+button:disabled,
+textarea:disabled {
+  opacity: 0.45;
+}
+
+button:disabled:active {
+  transform: none;
+}
+
 .primary {
   border-color: #0d6efd;
   background: #0d6efd;

@@ -175,6 +175,46 @@ class MainActivitySmokeTest {
                 .withElement(findElement(Locator.ID, "terminalOutput"))
                 .check(webMatches(getText(), containsString("hello android")))
 
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "closed",
+                    "detail": "network lost"
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val closedControlState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  refresh: document.getElementById('refreshWorkspaces').disabled,
+                  create: document.getElementById('createWorkspace').disabled,
+                  openTerminal: document.querySelector('[data-open-terminal="workspace-1"]').disabled,
+                  ctrlC: document.querySelector('[data-terminal-key="ctrl-c"]').disabled,
+                  terminalInput: document.getElementById('terminalInput').disabled
+                })
+                """.trimIndent()
+            )
+            check(closedControlState.contains("\"refresh\":true"))
+            check(closedControlState.contains("\"create\":true"))
+            check(closedControlState.contains("\"openTerminal\":true"))
+            check(closedControlState.contains("\"ctrlC\":true"))
+            check(closedControlState.contains("\"terminalInput\":true"))
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "open"
+                  }
+                }
+                """.trimIndent()
+            )
+
             scenario.evaluateScript(
                 """
                 window.__lastSendInput = null;

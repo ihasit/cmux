@@ -284,6 +284,7 @@ function localizeStaticText() {
     node.setAttribute("aria-label", t(node.getAttribute("data-i18n-aria")));
   });
   elements.connectionText.textContent = t("app.disconnected");
+  renderConnectionControls();
   renderNotificationStatus();
   renderAuthStatus();
   elements.hostText.textContent = t("host.connected");
@@ -341,6 +342,31 @@ function renderPairedMacs() {
   }).join("");
 }
 
+function setDisabled(element, disabled) {
+  if (element) element.disabled = disabled;
+}
+
+function renderConnectionControls() {
+  const disconnected = !state.connected;
+  setDisabled(elements.closeConnection, disconnected);
+  setDisabled(elements.refreshWorkspaces, disconnected);
+  setDisabled(elements.createWorkspace, disconnected);
+  setDisabled(elements.syncNotifications, disconnected);
+  setDisabled(elements.dismissNotifications, disconnected || state.deliveredNotificationIds.length === 0);
+  setDisabled(elements.refreshTerminal, disconnected);
+  setDisabled(elements.scrollUp, disconnected);
+  setDisabled(elements.scrollDown, disconnected);
+  if (elements.terminalKeybar) {
+    elements.terminalKeybar.querySelectorAll("button").forEach((button) => {
+      button.disabled = disconnected;
+    });
+  }
+  setDisabled(elements.terminalInput, disconnected);
+  setDisabled(elements.pasteInput, disconnected);
+  setDisabled(elements.pasteImage, disconnected);
+  setDisabled(elements.sendInput, disconnected);
+}
+
 function renderWorkspaces() {
   updateUnreadCountFromWorkspaces();
   renderNotificationStatus();
@@ -349,6 +375,7 @@ function renderWorkspaces() {
     return;
   }
   elements.workspaceList.innerHTML = workspaceListItems().join("");
+  renderConnectionControls();
 }
 
 function updateUnreadCountFromWorkspaces() {
@@ -367,7 +394,7 @@ function renderNotificationStatus() {
       : "notification.unreadPlural";
   elements.notificationText.textContent = t(messageKey).replace("{count}", String(count));
   if (elements.dismissNotifications) {
-    elements.dismissNotifications.disabled = state.deliveredNotificationIds.length === 0;
+    elements.dismissNotifications.disabled = !state.connected || state.deliveredNotificationIds.length === 0;
   }
   if (elements.enableNotifications) {
     elements.enableNotifications.classList.toggle("hidden", state.nativeNotificationsEnabled || !state.nativeNotificationsCanRequest);
@@ -395,12 +422,13 @@ function workspaceListItems() {
 function renderWorkspaceGroup(group) {
   const label = group.name || t("group.defaultName");
   const actionKey = group.is_collapsed ? "group.expand" : "group.collapse";
+  const disabled = state.connected ? "" : " disabled";
   return `
     <div class="workspace-group">
       <div>
         <div class="workspace-group-title">${escapeHtml(label)}</div>
       </div>
-      <button data-toggle-group="${escapeHtml(group.id)}" data-collapsed="${group.is_collapsed ? "true" : "false"}">${escapeHtml(t(actionKey))}</button>
+      <button data-toggle-group="${escapeHtml(group.id)}" data-collapsed="${group.is_collapsed ? "true" : "false"}"${disabled}>${escapeHtml(t(actionKey))}</button>
     </div>
   `;
 }
@@ -408,15 +436,16 @@ function renderWorkspaceGroup(group) {
 function renderWorkspaceCard(workspace, group) {
   const terminals = workspace.terminals || [];
   const workspaceActions = renderWorkspaceActions(workspace);
+  const disabled = state.connected ? "" : " disabled";
   const terminalRows = terminals.length === 0
-    ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span><button data-create-terminal="${escapeHtml(workspace.id)}">${escapeHtml(t("terminal.new"))}</button></div>`
+    ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span><button data-create-terminal="${escapeHtml(workspace.id)}"${disabled}>${escapeHtml(t("terminal.new"))}</button></div>`
     : terminals.map((terminal) => `
         <div class="terminal-row">
           <div>
             <div class="card-title">${escapeHtml(terminal.title || t("terminal.defaultTitle"))}</div>
             <div class="card-subtitle">${escapeHtml(terminal.current_directory || "")}</div>
           </div>
-          <button class="primary" data-open-terminal="${escapeHtml(workspace.id)}" data-terminal-id="${escapeHtml(terminal.id)}">${escapeHtml(t("terminal.open"))}</button>
+          <button class="primary" data-open-terminal="${escapeHtml(workspace.id)}" data-terminal-id="${escapeHtml(terminal.id)}"${disabled}>${escapeHtml(t("terminal.open"))}</button>
         </div>
       `).join("");
   return `
@@ -432,12 +461,13 @@ function renderWorkspaceCard(workspace, group) {
 }
 
 function renderWorkspaceActions(workspace) {
+  const disabled = state.connected ? "" : " disabled";
   return `
     <div class="workspace-actions">
-      <button data-rename-workspace="${escapeHtml(workspace.id)}">${escapeHtml(t("workspace.rename"))}</button>
-      <button data-pin-workspace="${escapeHtml(workspace.id)}" data-pinned="${workspace.is_pinned ? "true" : "false"}">${escapeHtml(workspace.is_pinned ? t("workspace.unpin") : t("workspace.pin"))}</button>
-      <button data-read-workspace="${escapeHtml(workspace.id)}" data-unread="${workspace.has_unread ? "true" : "false"}">${escapeHtml(workspace.has_unread ? t("workspace.markRead") : t("workspace.markUnread"))}</button>
-      <button data-close-workspace="${escapeHtml(workspace.id)}">${escapeHtml(t("workspace.close"))}</button>
+      <button data-rename-workspace="${escapeHtml(workspace.id)}"${disabled}>${escapeHtml(t("workspace.rename"))}</button>
+      <button data-pin-workspace="${escapeHtml(workspace.id)}" data-pinned="${workspace.is_pinned ? "true" : "false"}"${disabled}>${escapeHtml(workspace.is_pinned ? t("workspace.unpin") : t("workspace.pin"))}</button>
+      <button data-read-workspace="${escapeHtml(workspace.id)}" data-unread="${workspace.has_unread ? "true" : "false"}"${disabled}>${escapeHtml(workspace.has_unread ? t("workspace.markRead") : t("workspace.markUnread"))}</button>
+      <button data-close-workspace="${escapeHtml(workspace.id)}"${disabled}>${escapeHtml(t("workspace.close"))}</button>
     </div>
   `;
 }
@@ -1203,6 +1233,8 @@ window.cmuxNativeEvent = (event) => {
       state.deliveredNotificationIds = [];
       renderNotificationStatus();
     }
+    renderConnectionControls();
+    renderWorkspaces();
     elements.connectionText.textContent = detail ? `${nextState}: ${detail}` : nextState;
     showToast(nextState === "open" ? t("app.connected") : detail || nextState);
     return;
@@ -1256,6 +1288,7 @@ elements.pairedList.addEventListener("click", (event) => {
 });
 
 elements.workspaceList.addEventListener("click", (event) => {
+  if (!state.connected) return;
   const terminalId = event.target.getAttribute("data-terminal-id");
   const workspaceId = event.target.getAttribute("data-open-terminal");
   const createWorkspaceId = event.target.getAttribute("data-create-terminal");

@@ -60,6 +60,8 @@ Implemented:
 - Subscribe to `workspace.updated`, `terminal.render_grid`, `notification.badge`, and `notification.dismissed` host events for live refresh.
 - Render workspace rows, groups, and styled render-grid terminal output in the WebView.
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
+- Provide terminal quick keys for Enter, Tab, Esc, and Ctrl-C in the WebView terminal.
+- Disable workspace and terminal controls while disconnected, while keeping paired Mac reconnect actions available.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Show a native Android summary notification for unread agent notifications when notification permission is available.
 - Request the Android 13+ notification permission from the WebView shell when alerts can be enabled.
@@ -69,8 +71,10 @@ Implemented:
 - Automatically refresh Stack access tokens from the stored refresh token before authorized RPCs, and retry once after host authorization rejection.
 - Send Stack access tokens only over trusted routes: Tailscale CGNAT/MagicDNS, debug loopback, or `wss://` WebSocket routes.
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
+- Reject non-debug loopback host routes from attach and legacy pairing payloads so Android does not dial itself.
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
+- Fail pending mobile RPCs with explicit transport errors when the connection closes.
 - Run JVM unit tests for auth callback parsing, pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, mobile TCP/WebSocket framing, and mobile RPC auth envelopes.
 - Provide Android instrumentation coverage for the launched WebView shell, Stack token save/clear bridge, attach deep links, workspace list rendering, and terminal render-grid updates.
 - Provide English and Japanese WebView strings.
