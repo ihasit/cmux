@@ -34,9 +34,10 @@ class StoredStackAccessTokenProvider(
         }
         return when (val outcome = refresher.refresh(refreshToken)) {
             is StackRefreshOutcome.Success -> {
-                authStore.saveStackTokensIfRefreshTokenMatches(refreshToken, outcome.accessToken, refreshToken)
+                val nextRefreshToken = outcome.refreshToken ?: refreshToken
+                authStore.saveStackTokensIfRefreshTokenMatches(refreshToken, outcome.accessToken, nextRefreshToken)
                 onTokensChanged()
-                StackTokenPair(refreshToken = refreshToken, accessToken = outcome.accessToken)
+                StackTokenPair(refreshToken = nextRefreshToken, accessToken = outcome.accessToken)
             }
             StackRefreshOutcome.DefinitivelyRejected -> {
                 authStore.clearStackTokensIfRefreshTokenMatches(refreshToken)
@@ -57,9 +58,10 @@ class StoredStackAccessTokenProvider(
         val refreshToken = authStore.stackRefreshToken() ?: return StackTokenPair(refreshToken = null, accessToken = null)
         return when (val outcome = refresher.refresh(refreshToken)) {
             is StackRefreshOutcome.Success -> {
-                authStore.saveStackTokensIfRefreshTokenMatches(refreshToken, outcome.accessToken, refreshToken)
+                val nextRefreshToken = outcome.refreshToken ?: refreshToken
+                authStore.saveStackTokensIfRefreshTokenMatches(refreshToken, outcome.accessToken, nextRefreshToken)
                 onTokensChanged()
-                StackTokenPair(refreshToken = refreshToken, accessToken = outcome.accessToken)
+                StackTokenPair(refreshToken = nextRefreshToken, accessToken = outcome.accessToken)
             }
             StackRefreshOutcome.DefinitivelyRejected -> {
                 authStore.clearStackTokensIfRefreshTokenMatches(refreshToken)
@@ -74,7 +76,7 @@ class StoredStackAccessTokenProvider(
 }
 
 sealed class StackRefreshOutcome {
-    data class Success(val accessToken: String) : StackRefreshOutcome()
+    data class Success(val accessToken: String, val refreshToken: String? = null) : StackRefreshOutcome()
     data object DefinitivelyRejected : StackRefreshOutcome()
     data object TransientFailure : StackRefreshOutcome()
 }
@@ -115,14 +117,19 @@ class StackTokenRefresher(
             client.newCall(request).execute().use { response ->
                 when (response.code) {
                     200 -> {
-                        val accessToken = response.body?.string()
-                            ?.let { JSONObject(it).optString("access_token") }
+                        val json = response.body?.string()
+                            ?.let { JSONObject(it) }
+                        val accessToken = json
+                            ?.optString("access_token")
                             ?.trim()
                             ?.takeIf { it.isNotEmpty() }
                         if (accessToken == null) {
                             StackRefreshOutcome.TransientFailure
                         } else {
-                            StackRefreshOutcome.Success(accessToken)
+                            val refreshToken = json.optString("refresh_token")
+                                .trim()
+                                .takeIf { it.isNotEmpty() }
+                            StackRefreshOutcome.Success(accessToken, refreshToken)
                         }
                     }
                     400, 401 -> StackRefreshOutcome.DefinitivelyRejected
