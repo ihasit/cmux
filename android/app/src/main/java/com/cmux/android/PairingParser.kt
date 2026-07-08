@@ -240,9 +240,10 @@ class PairingParser {
             host = decoded.substring(0, separator)
             portText = decoded.substring(separator + 1)
         }
-        val port = portText.toIntOrNull()
-        checkPairing(host.isNotBlank() && port != null && port in 1..65535, "pair.error.invalidRoute")
-        return host to requireNotNull(port)
+        val trimmedHost = host.trim()
+        val port = portText.trim().toIntOrNull()
+        checkPairing(trimmedHost.isNotBlank() && port != null && port in 1..65535, "pair.error.invalidRoute")
+        return trimmedHost to requireNotNull(port)
     }
 
     private fun parseRoute(id: String, kind: String, endpoint: JSONObject, priority: Int): CmuxRoute? {
