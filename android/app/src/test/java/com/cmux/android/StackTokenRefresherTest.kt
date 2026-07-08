@@ -74,6 +74,15 @@ class StackTokenRefresherTest {
     }
 
     @Test
+    fun refreshRejectsNonStringAccessTokenInSuccessBody() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"access_token":12345}"""))
+
+        val outcome = refresher().refresh("refresh-token")
+
+        assertEquals(StackRefreshOutcome.TransientFailure, outcome)
+    }
+
+    @Test
     fun refreshRejectsBlankRefreshTokenWithoutNetworkCall() {
         val outcome = refresher().refresh("   ")
 
