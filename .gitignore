@@ -26,6 +26,7 @@ GhosttyKit.xcframework.bak-*/
 # Release artifacts
 cmux-*.zip
 cmux-macos.dmg
+cmux-local-macos.dmg
 appcast.xml
 
 # Python
@@ -61,8 +62,11 @@ web/public/pagefind/
 # Local scratch (screenshots, etc.)
 tmp/
 tmp-*/
+build-package-local/
+build-package-local-*/
 .iter-logs/
 .claude/worktrees/
+.specstory/
 
 # Local dogfood scratch (screenshots, recordings) — never commit
 artifacts/
