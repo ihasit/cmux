@@ -129,6 +129,27 @@ function testSubscribeAckDoesNotReplayWithoutActiveTerminal() {
   );
 }
 
+function testRenderGridPushWithoutSurfaceTargetsActiveTerminal() {
+  const { hooks } = loadApp();
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
+  hooks.showScreen("terminal");
+
+  hooks.handlePushEvent("terminal.render_grid", {
+    rows: 1,
+    columns: 12,
+    row_spans: [
+      { row: 0, column: 0, text: "active grid" },
+    ],
+  });
+
+  assert(
+    hooks.elements.terminalOutput.innerHTML.includes("active grid"),
+    `expected surface-less render grid push to render active terminal, got ${hooks.elements.terminalOutput.innerHTML}`
+  );
+}
+
 testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
+testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
 console.log("mobile app js tests passed");

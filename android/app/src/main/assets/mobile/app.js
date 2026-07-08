@@ -1566,7 +1566,7 @@ function handlePushEvent(type, payload) {
   if (type === "terminal.render_grid") {
     const renderGrid = payload.render_grid || payload;
     const surfaceId = renderGrid.surface_id || renderGrid.surfaceID || renderGrid.surfaceId || payload.surface_id || payload.surfaceID;
-    if (state.activeTerminal && surfaceId === state.activeTerminal.id) {
+    if (state.activeTerminal && (!surfaceId || surfaceId === state.activeTerminal.id)) {
       renderTerminalFrame(renderGrid);
     }
     return;
@@ -1790,6 +1790,7 @@ if (window.__cmuxMobileTestHooks) {
     state,
     elements,
     handleRpcResult,
+    handlePushEvent,
     showScreen,
   });
 }
