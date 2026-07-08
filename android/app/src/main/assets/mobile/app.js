@@ -113,6 +113,7 @@ const messages = {
     "terminal.notFound": "Terminal was not found.",
     "terminal.noTerminals": "No terminals",
     "terminal.new": "New",
+    "terminal.createUnsupported": "This Mac does not support creating terminals yet.",
     "terminal.open": "Open",
     "terminal.loading": "Loading terminal replay...",
     "terminal.empty": "(terminal is empty)",
@@ -243,6 +244,7 @@ const messages = {
     "terminal.notFound": "ターミナルが見つかりません。",
     "terminal.noTerminals": "ターミナルなし",
     "terminal.new": "新規",
+    "terminal.createUnsupported": "この Mac はまだターミナルの作成に対応していません。",
     "terminal.open": "開く",
     "terminal.loading": "ターミナルの再生を読み込み中...",
     "terminal.empty": "（ターミナルは空です）",
@@ -658,6 +660,14 @@ function createWorkspace() {
     return;
   }
   bridge().createWorkspace();
+}
+
+function createTerminal(workspaceId) {
+  if (!hasCapability("terminal.create.v1")) {
+    showToast(t("terminal.createUnsupported"));
+    return;
+  }
+  bridge().createTerminal(workspaceId);
 }
 
 function renameWorkspace(workspaceId) {
@@ -1675,7 +1685,7 @@ elements.workspaceList.addEventListener("click", (event) => {
   const closeWorkspaceId = event.target.getAttribute("data-close-workspace");
   const toggleGroupId = event.target.getAttribute("data-toggle-group");
   if (workspaceId && terminalId) openTerminal(workspaceId, terminalId);
-  if (createWorkspaceId) bridge().createTerminal(createWorkspaceId);
+  if (createWorkspaceId) createTerminal(createWorkspaceId);
   if (renameWorkspaceId) renameWorkspace(renameWorkspaceId);
   if (pinWorkspaceId) toggleWorkspacePinned(pinWorkspaceId, event.target.getAttribute("data-pinned") === "true");
   if (readWorkspaceId) toggleWorkspaceUnread(readWorkspaceId, event.target.getAttribute("data-unread") === "true");
