@@ -58,11 +58,12 @@ class PairingParser {
             .getOrElse { throw PairingException("pair.error.scheme") }
         val scheme = uri.scheme?.lowercase()
         checkPairing(scheme == "cmux-ios" || scheme == "cmux-ios-dev", "pair.error.scheme")
-        checkPairing(uri.host == "attach" || uri.host == "pair", "pair.error.host")
+        val host = uri.host?.lowercase()
+        checkPairing(host == "attach" || host == "pair", "pair.error.host")
         return when {
-            uri.host == "attach" && uri.getQueryParameter("v") == "2" -> parseAttachV2(uri)
-            uri.host == "attach" && uri.getQueryParameter("payload") != null -> parseAttachPayload(uri)
-            uri.host == "pair" && uri.getQueryParameter("payload") != null -> parseLegacyPairPayload(uri)
+            host == "attach" && uri.getQueryParameter("v") == "2" -> parseAttachV2(uri)
+            host == "attach" && uri.getQueryParameter("payload") != null -> parseAttachPayload(uri)
+            host == "pair" && uri.getQueryParameter("payload") != null -> parseLegacyPairPayload(uri)
             else -> throw PairingException("pair.error.unsupported")
         }
     }
