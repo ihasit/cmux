@@ -52,12 +52,13 @@ Implemented:
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
+- Run JVM unit tests for pairing URL parsing, WebSocket route parsing, and route JSON round-trips.
 - Provide English and Japanese WebView strings.
 
 Not implemented yet:
 
 - Stack Auth account preflight / token auth.
-- Android instrumentation/unit tests.
+- Android instrumentation tests.
 
 ## Protocol target
 
@@ -95,6 +96,12 @@ Android Gradle Plugin:
 
 ```bash
 JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home gradle :app:assembleDebug
+```
+
+Run the JVM unit tests with:
+
+```bash
+JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home gradle :app:testDebugUnitTest
 ```
 
 If the repository later adds a Gradle wrapper, prefer:

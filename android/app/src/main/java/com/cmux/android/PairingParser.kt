@@ -1,20 +1,53 @@
 package com.cmux.android
 
-import android.net.Uri
-import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.UUID
 
 class PairingException(val messageKey: String) : IllegalArgumentException(messageKey)
+
+private data class PairingUri(
+    val scheme: String?,
+    val host: String?,
+    private val query: Map<String, List<String>>
+) {
+    fun getQueryParameter(name: String): String? = query[name]?.firstOrNull()
+
+    fun getQueryParameters(name: String): List<String> = query[name] ?: emptyList()
+
+    companion object {
+        fun parse(rawValue: String): PairingUri {
+            val uri = URI(rawValue)
+            val query = linkedMapOf<String, MutableList<String>>()
+            uri.rawQuery
+                ?.split("&")
+                ?.filter { it.isNotEmpty() }
+                ?.forEach { item ->
+                    val separator = item.indexOf("=")
+                    val rawName = if (separator >= 0) item.substring(0, separator) else item
+                    val rawValuePart = if (separator >= 0) item.substring(separator + 1) else ""
+                    val name = urlDecode(rawName)
+                    val value = urlDecode(rawValuePart)
+                    query.getOrPut(name) { mutableListOf() }.add(value)
+                }
+            return PairingUri(uri.scheme, uri.host, query)
+        }
+
+        private fun urlDecode(value: String): String {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8.name())
+        }
+    }
+}
 
 class PairingParser {
     fun parse(rawValue: String): PairedMac {
         val trimmed = rawValue.trim()
         checkPairing(trimmed.isNotEmpty(), "pair.error.empty")
-        val uri = Uri.parse(trimmed)
+        val uri = PairingUri.parse(trimmed)
         checkPairing(uri.scheme == "cmux-ios" || uri.scheme == "cmux-ios-dev", "pair.error.scheme")
         checkPairing(uri.host == "attach" || uri.host == "pair", "pair.error.host")
         return when {
@@ -25,7 +58,7 @@ class PairingParser {
         }
     }
 
-    private fun parseAttachV2(uri: Uri): PairedMac {
+    private fun parseAttachV2(uri: PairingUri): PairedMac {
         val rawRoutes = uri.getQueryParameters("r")
         checkPairing(rawRoutes.isNotEmpty(), "pair.error.noRoutes")
         checkPairing(rawRoutes.size <= 8, "pair.error.tooManyRoutes")
@@ -52,7 +85,7 @@ class PairingParser {
         )
     }
 
-    private fun parseAttachPayload(uri: Uri): PairedMac {
+    private fun parseAttachPayload(uri: PairingUri): PairedMac {
         val payload = uri.getQueryParameter("payload") ?: throw PairingException("pair.error.missingPayload")
         val json = JSONObject(String(base64UrlDecode(payload), StandardCharsets.UTF_8))
         return if (json.has("v")) {
@@ -62,7 +95,7 @@ class PairingParser {
         }
     }
 
-    private fun parseLegacyPairPayload(uri: Uri): PairedMac {
+    private fun parseLegacyPairPayload(uri: PairingUri): PairedMac {
         val payload = uri.getQueryParameter("payload") ?: throw PairingException("pair.error.missingPayload")
         val json = JSONObject(String(base64UrlDecode(payload), StandardCharsets.UTF_8))
         val host = json.optString("host").trim()
@@ -138,7 +171,7 @@ class PairingParser {
     }
 
     private fun parseHostPort(rawValue: String): Pair<String, Int> {
-        val decoded = URLDecoder.decode(rawValue.trim(), StandardCharsets.UTF_8.name())
+        val decoded = rawValue.trim()
         val host: String
         val portText: String
         if (decoded.startsWith("[")) {
@@ -191,7 +224,7 @@ class PairingParser {
     }
 
     private fun base64UrlDecode(value: String): ByteArray {
-        return Base64.decode(value, Base64.URL_SAFE or Base64.NO_WRAP)
+        return Base64.getUrlDecoder().decode(value)
     }
 
     private fun checkPairing(condition: Boolean, messageKey: String) {
