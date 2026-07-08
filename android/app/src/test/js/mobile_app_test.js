@@ -199,6 +199,33 @@ function testTerminalBytesGapRequestsReplay() {
   );
 }
 
+function testTerminalReplayResetsByteDeduplication() {
+  const { hooks } = loadApp();
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
+  hooks.showScreen("terminal");
+
+  hooks.handlePushEvent("terminal.bytes", {
+    surface_id: "terminal-1",
+    seq: 0,
+    data_b64: Buffer.from("old").toString("base64"),
+  });
+  hooks.handleRpcResult("mobile.terminal.replay", {
+    data_b64: Buffer.from("snapshot\n").toString("base64"),
+  });
+  hooks.handlePushEvent("terminal.bytes", {
+    surface_id: "terminal-1",
+    seq: 0,
+    data_b64: Buffer.from("new").toString("base64"),
+  });
+
+  assert.strictEqual(
+    hooks.elements.terminalOutput.textContent,
+    "snapshot\nnew",
+    `expected bytes after replay to append, got ${JSON.stringify(hooks.elements.terminalOutput.textContent)}`
+  );
+}
+
 function testNestedTerminalOpenClickUsesClosestButton() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -229,5 +256,6 @@ testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
 testTerminalBytesGapRequestsReplay();
+testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
 console.log("mobile app js tests passed");
