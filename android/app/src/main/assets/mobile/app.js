@@ -115,7 +115,6 @@ const messages = {
     "terminal.loading": "Loading terminal replay...",
     "terminal.empty": "(terminal is empty)",
     "terminal.inputPlaceholder": "Send input to the terminal",
-    "terminal.live": "Live terminal update received.",
     "terminal.copyEmpty": "No terminal output to copy.",
     "terminal.copied": "Terminal output copied.",
     "terminal.keys": "Terminal keys",
@@ -241,7 +240,6 @@ const messages = {
     "terminal.loading": "ターミナルの再生を読み込み中...",
     "terminal.empty": "（ターミナルは空です）",
     "terminal.inputPlaceholder": "ターミナルへ入力を送信",
-    "terminal.live": "ターミナルのライブ更新を受信しました。",
     "terminal.copyEmpty": "コピーできるターミナル出力がありません。",
     "terminal.copied": "ターミナル出力をコピーしました。",
     "terminal.keys": "ターミナルキー",
@@ -1459,7 +1457,6 @@ function handlePushEvent(type, payload) {
     const surfaceId = renderGrid.surface_id || renderGrid.surfaceID || renderGrid.surfaceId || payload.surface_id || payload.surfaceID;
     if (state.activeTerminal && surfaceId === state.activeTerminal.id) {
       renderTerminalFrame(renderGrid);
-      showToast(t("terminal.live"));
     }
     return;
   }
