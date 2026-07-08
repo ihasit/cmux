@@ -24,6 +24,7 @@ android/
       java/com/cmux/android/
         MainActivity.kt
         MobileAuthStore.kt
+        MobileNotificationBridge.kt
         MobileRouteAuthPolicy.kt
         MobileRpcSession.kt
         MobileStackTokenProvider.kt
@@ -34,6 +35,7 @@ android/
         PairedMacStore.kt
         PairingParser.kt
       test/java/com/cmux/android/
+        MobileNotificationBridgeTest.kt
         MobileTcpClientTest.kt
         MobileWebSocketClientTest.kt
         StackTokenRefresherTest.kt
@@ -59,6 +61,7 @@ Implemented:
 - Render workspace rows, groups, and styled render-grid terminal output in the WebView.
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
+- Show a native Android summary notification for unread agent notifications when notification permission is available.
 - Save a manually pasted Stack access token in Android Keystore-backed encrypted storage and attach it to mobile RPC requests.
 - Launch hosted Stack Auth sign-in and accept `cmux-ios://auth-callback` token handoff deep links.
 - Persist Stack refresh/access token handoffs encrypted with Android Keystore AES-GCM.

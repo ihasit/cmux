@@ -15,6 +15,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     private val mainHandler = Handler(Looper.getMainLooper())
     private val store = PairedMacStore(context)
     private val authStore = MobileAuthStore(context)
+    private val notificationBridge = MobileNotificationBridge(context)
     private val parser = PairingParser()
     private val authCallbackParser = AuthCallbackParser()
     private var stackAccessToken: String? = authStore.stackAccessToken()
@@ -387,6 +388,9 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     override fun onConnectionState(state: String, detail: String?) {
+        if (state != "open") {
+            notificationBridge.applyUnreadCount(0)
+        }
         emit("connection", JSONObject().put("state", state).put("detail", detail))
         if (state == "open") {
             subscribeToEvents()
@@ -411,6 +415,12 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     override fun onPushEvent(type: String, payload: JSONObject) {
+        if (type == "notification.badge") {
+            notificationBridge.applyUnreadCount(payload.optNullableInt("unread_count"))
+        } else if (type == "notification.dismissed") {
+            notificationBridge.cancelDismissed(payload.optStringArray("ids"))
+            notificationBridge.applyUnreadCount(payload.optNullableInt("unread_count"))
+        }
         emit("push", JSONObject().put("type", type).put("payload", payload))
     }
 
@@ -480,5 +490,12 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
 
     private companion object {
         const val CLIENT_ID = "cmux-android-webview"
+    }
+}
+
+private fun JSONObject.optStringArray(name: String): List<String> {
+    val array = optJSONArray(name) ?: return emptyList()
+    return (0 until array.length()).mapNotNull { index ->
+        array.optString(index).trim().takeIf { it.isNotEmpty() }
     }
 }

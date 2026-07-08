@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">cmux</string>
+    <string name="notification_channel_agents">エージェント通知</string>
+    <string name="notification_unread_title">cmux エージェントに確認が必要です</string>
+    <string name="notification_unread_body_one">未読通知 1 件</string>
+    <string name="notification_unread_body_many">未読通知 %1$d 件</string>
+</resources>

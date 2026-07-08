@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">cmux</string>
+    <string name="notification_channel_agents">Agent notifications</string>
+    <string name="notification_unread_title">cmux agents need attention</string>
+    <string name="notification_unread_body_one">1 unread notification</string>
+    <string name="notification_unread_body_many">%1$d unread notifications</string>
 </resources>
