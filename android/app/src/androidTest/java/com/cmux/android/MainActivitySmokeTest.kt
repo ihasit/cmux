@@ -971,6 +971,104 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun staleTerminalScrollResultDoesNotReplaceCurrentTerminalFrame() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            },
+                            {
+                              "id": "terminal-2",
+                              "title": "Deploy shell",
+                              "current_directory": "/repo/deploy"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-id='terminal-2']"))
+                .perform(webClick())
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 2,
+                    "method": "mobile.terminal.scroll",
+                    "result": {
+                      "render_grid": {
+                        "surface_id": "terminal-2",
+                        "state_seq": 2,
+                        "full": true,
+                        "rows": 1,
+                        "columns": 24,
+                        "row_spans": [
+                          { "row": 0, "column": 0, "text": "deploy scroll" }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 3,
+                    "method": "mobile.terminal.scroll",
+                    "result": {
+                      "render_grid": {
+                        "surface_id": "terminal-1",
+                        "state_seq": 3,
+                        "full": true,
+                        "rows": 1,
+                        "columns": 24,
+                        "row_spans": [
+                          { "row": 0, "column": 0, "text": "build scroll stale" }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "terminalOutput"))
+                .check(webMatches(getText(), containsString("deploy scroll")))
+
+            val terminalText = scenario.evaluateScript("document.getElementById('terminalOutput').textContent")
+            check(!terminalText.contains("build scroll stale"))
+        }
+    }
+
+    @Test
     fun connectionCloseClearsActiveTerminalSurface() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.emitNativeEvent(
