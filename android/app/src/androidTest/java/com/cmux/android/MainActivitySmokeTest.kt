@@ -587,9 +587,19 @@ class MainActivitySmokeTest {
                 .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='backspace']"))
                 .perform(webClick())
 
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='page-up']"))
+                .perform(webClick())
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='end']"))
+                .perform(webClick())
+
             val sentInputs = scenario.evaluateScript("JSON.stringify(window.__sentInputs)")
             check(sentInputs.contains("\"text\":\"\\u001b[A\""))
             check(sentInputs.contains("\"text\":\"\\u007f\""))
+            check(sentInputs.contains("\"text\":\"\\u001b[5~\""))
+            check(sentInputs.contains("\"text\":\"\\u001b[F\""))
         }
     }
 

@@ -128,6 +128,10 @@ const messages = {
     "terminal.key.arrowDown": "Down",
     "terminal.key.arrowLeft": "Left",
     "terminal.key.arrowRight": "Right",
+    "terminal.key.home": "Home",
+    "terminal.key.end": "End",
+    "terminal.key.pageUp": "Page Up",
+    "terminal.key.pageDown": "Page Down",
     "image.paste": "Image",
     "image.unsupported": "This browser cannot read the selected image.",
     "image.tooLarge": "Image is too large to paste.",
@@ -248,6 +252,10 @@ const messages = {
     "terminal.key.arrowDown": "下",
     "terminal.key.arrowLeft": "左",
     "terminal.key.arrowRight": "右",
+    "terminal.key.home": "Home",
+    "terminal.key.end": "End",
+    "terminal.key.pageUp": "Page Up",
+    "terminal.key.pageDown": "Page Down",
     "image.paste": "画像",
     "image.unsupported": "選択した画像を読み取れません。",
     "image.tooLarge": "画像が大きすぎて貼り付けできません。",
@@ -854,6 +862,10 @@ function sendTerminalKey(key) {
     "arrow-down": "\u001b[B",
     "arrow-right": "\u001b[C",
     "arrow-left": "\u001b[D",
+    home: "\u001b[H",
+    end: "\u001b[F",
+    "page-up": "\u001b[5~",
+    "page-down": "\u001b[6~",
   }[key];
   if (!text || !state.activeWorkspace || !state.activeTerminal) return;
   bridge().sendInput(
