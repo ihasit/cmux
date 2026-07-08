@@ -101,6 +101,7 @@ class PairingParser {
         val host = json.optString("host").trim()
         val port = json.optInt("port", -1)
         checkPairing(host.isNotEmpty() && port in 1..65535, "pair.error.invalidRoute")
+        checkPairing(!isLoopbackHost(host), "pair.error.loopback")
         val route = CmuxRoute("tailscale", json.optString("transport", "tailscale"), host, port, 10)
         return PairedMac(
             id = stableMacId(json.optNullableString("mac_device_id"), listOf(route)),
@@ -198,6 +199,7 @@ class PairingParser {
         val host = endpoint.optNullableString("h") ?: endpoint.optNullableString("host") ?: return null
         val port = endpoint.optNullableInt("p") ?: endpoint.optNullableInt("port") ?: return null
         if (port !in 1..65535) return null
+        checkPairing(kind == "debug_loopback" || !isLoopbackHost(host), "pair.error.loopback")
         return CmuxRoute(id, kind, host, port, priority)
     }
 

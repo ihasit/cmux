@@ -44,6 +44,82 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseCompactTicketRejectsLoopbackHostPortRoute() {
+        val payload = JSONObject()
+            .put("v", 1)
+            .put("d", "mac-loopback")
+            .put("r", JSONArray().put(
+                JSONObject()
+                    .put("i", "local")
+                    .put("k", "tailscale")
+                    .put("p", 1)
+                    .put("e", JSONObject().put("h", "127.0.0.1").put("p", 58465))
+            ))
+
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://attach?payload=${base64Url(payload)}")
+        }
+
+        assertEquals("pair.error.loopback", error.messageKey)
+    }
+
+    @Test
+    fun parseFullTicketRejectsLoopbackHostPortRoute() {
+        val payload = JSONObject()
+            .put("macDeviceID", "mac-loopback")
+            .put("routes", JSONArray().put(
+                JSONObject()
+                    .put("id", "local")
+                    .put("kind", "tailscale")
+                    .put("priority", 1)
+                    .put("endpoint", JSONObject()
+                        .put("type", "host_port")
+                        .put("host", "localhost")
+                        .put("port", 58465))
+            ))
+
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://attach?payload=${base64Url(payload)}")
+        }
+
+        assertEquals("pair.error.loopback", error.messageKey)
+    }
+
+    @Test
+    fun parseLegacyPairPayloadRejectsLoopbackRoute() {
+        val payload = JSONObject()
+            .put("host", "127.0.0.1")
+            .put("port", 58465)
+            .put("transport", "tailscale")
+            .put("mac_device_id", "mac-loopback")
+
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://pair?payload=${base64Url(payload)}")
+        }
+
+        assertEquals("pair.error.loopback", error.messageKey)
+    }
+
+    @Test
+    fun parseCompactTicketAllowsExplicitDebugLoopbackRoute() {
+        val payload = JSONObject()
+            .put("v", 1)
+            .put("d", "mac-debug")
+            .put("r", JSONArray().put(
+                JSONObject()
+                    .put("i", "debug")
+                    .put("k", "debug_loopback")
+                    .put("p", 1)
+                    .put("e", JSONObject().put("h", "127.0.0.1").put("p", 58465))
+            ))
+
+        val mac = parser.parse("cmux-ios://attach?payload=${base64Url(payload)}")
+
+        assertEquals("debug_loopback", mac.routes.single().kind)
+        assertEquals("127.0.0.1", mac.routes.single().host)
+    }
+
+    @Test
     fun parseCompactTicketKeepsWebSocketUrlRoute() {
         val payload = JSONObject()
             .put("v", 1)
