@@ -1,6 +1,8 @@
 package com.cmux.android
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.web.assertion.WebViewAssertions.webMatches
@@ -76,6 +78,20 @@ class MainActivitySmokeTest {
             onWebView()
                 .withElement(findElement(Locator.ID, "toast"))
                 .check(webMatches(getText(), containsString("Stack access token cleared")))
+        }
+    }
+
+    @Test
+    fun attachDeepLinkStoresPairedMacInWebView() {
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("cmux-ios://attach?v=2&ub=instrumentation-user&pc=1&av=1.2.3&ab=42&r=100.64.0.12:58465")
+        )
+
+        ActivityScenario.launch<MainActivity>(intent).use {
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairedList"))
+                .check(webMatches(getText(), containsString("100.64.0.12:58465")))
         }
     }
 }
