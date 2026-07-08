@@ -56,7 +56,8 @@ class PairingParser {
         }
         val uri = runCatching { PairingUri.parse(trimmed) }
             .getOrElse { throw PairingException("pair.error.scheme") }
-        checkPairing(uri.scheme == "cmux-ios" || uri.scheme == "cmux-ios-dev", "pair.error.scheme")
+        val scheme = uri.scheme?.lowercase()
+        checkPairing(scheme == "cmux-ios" || scheme == "cmux-ios-dev", "pair.error.scheme")
         checkPairing(uri.host == "attach" || uri.host == "pair", "pair.error.host")
         return when {
             uri.host == "attach" && uri.getQueryParameter("v") == "2" -> parseAttachV2(uri)
