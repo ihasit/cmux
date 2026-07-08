@@ -62,6 +62,7 @@ Implemented:
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Show a native Android summary notification for unread agent notifications when notification permission is available.
+- Request the Android 13+ notification permission from the WebView shell when alerts can be enabled.
 - Save a manually pasted Stack access token in Android Keystore-backed encrypted storage and attach it to mobile RPC requests.
 - Launch hosted Stack Auth sign-in and accept `cmux-ios://auth-callback` token handoff deep links.
 - Persist Stack refresh/access token handoffs encrypted with Android Keystore AES-GCM.
@@ -71,12 +72,13 @@ Implemented:
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
 - Run JVM unit tests for auth callback parsing, pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, mobile TCP/WebSocket framing, and mobile RPC auth envelopes.
-- Provide an Android instrumentation smoke test for the launched WebView shell.
+- Provide Android instrumentation coverage for the launched WebView shell, Stack token save/clear bridge, attach deep links, workspace list rendering, and terminal render-grid updates.
 - Provide English and Japanese WebView strings.
 
-Not implemented yet:
+Not verified yet:
 
-- Broader Android instrumentation and end-to-end tests beyond the initial launch smoke test.
+- Running Android instrumentation tests on a connected emulator/device in this environment.
+- Full end-to-end validation against a live Mac cmux mobile host.
 
 ## Protocol target
 
