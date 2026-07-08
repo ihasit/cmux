@@ -263,9 +263,13 @@ textarea {
   gap: 8px;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
 .composer-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
 }
 

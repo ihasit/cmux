@@ -66,6 +66,10 @@ const messages = {
     "terminal.empty": "(terminal is empty)",
     "terminal.inputPlaceholder": "Send input to the terminal",
     "terminal.live": "Live terminal update received.",
+    "image.paste": "Image",
+    "image.unsupported": "This browser cannot read the selected image.",
+    "image.tooLarge": "Image is too large to paste.",
+    "image.invalid": "Selected file is not a supported image.",
     "host.connected": "Connected",
     "host.defaultName": "Connected Mac",
     "request.failed": "Request failed.",
@@ -127,6 +131,10 @@ const messages = {
     "terminal.empty": "（ターミナルは空です）",
     "terminal.inputPlaceholder": "ターミナルへ入力を送信",
     "terminal.live": "ターミナルのライブ更新を受信しました。",
+    "image.paste": "画像",
+    "image.unsupported": "選択した画像を読み取れません。",
+    "image.tooLarge": "画像が大きすぎて貼り付けできません。",
+    "image.invalid": "選択したファイルは対応している画像ではありません。",
     "host.connected": "接続済み",
     "host.defaultName": "接続済み Mac",
     "request.failed": "リクエストに失敗しました。",
@@ -169,7 +177,9 @@ const elements = {
   scrollUp: document.getElementById("scrollUp"),
   scrollDown: document.getElementById("scrollDown"),
   terminalInput: document.getElementById("terminalInput"),
+  imageInput: document.getElementById("imageInput"),
   pasteInput: document.getElementById("pasteInput"),
+  pasteImage: document.getElementById("pasteImage"),
   sendInput: document.getElementById("sendInput"),
   toast: document.getElementById("toast"),
 };
@@ -547,6 +557,59 @@ function sendTerminalInput(mode) {
   window.setTimeout(replayActiveTerminal, 250);
 }
 
+function chooseImageForPaste() {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  elements.imageInput.value = "";
+  elements.imageInput.click();
+}
+
+function pasteSelectedImage() {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  const file = elements.imageInput.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    showToast(t("image.invalid"));
+    return;
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    showToast(t("image.tooLarge"));
+    return;
+  }
+  if (typeof FileReader === "undefined") {
+    showToast(t("image.unsupported"));
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = String(reader.result || "");
+    const commaIndex = dataUrl.indexOf(",");
+    if (commaIndex < 0) {
+      showToast(t("image.invalid"));
+      return;
+    }
+    bridge().pasteImage(
+      state.activeWorkspace.id,
+      state.activeTerminal.id,
+      dataUrl.slice(commaIndex + 1),
+      imageFormatForFile(file),
+      terminalColumns(),
+      terminalRows(),
+    );
+  };
+  reader.onerror = () => showToast(t("image.unsupported"));
+  reader.readAsDataURL(file);
+}
+
+function imageFormatForFile(file) {
+  const type = file.type.toLowerCase();
+  if (type === "image/jpeg") return "jpg";
+  if (type === "image/png") return "png";
+  if (type === "image/gif") return "gif";
+  if (type === "image/webp") return "webp";
+  const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  return extension.replace(/[^a-z0-9]/gu, "") || "png";
+}
+
 function terminalColumns() {
   return Math.max(20, Math.min(160, Math.floor(elements.terminalOutput.clientWidth / 7)));
 }
@@ -874,6 +937,10 @@ function handleRpcResult(method, result) {
     window.setTimeout(replayActiveTerminal, 180);
     return;
   }
+  if (method === "mobile.terminal.paste_image") {
+    window.setTimeout(replayActiveTerminal, 180);
+    return;
+  }
   if (method === "mobile.terminal.viewport") {
     if (Number.isInteger(result.columns) && Number.isInteger(result.rows)) {
       state.effectiveViewport = { columns: result.columns, rows: result.rows };
@@ -978,6 +1045,8 @@ elements.scrollUp.addEventListener("click", () => queueTerminalScroll(-terminalR
 elements.scrollDown.addEventListener("click", () => queueTerminalScroll(terminalRows()));
 elements.sendInput.addEventListener("click", () => sendTerminalInput("input"));
 elements.pasteInput.addEventListener("click", () => sendTerminalInput("paste"));
+elements.pasteImage.addEventListener("click", chooseImageForPaste);
+elements.imageInput.addEventListener("change", pasteSelectedImage);
 window.addEventListener("resize", scheduleViewportReport);
 elements.terminalOutput.addEventListener("wheel", handleTerminalWheel, { passive: false });
 elements.terminalOutput.addEventListener("click", handleTerminalClick);
@@ -993,6 +1062,8 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 localizeStaticText();
 bridge().initialState();

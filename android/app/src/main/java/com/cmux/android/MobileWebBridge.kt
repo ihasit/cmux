@@ -190,6 +190,23 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     }
 
     @JavascriptInterface
+    fun pasteImage(
+        workspaceId: String,
+        terminalId: String,
+        imageBase64: String,
+        imageFormat: String,
+        columns: Int,
+        rows: Int
+    ) {
+        session.request(
+            "mobile.terminal.paste_image",
+            terminalParams(workspaceId, terminalId, columns, rows)
+                .put("image_base64", imageBase64)
+                .put("image_format", imageFormat.ifBlank { "png" })
+        )
+    }
+
+    @JavascriptInterface
     fun scrollTerminal(
         workspaceId: String,
         terminalId: String,
