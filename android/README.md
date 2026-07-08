@@ -58,6 +58,7 @@ Implemented:
 - Automatically reconnect the first saved paired Mac with a supported route when the WebView shell starts.
 - Connect to host routes over the length-prefixed mobile TCP protocol, automatically trying the next advertised route if the first route fails before opening.
 - Automatically reconnect to the active paired Mac after unexpected connection drops with bounded retry backoff.
+- Preserve live host event subscriptions across route failover and reconnects.
 - Connect to WebSocket attach routes when a pairing payload advertises one.
 - Call `mobile.host.status`, `mobile.workspace.list`, `mobile.terminal.replay`, `mobile.terminal.input`, `mobile.terminal.paste`, and `mobile.terminal.create`.
 - Subscribe to `workspace.updated`, `terminal.render_grid`, `terminal.set_font`, `notification.badge`, and `notification.dismissed` host events for live refresh.
@@ -66,6 +67,7 @@ Implemented:
 - Copy the currently visible terminal output from the WebView terminal.
 - Provide terminal quick keys for Enter, Tab, Esc, Backspace, Ctrl-A/C/D/E/L/U/W/Z, arrow keys, Home/End, and Page Up/Down in the WebView terminal.
 - Disable workspace and terminal controls while disconnected, while keeping paired Mac reconnect actions available.
+- Gate workspace create, workspace actions, read-state changes, close, and workspace groups on the capabilities reported by `mobile.host.status`.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Show a native Android summary notification for unread agent notifications when notification permission is available.
 - Request the Android 13+ notification permission from the WebView shell when alerts can be enabled.
