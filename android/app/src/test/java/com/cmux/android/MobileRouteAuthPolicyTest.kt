@@ -34,6 +34,13 @@ class MobileRouteAuthPolicyTest {
         assertFalse(MobileRouteAuthPolicy.routeAllowsStackAuth(webSocketRoute("https://cmux.example.test/mobile")))
     }
 
+    @Test
+    fun rejectsSecureWebSocketLoopbackRoutes() {
+        assertFalse(MobileRouteAuthPolicy.routeAllowsStackAuth(webSocketRoute("wss://127.0.0.1:58465/mobile")))
+        assertFalse(MobileRouteAuthPolicy.routeAllowsStackAuth(webSocketRoute("wss://localhost:58465/mobile")))
+        assertFalse(MobileRouteAuthPolicy.routeAllowsStackAuth(webSocketRoute("wss://[::1]:58465/mobile")))
+    }
+
     private fun hostRoute(host: String, kind: String): CmuxRoute {
         return CmuxRoute(
             id = kind,
