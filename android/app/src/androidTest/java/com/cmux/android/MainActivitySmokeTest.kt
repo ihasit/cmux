@@ -101,6 +101,59 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun pairedMacListShowsSupportedRouteByPriority() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "pairedMacs",
+                  "payload": {
+                    "macs": [
+                      {
+                        "id": "mac-websocket",
+                        "display_name": "Studio Mac",
+                        "routes": [
+                          {
+                            "id": "iroh",
+                            "kind": "iroh",
+                            "host": "ignored.example.test",
+                            "port": 58465,
+                            "priority": 0
+                          },
+                          {
+                            "id": "websocket",
+                            "kind": "websocket",
+                            "host": "",
+                            "port": 0,
+                            "url": "wss://cmux.example.test/mobile",
+                            "priority": 1
+                          },
+                          {
+                            "id": "tailscale",
+                            "kind": "tailscale",
+                            "host": "100.64.0.12",
+                            "port": 58465,
+                            "priority": 10
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairedList"))
+                .check(webMatches(getText(), containsString("Studio Mac")))
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairedList"))
+                .check(webMatches(getText(), containsString("wss://cmux.example.test/mobile")))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()

@@ -347,9 +347,9 @@ function renderPairedMacs() {
     return;
   }
   elements.pairedList.innerHTML = state.macs.map((mac) => {
-    const route = (mac.routes || [])[0];
-    const title = mac.display_name || route?.host || t("paired.defaultTitle");
-    const subtitle = route ? `${route.host}:${route.port}` : t("paired.noRoute");
+    const route = displayRouteForMac(mac);
+    const title = mac.display_name || route?.label || t("paired.defaultTitle");
+    const subtitle = route?.label || t("paired.noRoute");
     return `
       <article class="card">
         <div>
@@ -363,6 +363,35 @@ function renderPairedMacs() {
       </article>
     `;
   }).join("");
+}
+
+function displayRouteForMac(mac) {
+  const routes = Array.isArray(mac.routes) ? mac.routes : [];
+  const route = routes
+    .filter(isSupportedMobileRoute)
+    .sort((left, right) => {
+      const priorityDelta = routePriority(left) - routePriority(right);
+      return priorityDelta === 0
+        ? String(left.id || "").localeCompare(String(right.id || ""))
+        : priorityDelta;
+    })[0];
+  if (!route) return null;
+  const url = String(route.url || "").trim();
+  if (url) return { route, label: url };
+  const host = String(route.host || "").trim();
+  const port = Number(route.port);
+  if (host && Number.isInteger(port) && port > 0) {
+    return { route, label: `${host}:${port}` };
+  }
+  return { route, label: route.kind || route.id || t("paired.defaultTitle") };
+}
+
+function isSupportedMobileRoute(route) {
+  return route?.kind === "tailscale" || route?.kind === "debug_loopback" || route?.kind === "websocket";
+}
+
+function routePriority(route) {
+  return Number.isInteger(route?.priority) ? route.priority : 0;
 }
 
 function setDisabled(element, disabled) {

@@ -77,6 +77,7 @@ Implemented:
 - Reject non-debug loopback host routes from attach and legacy pairing payloads so Android does not dial itself.
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
+- Show the highest-priority Android-supported route in the paired Mac list, including WebSocket URLs.
 - Fail pending mobile RPCs with explicit transport errors when the connection closes.
 - Avoid automatic reconnect after manual disconnects, forgotten Macs, or pairing payloads with no supported routes.
 - Run JVM unit tests for auth callback parsing, pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, mobile TCP/WebSocket framing, and mobile RPC auth envelopes.
