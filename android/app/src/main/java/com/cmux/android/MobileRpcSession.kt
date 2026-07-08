@@ -116,7 +116,12 @@ class MobileRpcSession(
             return
         }
         if (ok) {
-            callback.onRpcResult(id, method ?: "unknown", json.optJSONObject("result") ?: JSONObject())
+            val result = json.optJSONObject("result")
+            if (result == null && json.has("result") && !json.isNull("result")) {
+                callback.onRpcError(id, method, "parse_error", "Invalid response result from host")
+                return
+            }
+            callback.onRpcResult(id, method ?: "unknown", result ?: JSONObject())
         } else {
             val error = json.optJSONObject("error") ?: JSONObject()
             val code = error.optString("code", "host_error")
