@@ -16,6 +16,8 @@ class MobileNotificationBridge(
     private val backend: Backend,
     private val strings: Strings
 ) {
+    private var channelEnsured = false
+
     constructor(context: Context) : this(
         backend = AndroidNotificationBackend(context),
         strings = AndroidNotificationStrings(context)
@@ -29,10 +31,7 @@ class MobileNotificationBridge(
         }
         if (!backend.canPostNotifications()) return
 
-        backend.ensureChannel(
-            CHANNEL_ID,
-            strings.channelName()
-        )
+        ensureChannel()
         val body = if (count == 1) {
             strings.unreadBodyOne()
         } else {
@@ -60,6 +59,15 @@ class MobileNotificationBridge(
         if (ids.isNotEmpty()) {
             backend.cancel(SUMMARY_NOTIFICATION_ID)
         }
+    }
+
+    private fun ensureChannel() {
+        if (channelEnsured) return
+        backend.ensureChannel(
+            CHANNEL_ID,
+            strings.channelName()
+        )
+        channelEnsured = true
     }
 
     interface Backend {
