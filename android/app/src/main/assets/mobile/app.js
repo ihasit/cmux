@@ -1525,6 +1525,9 @@ function handleRpcResult(method, result) {
     return;
   }
   if (method === "mobile.events.subscribe") {
+    if (result.already_subscribed === false && state.activeWorkspace && state.activeTerminal) {
+      replayActiveTerminal();
+    }
     return;
   }
 }
@@ -1781,6 +1784,15 @@ function escapeHtml(value) {
 }
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+if (window.__cmuxMobileTestHooks) {
+  Object.assign(window.__cmuxMobileTestHooks, {
+    state,
+    elements,
+    handleRpcResult,
+    showScreen,
+  });
+}
 
 localizeStaticText();
 bridge().initialState();

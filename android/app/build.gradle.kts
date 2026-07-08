@@ -58,3 +58,11 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.test.espresso:espresso-web:3.6.1")
 }
+
+val testMobileWebAssets = tasks.register<Exec>("testMobileWebAssets") {
+    commandLine("node", "src/test/js/mobile_app_test.js")
+}
+
+tasks.named("check") {
+    dependsOn(testMobileWebAssets)
+}

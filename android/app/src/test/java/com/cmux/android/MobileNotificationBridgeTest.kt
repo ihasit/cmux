@@ -67,6 +67,16 @@ class MobileNotificationBridgeTest {
     }
 
     @Test
+    fun notificationBackendSecurityExceptionDoesNotEscape() {
+        val backend = RecordingBackend(throwOnNotify = true)
+        val bridge = MobileNotificationBridge(backend, FakeStrings)
+
+        bridge.applyUnreadCount(5)
+
+        assertTrue(backend.notifications.isEmpty())
+    }
+
+    @Test
     fun permissionStateReportsEnabledAndRequestAvailability() {
         val bridge = MobileNotificationBridge(
             RecordingBackend(canPost = false, canRequest = true),
@@ -101,7 +111,8 @@ class MobileNotificationBridgeTest {
 
     private class RecordingBackend(
         private val canPost: Boolean = true,
-        private val canRequest: Boolean = false
+        private val canRequest: Boolean = false,
+        private val throwOnNotify: Boolean = false
     ) : MobileNotificationBridge.Backend {
         val channels = mutableListOf<RecordedChannel>()
         val notifications = mutableListOf<RecordedNotification>()
@@ -116,6 +127,7 @@ class MobileNotificationBridgeTest {
         }
 
         override fun notify(notificationId: Int, payload: MobileNotificationBridge.NotificationPayload) {
+            if (throwOnNotify) throw SecurityException("permission revoked")
             notifications.add(RecordedNotification(notificationId, payload))
         }
 

@@ -37,15 +37,17 @@ class MobileNotificationBridge(
         } else {
             strings.unreadBodyMany(count)
         }
-        backend.notify(
-            SUMMARY_NOTIFICATION_ID,
-            NotificationPayload(
-                channelId = CHANNEL_ID,
-                title = strings.unreadTitle(),
-                body = body,
-                number = count
+        runCatching {
+            backend.notify(
+                SUMMARY_NOTIFICATION_ID,
+                NotificationPayload(
+                    channelId = CHANNEL_ID,
+                    title = strings.unreadTitle(),
+                    body = body,
+                    number = count
+                )
             )
-        )
+        }
     }
 
     fun permissionState(): PermissionState {
@@ -137,6 +139,7 @@ class MobileNotificationBridge(
         }
 
         override fun notify(notificationId: Int, payload: NotificationPayload) {
+            if (!canPostNotifications()) return
             val intent = Intent(context, MainActivity::class.java)
             val pendingIntent = TaskStackBuilder.create(context)
                 .addNextIntentWithParentStack(intent)
@@ -153,7 +156,10 @@ class MobileNotificationBridge(
                 .setAutoCancel(false)
                 .setOnlyAlertOnce(true)
                 .build()
-            NotificationManagerCompat.from(context).notify(notificationId, notification)
+            try {
+                NotificationManagerCompat.from(context).notify(notificationId, notification)
+            } catch (_: SecurityException) {
+            }
         }
 
         override fun cancel(notificationId: Int) {
