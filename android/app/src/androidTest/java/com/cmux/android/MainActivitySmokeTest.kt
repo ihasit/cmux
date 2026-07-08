@@ -560,10 +560,14 @@ class MainActivitySmokeTest {
                 """
                 window.__lastSendInput = null;
                 window.__sentInputs = [];
+                window.__lastPasteText = null;
                 window.cmuxAndroid = {
                   sendInput: function(workspaceId, terminalId, text, columns, rows) {
                     window.__lastSendInput = { workspaceId, terminalId, text, columns, rows };
                     window.__sentInputs.push(window.__lastSendInput);
+                  },
+                  pasteText: function(workspaceId, terminalId, text, submitKey, columns, rows) {
+                    window.__lastPasteText = { workspaceId, terminalId, text, submitKey, columns, rows };
                   }
                 };
                 true;
@@ -600,6 +604,33 @@ class MainActivitySmokeTest {
             check(sentInputs.contains("\"text\":\"\\u007f\""))
             check(sentInputs.contains("\"text\":\"\\u001b[5~\""))
             check(sentInputs.contains("\"text\":\"\\u001b[F\""))
+
+            scenario.evaluateScript(
+                """
+                const input = document.getElementById('terminalInput');
+                input.value = 'echo keyboard';
+                input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }));
+                true;
+                """.trimIndent()
+            )
+
+            val keyboardSendInput = scenario.evaluateScript("JSON.stringify(window.__lastSendInput)")
+            check(keyboardSendInput.contains("\"text\":\"echo keyboard\""))
+            val clearedAfterKeyboardSend = scenario.evaluateScript("document.getElementById('terminalInput').value")
+            check(clearedAfterKeyboardSend == "\"\"")
+
+            scenario.evaluateScript(
+                """
+                const input = document.getElementById('terminalInput');
+                input.value = 'multi\\nline';
+                input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }));
+                true;
+                """.trimIndent()
+            )
+
+            val keyboardPasteText = scenario.evaluateScript("JSON.stringify(window.__lastPasteText)")
+            check(keyboardPasteText.contains("\"text\":\"multi\\nline\""))
+            check(keyboardPasteText.contains("\"submitKey\":\"return\""))
         }
     }
 

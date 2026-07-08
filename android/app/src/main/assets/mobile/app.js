@@ -848,6 +848,12 @@ function sendTerminalInput(mode) {
   window.setTimeout(replayActiveTerminal, 250);
 }
 
+function handleTerminalInputKeydown(event) {
+  if (event.key !== "Enter" || !event.ctrlKey) return;
+  event.preventDefault();
+  sendTerminalInput(event.shiftKey ? "paste" : "input");
+}
+
 function sendTerminalKey(key) {
   const text = {
     enter: "\r",
@@ -1510,6 +1516,7 @@ elements.terminalKeybar.addEventListener("click", (event) => {
 });
 elements.sendInput.addEventListener("click", () => sendTerminalInput("input"));
 elements.pasteInput.addEventListener("click", () => sendTerminalInput("paste"));
+elements.terminalInput.addEventListener("keydown", handleTerminalInputKeydown);
 elements.pasteImage.addEventListener("click", chooseImageForPaste);
 elements.imageInput.addEventListener("change", pasteSelectedImage);
 window.addEventListener("resize", scheduleViewportReport);
