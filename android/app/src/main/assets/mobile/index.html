@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>cmux Android</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <h1>cmux</h1>
+        <p class="muted">Android Mobile Connect prototype</p>
+
+        <label>
+          Host
+          <input id="host" autocomplete="off" placeholder="your-mac.tailnet.ts.net" />
+        </label>
+
+        <label>
+          Port
+          <input id="port" inputmode="numeric" value="58465" />
+        </label>
+
+        <div class="actions">
+          <button id="connect">Connect</button>
+          <button id="status">Host Status</button>
+          <button id="close">Close</button>
+        </div>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="log-title">Events</div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -48,6 +48,7 @@ extension TerminalSurface {
         // existing portal binding alive, but make the old lease non-usable so the next
         // distinct host in the same pane can claim immediately instead of waiting for a
         // later layout-follow-up retry.
+        retiredPortalHostSerials[hostId] = current.instanceSerial
         activePortalHostLease = PortalHostLease(
             hostId: current.hostId,
             paneId: current.paneId,
@@ -76,6 +77,18 @@ extension TerminalSurface {
         bounds: CGRect,
         reason: String
     ) -> Bool {
+        if let retiredSerial = retiredPortalHostSerials[hostId],
+           instanceSerial <= retiredSerial {
+#if DEBUG
+            logDebugEvent(
+                "terminal.portal.host.skip surface=\(id.uuidString.prefix(5)) " +
+                "reason=\(reason).retiredHost host=\(hostId) pane=\(paneId.id.uuidString.prefix(5)) " +
+                "serial=\(instanceSerial) retiredSerial=\(retiredSerial)"
+            )
+#endif
+            return false
+        }
+
         let next = PortalHostLease(
             hostId: hostId,
             paneId: paneId.id,
@@ -120,6 +133,7 @@ extension TerminalSurface {
                 )
 #endif
                 activePortalHostLease = next
+                retiredPortalHostSerials.removeValue(forKey: current.hostId)
                 return true
             }
 
@@ -138,6 +152,7 @@ extension TerminalSurface {
         }
 
         activePortalHostLease = next
+        retiredPortalHostSerials.removeValue(forKey: hostId)
 #if DEBUG
         logDebugEvent(
             "terminal.portal.host.claim surface=\(id.uuidString.prefix(5)) " +
@@ -153,6 +168,7 @@ extension TerminalSurface {
     public func releasePortalHostIfOwned(hostId: ObjectIdentifier, reason: String) {
         guard let current = activePortalHostLease, current.hostId == hostId else { return }
         activePortalHostLease = nil
+        retiredPortalHostSerials.removeValue(forKey: hostId)
 #if DEBUG
         logDebugEvent(
             "terminal.portal.host.release surface=\(id.uuidString.prefix(5)) " +

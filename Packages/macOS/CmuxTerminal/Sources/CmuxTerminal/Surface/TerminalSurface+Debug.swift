@@ -218,6 +218,8 @@ extension TerminalSurface {
     public func installRuntimeSurfaceForTesting(_ runtimeSurface: ghostty_surface_t) {
         surface = runtimeSurface
         portalLifecycleState = .live
+        activePortalHostLease = nil
+        retiredPortalHostSerials.removeAll(keepingCapacity: false)
         runtimeSurfaceFreedOutOfBandForTesting = false
     }
 #endif
