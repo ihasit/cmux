@@ -116,7 +116,7 @@ class MobileRpcSession(
             return
         }
         val pendingCall = pending.remove(id)
-        val method = pendingCall?.method
+        val method = pendingCall?.method ?: return
         val ok = strictBooleanOrNull(json, "ok")
         if (ok == null) {
             callback.onRpcError(id, method, "parse_error", "Invalid response status from host")
@@ -128,7 +128,7 @@ class MobileRpcSession(
                 callback.onRpcError(id, method, "parse_error", "Invalid response result from host")
                 return
             }
-            callback.onRpcResult(id, method ?: "unknown", result ?: JSONObject())
+            callback.onRpcResult(id, method, result ?: JSONObject())
         } else {
             val error = json.optJSONObject("error")
             if (error == null && json.has("error") && !json.isNull("error")) {
