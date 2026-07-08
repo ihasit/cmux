@@ -532,6 +532,24 @@ function renderNotificationStatus() {
   }
 }
 
+function refreshActiveTerminalFromWorkspaces() {
+  if (!state.activeWorkspace || !state.activeTerminal) return false;
+  const workspace = state.workspaces.find((item) => item.id === state.activeWorkspace.id);
+  const terminal = workspace?.terminals?.find((item) => item.id === state.activeTerminal.id);
+  if (!workspace || !terminal) {
+    state.activeWorkspace = null;
+    state.activeTerminal = null;
+    state.effectiveViewport = null;
+    state.lastViewportReport = "";
+    return false;
+  }
+  state.activeWorkspace = workspace;
+  state.activeTerminal = terminal;
+  elements.terminalTitle.textContent = terminal.title || t("terminal.defaultTitle");
+  elements.terminalMeta.textContent = workspace.title || "";
+  return true;
+}
+
 function workspaceListItems(workspaces) {
   const groupsById = new Map((state.groups || []).map((group) => [group.id, group]));
   const emittedGroups = new Set();
@@ -1282,10 +1300,16 @@ function handleRpcResult(method, result) {
   }
   if (method === "mobile.workspace.list" || method === "mobile.terminal.create" || method === "workspace.create") {
     state.workspaceRefreshPending = false;
+    const wasTerminalVisible = !elements.terminalView.classList.contains("hidden");
     state.workspaces = result.workspaces || [];
     state.groups = result.groups || [];
     renderWorkspaces();
-    showScreen("workspaces");
+    const activeTerminalStillPresent = refreshActiveTerminalFromWorkspaces();
+    if (wasTerminalVisible && activeTerminalStillPresent && !result.created_workspace_id && !result.created_terminal_id) {
+      showScreen("terminal");
+    } else {
+      showScreen("workspaces");
+    }
     if (result.created_workspace_id && !result.created_terminal_id) {
       const workspace = state.workspaces.find((item) => item.id === result.created_workspace_id);
       const terminal = workspace?.terminals?.[0];
