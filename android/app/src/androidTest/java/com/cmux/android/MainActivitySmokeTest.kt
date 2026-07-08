@@ -1353,6 +1353,88 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun workspaceGroupsRequireHostCapability() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "open"
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.host.status",
+                    "result": {
+                      "capabilities": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 2,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-grouped",
+                          "title": "Grouped Workspace",
+                          "group_id": "group-1",
+                          "terminals": []
+                        }
+                      ],
+                      "groups": [
+                        {
+                          "id": "group-1",
+                          "name": "Grouped Section",
+                          "is_collapsed": false
+                        }
+                      ]
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.evaluateScript(
+                """
+                window.__groupToggleCalls = 0;
+                window.cmuxAndroid = {
+                  setWorkspaceGroupCollapsed: function() {
+                    window.__groupToggleCalls += 1;
+                  }
+                };
+                true;
+                """.trimIndent()
+            )
+
+            val groupState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  groupHeader: document.querySelector('[data-toggle-group="group-1"]') !== null,
+                  groupedWorkspace: document.getElementById('workspaceList').textContent.includes('Grouped Workspace')
+                })
+                """.trimIndent()
+            )
+            check(groupState.contains("\"groupHeader\":false"))
+            check(groupState.contains("\"groupedWorkspace\":true"))
+            val calls = scenario.evaluateScript("window.__groupToggleCalls")
+            check(calls == "0")
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
