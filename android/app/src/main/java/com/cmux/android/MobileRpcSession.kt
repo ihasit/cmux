@@ -61,18 +61,12 @@ class MobileRpcSession(
     fun request(method: String, params: JSONObject = JSONObject()): Int {
         val requestId = nextId.getAndIncrement()
         val request = requestEnvelope(requestId, method, params)
-        val framePayload = request.toString()
-        if (framePayload.toByteArray(Charsets.UTF_8).size > MAX_FRAME_BYTES) {
-            callback.onRpcError(requestId, method, "payload_too_large", "request frame too large")
-            return requestId
-        }
         pending[requestId] = PendingCall(method, params, sentWithStackAuth = request.has("auth"))
         val activeClient = client
         if (activeClient == null) {
             pending.remove(requestId)
             callback.onRpcError(requestId, method, "transport_error", "not connected")
-        } else {
-            activeClient.sendFrame(framePayload)
+        } else if (sendRequestFrame(activeClient, requestId, method, request)) {
             trackSubscriptionRequest(method, params)
         }
         return requestId
@@ -355,9 +349,20 @@ class MobileRpcSession(
         if (activeClient == null) {
             pending.remove(requestId)
             callback.onRpcError(requestId, pendingCall.method, "transport_error", "not connected")
-        } else {
-            activeClient.sendFrame(retry.toString())
+        } else if (!sendRequestFrame(activeClient, requestId, pendingCall.method, retry)) {
+            pending.remove(requestId)
         }
+    }
+
+    private fun sendRequestFrame(activeClient: MobileFrameClient, requestId: Int, method: String, request: JSONObject): Boolean {
+        val framePayload = request.toString()
+        if (framePayload.toByteArray(Charsets.UTF_8).size > MAX_FRAME_BYTES) {
+            pending.remove(requestId)
+            callback.onRpcError(requestId, method, "payload_too_large", "request frame too large")
+            return false
+        }
+        activeClient.sendFrame(framePayload)
+        return true
     }
 
     private fun failPending(code: String, message: String) {
