@@ -1365,7 +1365,7 @@ function handleRpcResult(method, result) {
       const terminal = workspace?.terminals?.[0];
       if (workspace && terminal) openTerminal(workspace.id, terminal.id);
     } else if (result.created_terminal_id) {
-      const workspaceId = result.created_workspace_id || result.workspaces?.[0]?.id;
+      const workspaceId = result.created_workspace_id || workspaceIdForTerminal(result.created_terminal_id);
       if (workspaceId) openTerminal(workspaceId, result.created_terminal_id);
     }
     return;
@@ -1430,6 +1430,12 @@ function handleRpcResult(method, result) {
   if (method === "mobile.events.subscribe") {
     return;
   }
+}
+
+function workspaceIdForTerminal(terminalId) {
+  return state.workspaces.find((workspace) => {
+    return (workspace.terminals || []).some((terminal) => terminal.id === terminalId);
+  })?.id || "";
 }
 
 function handlePushEvent(type, payload) {
