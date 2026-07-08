@@ -86,7 +86,8 @@ class MobileWebSocketClient(
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 if (!closed.get()) {
-                    callback.onFrame(text)
+                    callback.onError("unexpected websocket text frame")
+                    close("invalid websocket frame")
                 }
             }
 
