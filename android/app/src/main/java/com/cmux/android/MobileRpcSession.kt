@@ -29,6 +29,11 @@ class MobileRpcSession(
         val retriedAfterAuthRefresh: Boolean = false
     )
 
+    private data class ActiveSubscription(
+        val streamId: String,
+        val params: JSONObject
+    )
+
     private val nextId = AtomicInteger(1)
     private val pending = ConcurrentHashMap<Int, PendingCall>()
     private var client: MobileFrameClient? = null
@@ -40,7 +45,7 @@ class MobileRpcSession(
     private var allowRouteFailover: Boolean = false
     private var closedNotified: Boolean = false
     private var connectionGeneration: Int = 0
-    private var subscribedStreamId: String? = null
+    private var activeSubscription: ActiveSubscription? = null
 
     fun connect(route: CmuxRoute) {
         connect(listOf(route))
@@ -88,7 +93,11 @@ class MobileRpcSession(
     override fun onOpen() {
         openedActiveRoute = true
         preOpenRouteError = null
+        val subscriptionBeforeOpenCallback = activeSubscription
         callback.onConnectionState("open")
+        if (activeSubscription == subscriptionBeforeOpenCallback) {
+            resubscribeActiveStream()
+        }
     }
 
     override fun onFrame(payload: String) {
@@ -137,7 +146,7 @@ class MobileRpcSession(
             }
             val errorObject = error ?: JSONObject()
             val code = errorObject.optString("code", "host_error")
-            if (pendingCall != null && shouldRetryAfterStackAuthRefresh(pendingCall, code)) {
+            if (shouldRetryAfterStackAuthRefresh(pendingCall, code)) {
                 retryWithFreshStackToken(id, pendingCall)
                 return
             }
@@ -245,7 +254,7 @@ class MobileRpcSession(
         activeRoute = null
         routeCandidates = emptyList()
         routeCandidateIndex = -1
-        subscribedStreamId = null
+        activeSubscription = null
     }
 
     private inner class GenerationCallback(
@@ -297,17 +306,19 @@ class MobileRpcSession(
 
     private fun trackSubscriptionRequest(method: String, params: JSONObject) {
         if (method == "mobile.events.subscribe") {
-            subscribedStreamId = params.optString("stream_id").trim().takeIf { it.isNotEmpty() }
+            val streamId = params.optString("stream_id").trim()
+            activeSubscription = streamId.takeIf { it.isNotEmpty() }
+                ?.let { ActiveSubscription(it, JSONObject(params.toString())) }
         } else if (method == "mobile.events.unsubscribe") {
             val streamId = params.optString("stream_id").trim()
-            if (streamId.isNotEmpty() && streamId == subscribedStreamId) {
-                subscribedStreamId = null
+            if (streamId.isNotEmpty() && streamId == activeSubscription?.streamId) {
+                activeSubscription = null
             }
         }
     }
 
     private fun unsubscribeActiveStream() {
-        val streamId = subscribedStreamId?.takeIf { it.isNotBlank() } ?: return
+        val streamId = activeSubscription?.streamId?.takeIf { it.isNotBlank() } ?: return
         val activeClient = client ?: return
         val requestId = nextId.getAndIncrement()
         val request = requestEnvelope(
@@ -316,7 +327,24 @@ class MobileRpcSession(
             JSONObject().put("stream_id", streamId)
         )
         sendRequestFrame(activeClient, requestId, "mobile.events.unsubscribe", request)
-        subscribedStreamId = null
+        activeSubscription = null
+    }
+
+    private fun resubscribeActiveStream() {
+        val subscription = activeSubscription ?: return
+        val activeClient = client ?: return
+        val requestId = nextId.getAndIncrement()
+        val request = requestEnvelope(
+            requestId,
+            "mobile.events.subscribe",
+            JSONObject(subscription.params.toString())
+        )
+        pending[requestId] = PendingCall(
+            method = "mobile.events.subscribe",
+            params = subscription.params,
+            sentWithStackAuth = request.has("auth")
+        )
+        sendRequestFrame(activeClient, requestId, "mobile.events.subscribe", request)
     }
 
     private fun shouldRetryAfterStackAuthRefresh(pendingCall: PendingCall, code: String): Boolean {

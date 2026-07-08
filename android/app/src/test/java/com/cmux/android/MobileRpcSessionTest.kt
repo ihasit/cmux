@@ -776,6 +776,55 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun failoverDoesNotResubscribeOldStreamWhenOpenCallbackSubscribesNewStream() {
+        val clients = mutableListOf<RecordingFrameClient>()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        lateinit var session: MobileRpcSession
+        val callback = object : MobileRpcSession.Callback {
+            private var openCount = 0
+
+            override fun onConnectionState(state: String, detail: String?) {
+                if (state != "open") return
+                openCount += 1
+                session.request(
+                    "mobile.events.subscribe",
+                    JSONObject()
+                        .put("stream_id", "stream-android-$openCount")
+                        .put("topics", JSONArray().put("workspace.updated"))
+                )
+            }
+
+            override fun onRpcResult(requestId: Int, method: String, result: JSONObject) = Unit
+
+            override fun onRpcError(requestId: Int?, method: String?, code: String, message: String) = Unit
+
+            override fun onPushEvent(type: String, payload: JSONObject) = Unit
+        }
+        session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient().also { clients.add(it) }
+            }
+        )
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.onOpen()
+
+        session.onClose("lost after open")
+        session.onOpen()
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(1, clients[0].sentFrames.size)
+        assertEquals(1, clients[1].sentFrames.size)
+        val resubscribe = JSONObject(clients[1].sentFrames.single())
+        assertEquals("mobile.events.subscribe", resubscribe.getString("method"))
+        assertEquals("stream-android-2", resubscribe.getJSONObject("params").getString("stream_id"))
+    }
+
+    @Test
     fun errorAfterOpenFailsOverToNextRouteWhenAvailable() {
         val clients = mutableListOf<RecordingFrameClient>()
         val connectedRoutes = mutableListOf<CmuxRoute>()
