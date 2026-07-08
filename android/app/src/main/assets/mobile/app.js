@@ -753,11 +753,21 @@ function closeActiveTerminal() {
   if (state.activeWorkspace && state.activeTerminal) {
     bridge().clearViewport(state.activeWorkspace.id, state.activeTerminal.id);
   }
+  clearActiveTerminalState();
+  showScreen("workspaces");
+}
+
+function clearActiveTerminalState() {
   state.activeWorkspace = null;
   state.activeTerminal = null;
   state.effectiveViewport = null;
   state.lastViewportReport = "";
-  showScreen("workspaces");
+  state.pendingScrollLines = 0;
+  state.terminalFrames.clear();
+  window.clearTimeout(state.viewportReportTimer);
+  window.clearTimeout(state.scrollFlushTimer);
+  elements.terminalOutput.textContent = "";
+  elements.terminalOutput.removeAttribute("data-columns");
 }
 
 function queueTerminalScroll(deltaLines, options = {}) {
@@ -1496,6 +1506,10 @@ window.cmuxNativeEvent = (event) => {
       state.inferredUnreadNotificationCount = 0;
       state.authoritativeUnreadNotificationCount = null;
       state.deliveredNotificationIds = [];
+      if (nextState === "closed") {
+        clearActiveTerminalState();
+        showScreen("workspaces");
+      }
       renderNotificationStatus();
     }
     renderConnectionControls();
