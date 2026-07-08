@@ -61,8 +61,8 @@ Implemented:
 - Preserve live host event subscriptions across route failover and reconnects.
 - Connect to WebSocket attach routes when a pairing payload advertises one.
 - Call `mobile.host.status`, `mobile.workspace.list`, `mobile.terminal.replay`, `mobile.terminal.input`, `mobile.terminal.paste`, and `mobile.terminal.create`.
-- Subscribe to `workspace.updated`, `terminal.render_grid`, `terminal.set_font`, `notification.badge`, and `notification.dismissed` host events for live refresh.
-- Render workspace rows, groups, and styled render-grid terminal output in the WebView.
+- Subscribe to `workspace.updated`, `terminal.render_grid`, `terminal.bytes`, `terminal.set_font`, `notification.badge`, and `notification.dismissed` host events for live refresh.
+- Render workspace rows, groups, styled render-grid terminal output, and raw terminal byte fallback output in the WebView.
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Copy the currently visible terminal output from the WebView terminal.
 - Provide terminal quick keys for Enter, Tab, Esc, Backspace, Ctrl-A/C/D/E/L/U/W/Z, arrow keys, Home/End, and Page Up/Down in the WebView terminal.
