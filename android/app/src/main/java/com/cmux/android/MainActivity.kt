@@ -1,16 +1,21 @@
 package com.cmux.android
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.activity.ComponentActivity
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var bridge: MobileWebBridge
+    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+        bridge.handleScannedPairingCode(result.contents)
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +33,15 @@ class MainActivity : Activity() {
         setContentView(webView)
         webView.loadUrl("file:///android_asset/mobile/index.html")
         bridge.handlePairingURL(intent?.dataString)
+    }
+
+    fun startPairingScan() {
+        val options = ScanOptions()
+            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            .setPrompt("")
+            .setBeepEnabled(false)
+            .setOrientationLocked(false)
+        scanLauncher.launch(options)
     }
 
     override fun onNewIntent(intent: Intent) {

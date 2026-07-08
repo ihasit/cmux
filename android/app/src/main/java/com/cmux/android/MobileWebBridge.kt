@@ -9,7 +9,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
-class MobileWebBridge(context: Context, private val webView: WebView) : MobileRpcSession.Callback {
+class MobileWebBridge(private val context: Context, private val webView: WebView) : MobileRpcSession.Callback {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val store = PairedMacStore(context)
     private val parser = PairingParser()
@@ -51,6 +51,23 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
             val messageKey = (error as? PairingException)?.messageKey ?: "pair.error.failed"
             emit("error", JSONObject().put("message_key", messageKey))
         }
+    }
+
+    @JavascriptInterface
+    fun scanPairingCode() {
+        mainHandler.post {
+            (context as? MainActivity)?.startPairingScan()
+                ?: emit("error", JSONObject().put("message_key", "pair.scanUnavailable"))
+        }
+    }
+
+    fun handleScannedPairingCode(rawValue: String?) {
+        val value = rawValue?.trim().orEmpty()
+        if (value.isEmpty()) {
+            emit("error", JSONObject().put("message_key", "pair.scanCanceled"))
+            return
+        }
+        pair(value)
     }
 
     @JavascriptInterface

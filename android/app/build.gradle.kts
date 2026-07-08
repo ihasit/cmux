@@ -30,3 +30,8 @@ kotlin {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
+
+dependencies {
+    implementation("androidx.activity:activity-ktx:1.9.3")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+}

@@ -28,6 +28,7 @@ const messages = {
     "pair.subtitle": "Paste a cmux pairing link or enter the route shown on your Mac.",
     "pair.link": "Pairing link",
     "pair.placeholder": "cmux-ios://attach?v=2&r=100.64.0.5:58465",
+    "pair.scan": "Scan QR",
     "pair.connect": "Pair and connect",
     "pair.error.empty": "Pairing code is empty.",
     "pair.error.scheme": "Pairing code must start with cmux-ios:// or cmux-ios-dev://.",
@@ -39,6 +40,8 @@ const messages = {
     "pair.error.missingPayload": "Pairing payload is missing.",
     "pair.error.invalidRoute": "Pairing code has an invalid host or port.",
     "pair.error.failed": "Pairing failed.",
+    "pair.scanCanceled": "QR scan canceled.",
+    "pair.scanUnavailable": "QR scanning is unavailable on this device.",
     "paired.defaultTitle": "Paired Mac",
     "paired.noRoute": "No supported route",
     "paired.notFound": "Paired Mac was not found.",
@@ -101,6 +104,7 @@ const messages = {
     "pair.subtitle": "cmux のペアリングリンクを貼り付けるか、Mac に表示された経路を入力します。",
     "pair.link": "ペアリングリンク",
     "pair.placeholder": "cmux-ios://attach?v=2&r=100.64.0.5:58465",
+    "pair.scan": "QR をスキャン",
     "pair.connect": "ペアリングして接続",
     "pair.error.empty": "ペアリングコードが空です。",
     "pair.error.scheme": "ペアリングコードは cmux-ios:// または cmux-ios-dev:// で始まる必要があります。",
@@ -112,6 +116,8 @@ const messages = {
     "pair.error.missingPayload": "ペアリングペイロードがありません。",
     "pair.error.invalidRoute": "ペアリングコードのホストまたはポートが無効です。",
     "pair.error.failed": "ペアリングに失敗しました。",
+    "pair.scanCanceled": "QR スキャンをキャンセルしました。",
+    "pair.scanUnavailable": "このデバイスでは QR スキャンを利用できません。",
     "paired.defaultTitle": "ペアリング済み Mac",
     "paired.noRoute": "対応する経路がありません",
     "paired.notFound": "ペアリング済み Mac が見つかりません。",
@@ -180,6 +186,7 @@ const elements = {
   closeConnection: document.getElementById("closeConnection"),
   pairingView: document.getElementById("pairingView"),
   pairingCode: document.getElementById("pairingCode"),
+  scanPairingCode: document.getElementById("scanPairingCode"),
   pairButton: document.getElementById("pairButton"),
   pairedList: document.getElementById("pairedList"),
   workspaceView: document.getElementById("workspaceView"),
@@ -1107,6 +1114,9 @@ window.cmuxNativeEvent = (event) => {
 
 elements.pairButton.addEventListener("click", () => {
   bridge().pair(elements.pairingCode.value);
+});
+elements.scanPairingCode.addEventListener("click", () => {
+  bridge().scanPairingCode();
 });
 
 elements.pairedList.addEventListener("click", (event) => {

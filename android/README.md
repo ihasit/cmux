@@ -49,12 +49,12 @@ Implemented:
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
+- Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
 - Provide English and Japanese WebView strings.
 
 Not implemented yet:
 
-- QR camera scanning.
 - Stack Auth account preflight / token auth.
 - WebSocket transport.
 - Android instrumentation/unit tests.
@@ -110,5 +110,5 @@ If the repository later adds a Gradle wrapper, prefer:
 - Call `mobile.host.status`. Done.
 - Persist paired Mac routes in encrypted Android storage. Done with Android Keystore AES-GCM.
 - Render terminal output in the WebView. Done for styled render-grid frames.
-- Add QR scanning with CameraX or a small native scanner module.
+- Add QR scanning with CameraX or a small native scanner module. Done with ZXing embedded scanner.
 - Add WebSocket transport once the Mac side advertises `.websocket` routes.
