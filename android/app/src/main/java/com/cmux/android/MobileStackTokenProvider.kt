@@ -132,12 +132,32 @@ class StackTokenRefresher(
                             StackRefreshOutcome.Success(accessToken, refreshToken)
                         }
                     }
-                    400, 401 -> StackRefreshOutcome.DefinitivelyRejected
+                    400, 401 -> {
+                        val errorCode = response.body?.string()
+                            ?.let(::stackOAuthErrorCode)
+                        if (isDefinitiveRefreshTokenError(errorCode)) {
+                            StackRefreshOutcome.DefinitivelyRejected
+                        } else {
+                            StackRefreshOutcome.TransientFailure
+                        }
+                    }
                     else -> StackRefreshOutcome.TransientFailure
                 }
             }
         }.getOrElse { StackRefreshOutcome.TransientFailure }
     }
+}
+
+private fun stackOAuthErrorCode(body: String): String? {
+    return runCatching {
+        JSONObject(body).optStrictString("error")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+    }.getOrNull()
+}
+
+private fun isDefinitiveRefreshTokenError(errorCode: String?): Boolean {
+    return errorCode == "invalid_grant" || errorCode == "invalid_refresh_token"
 }
 
 private fun isTokenFreshEnough(accessToken: String?): Boolean {
