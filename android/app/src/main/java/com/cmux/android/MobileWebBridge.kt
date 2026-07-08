@@ -236,10 +236,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun renameWorkspace(workspaceId: String, title: String) {
         session.request(
             "workspace.action",
-            JSONObject()
-                .put("workspace_id", workspaceId)
-                .put("client_id", CLIENT_ID)
-                .put("action", "rename")
+            MobileRpcParams.workspaceAction(workspaceId, "rename")
                 .put("title", title.trim())
         )
     }
@@ -248,10 +245,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun setWorkspacePinned(workspaceId: String, pinned: Boolean) {
         session.request(
             "workspace.action",
-            JSONObject()
-                .put("workspace_id", workspaceId)
-                .put("client_id", CLIENT_ID)
-                .put("action", if (pinned) "pin" else "unpin")
+            MobileRpcParams.workspaceAction(workspaceId, if (pinned) "pin" else "unpin")
         )
     }
 
@@ -259,10 +253,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun setWorkspaceUnread(workspaceId: String, unread: Boolean) {
         session.request(
             "workspace.action",
-            JSONObject()
-                .put("workspace_id", workspaceId)
-                .put("client_id", CLIENT_ID)
-                .put("action", if (unread) "mark_unread" else "mark_read")
+            MobileRpcParams.workspaceAction(workspaceId, if (unread) "mark_unread" else "mark_read")
         )
     }
 
@@ -270,9 +261,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun closeWorkspace(workspaceId: String) {
         session.request(
             "workspace.close",
-            JSONObject()
-                .put("workspace_id", workspaceId)
-                .put("client_id", CLIENT_ID)
+            MobileRpcParams.closeWorkspace(workspaceId)
         )
     }
 
@@ -281,9 +270,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         val deliveredIds = runCatching { JSONArray(deliveredIdsJson) }.getOrElse { JSONArray() }
         session.request(
             "notification.reconcile",
-            JSONObject()
-                .put("client_id", CLIENT_ID)
-                .put("delivered_ids", deliveredIds)
+            MobileRpcParams.reconcileNotifications(deliveredIds)
         )
     }
 
@@ -292,9 +279,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         val notificationIds = runCatching { JSONArray(notificationIdsJson) }.getOrElse { JSONArray() }
         session.request(
             "notification.dismiss",
-            JSONObject()
-                .put("client_id", CLIENT_ID)
-                .put("notification_ids", notificationIds)
+            MobileRpcParams.dismissNotifications(notificationIds)
         )
     }
 
@@ -302,9 +287,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun setWorkspaceGroupCollapsed(groupId: String, collapsed: Boolean) {
         session.request(
             if (collapsed) "workspace.group.collapse" else "workspace.group.expand",
-            JSONObject()
-                .put("group_id", groupId)
-                .put("client_id", CLIENT_ID)
+            MobileRpcParams.workspaceGroup(groupId)
         )
     }
 
@@ -317,7 +300,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun replayTerminal(workspaceId: String, terminalId: String, columns: Int, rows: Int) {
         session.request(
             "mobile.terminal.replay",
-            terminalParams(workspaceId, terminalId, columns, rows)
+            MobileRpcParams.terminalViewport(workspaceId, terminalId, columns, rows)
         )
     }
 
@@ -325,7 +308,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun reportViewport(workspaceId: String, terminalId: String, columns: Int, rows: Int) {
         session.request(
             "mobile.terminal.viewport",
-            terminalParams(workspaceId, terminalId, columns, rows)
+            MobileRpcParams.terminalViewport(workspaceId, terminalId, columns, rows)
         )
     }
 
@@ -333,12 +316,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun clearViewport(workspaceId: String, terminalId: String) {
         session.request(
             "mobile.terminal.viewport",
-            JSONObject()
-                .put("workspace_id", workspaceId)
-                .put("surface_id", terminalId)
-                .put("terminal_id", terminalId)
-                .put("client_id", CLIENT_ID)
-                .put("clear", true)
+            MobileRpcParams.clearTerminalViewport(workspaceId, terminalId)
         )
     }
 
@@ -346,7 +324,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun sendInput(workspaceId: String, terminalId: String, text: String, columns: Int, rows: Int) {
         session.request(
             "mobile.terminal.input",
-            terminalParams(workspaceId, terminalId, columns, rows).put("text", text)
+            MobileRpcParams.terminalInput(workspaceId, terminalId, text, columns, rows)
         )
     }
 
@@ -354,9 +332,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     fun pasteText(workspaceId: String, terminalId: String, text: String, submitKey: String, columns: Int, rows: Int) {
         session.request(
             "mobile.terminal.paste",
-            terminalParams(workspaceId, terminalId, columns, rows)
-                .put("text", text)
-                .put("submit_key", submitKey.ifBlank { "return" })
+            MobileRpcParams.terminalPaste(workspaceId, terminalId, text, submitKey, columns, rows)
         )
     }
 
@@ -371,9 +347,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     ) {
         session.request(
             "mobile.terminal.paste_image",
-            terminalParams(workspaceId, terminalId, columns, rows)
-                .put("image_base64", imageBase64)
-                .put("image_format", imageFormat.ifBlank { "png" })
+            MobileRpcParams.terminalPasteImage(workspaceId, terminalId, imageBase64, imageFormat, columns, rows)
         )
     }
 
@@ -388,27 +362,26 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         columns: Int,
         rows: Int
     ) {
-        val params = terminalParams(workspaceId, terminalId, columns, rows)
-            .put("delta_lines", deltaLines)
-            .put("col", column.coerceAtLeast(0))
-            .put("row", row.coerceAtLeast(0))
-        if (maxScrollbackRows > 0) {
-            params.put("max_scrollback_rows", maxScrollbackRows.coerceIn(1, 20000))
-        }
-        session.request("mobile.terminal.scroll", params)
+        session.request(
+            "mobile.terminal.scroll",
+            MobileRpcParams.terminalScroll(
+                workspaceId = workspaceId,
+                terminalId = terminalId,
+                deltaLines = deltaLines,
+                column = column,
+                row = row,
+                maxScrollbackRows = maxScrollbackRows,
+                columns = columns,
+                rows = rows
+            )
+        )
     }
 
     @JavascriptInterface
     fun clickTerminal(workspaceId: String, terminalId: String, column: Int, row: Int) {
         session.request(
             "mobile.terminal.mouse",
-            JSONObject()
-                .put("workspace_id", workspaceId)
-                .put("surface_id", terminalId)
-                .put("terminal_id", terminalId)
-                .put("client_id", CLIENT_ID)
-                .put("col", column.coerceAtLeast(0))
-                .put("row", row.coerceAtLeast(0))
+            MobileRpcParams.terminalMouse(workspaceId, terminalId, column, row)
         )
     }
 
@@ -516,16 +489,6 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         val runnable = reconnectRunnable ?: return
         mainHandler.removeCallbacks(runnable)
         reconnectRunnable = null
-    }
-
-    private fun terminalParams(workspaceId: String, terminalId: String, columns: Int, rows: Int): JSONObject {
-        return JSONObject()
-            .put("workspace_id", workspaceId)
-            .put("terminal_id", terminalId)
-            .put("surface_id", terminalId)
-            .put("client_id", CLIENT_ID)
-            .put("viewport_columns", columns.coerceIn(20, 300))
-            .put("viewport_rows", rows.coerceIn(5, 120))
     }
 
     private fun subscribeToEvents(capabilities: MobileEventTopics.HostStatusCapabilities) {
