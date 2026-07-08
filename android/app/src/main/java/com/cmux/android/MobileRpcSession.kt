@@ -55,7 +55,9 @@ class MobileRpcSession(private val callback: Callback) : MobileTcpClient.Callbac
         }
         val id = if (json.has("id") && !json.isNull("id")) json.optInt("id") else null
         if (id == null) {
-            callback.onPushEvent(json.optString("type", "event"), json)
+            val topic = json.optString("topic", json.optString("type", "event"))
+            val payload = json.optJSONObject("payload") ?: json
+            callback.onPushEvent(topic, payload)
             return
         }
         val pendingCall = pending.remove(id)

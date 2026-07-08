@@ -7,6 +7,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 class MobileWebBridge(context: Context, private val webView: WebView) : MobileRpcSession.Callback {
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -16,6 +17,7 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     private var activeMac: PairedMac? = null
     private var pageReady = false
     private var pendingPairingURL: String? = null
+    private var streamId = UUID.randomUUID().toString()
 
     @JavascriptInterface
     fun initialState() {
@@ -120,6 +122,7 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     override fun onConnectionState(state: String, detail: String?) {
         emit("connection", JSONObject().put("state", state).put("detail", detail))
         if (state == "open") {
+            subscribeToEvents()
             session.request("mobile.host.status")
             session.request("mobile.workspace.list")
         }
@@ -174,6 +177,19 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
             .put("client_id", CLIENT_ID)
             .put("viewport_columns", columns.coerceIn(20, 300))
             .put("viewport_rows", rows.coerceIn(5, 120))
+    }
+
+    private fun subscribeToEvents() {
+        streamId = UUID.randomUUID().toString()
+        val topics = JSONArray()
+            .put("workspace.updated")
+            .put("terminal.render_grid")
+        session.request(
+            "mobile.events.subscribe",
+            JSONObject()
+                .put("stream_id", streamId)
+                .put("topics", topics)
+        )
     }
 
     private fun pairedMacsJson(macs: List<PairedMac> = store.list()): JSONArray {

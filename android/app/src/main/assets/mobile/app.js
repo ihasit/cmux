@@ -41,6 +41,7 @@ const messages = {
     "terminal.loading": "Loading terminal replay...",
     "terminal.empty": "(terminal is empty)",
     "terminal.inputPlaceholder": "Send input to the terminal",
+    "terminal.live": "Live terminal update received.",
     "host.connected": "Connected",
     "host.defaultName": "Connected Mac",
     "request.failed": "Request failed.",
@@ -85,6 +86,7 @@ const messages = {
     "terminal.loading": "ターミナルの再生を読み込み中...",
     "terminal.empty": "（ターミナルは空です）",
     "terminal.inputPlaceholder": "ターミナルへ入力を送信",
+    "terminal.live": "ターミナルのライブ更新を受信しました。",
     "host.connected": "接続済み",
     "host.defaultName": "接続済み Mac",
     "request.failed": "リクエストに失敗しました。",
@@ -347,6 +349,25 @@ function handleRpcResult(method, result) {
   }
   if (method === "mobile.terminal.input" || method === "mobile.terminal.paste") {
     window.setTimeout(replayActiveTerminal, 180);
+    return;
+  }
+  if (method === "mobile.events.subscribe") {
+    return;
+  }
+}
+
+function handlePushEvent(type, payload) {
+  if (type === "workspace.updated") {
+    bridge().refreshWorkspaces();
+    return;
+  }
+  if (type === "terminal.render_grid") {
+    const renderGrid = payload.render_grid || payload;
+    const surfaceId = renderGrid.surface_id || payload.surface_id;
+    if (state.activeTerminal && surfaceId === state.activeTerminal.id) {
+      elements.terminalOutput.textContent = renderGridToText(renderGrid) || t("terminal.empty");
+      showToast(t("terminal.live"));
+    }
   }
 }
 
@@ -365,6 +386,10 @@ window.cmuxNativeEvent = (event) => {
   }
   if (event.type === "rpcResult") {
     handleRpcResult(event.payload.method, event.payload.result || {});
+    return;
+  }
+  if (event.type === "push") {
+    handlePushEvent(event.payload.type, event.payload.payload || {});
     return;
   }
   if (event.type === "rpcError" || event.type === "error") {
