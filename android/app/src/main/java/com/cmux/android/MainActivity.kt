@@ -78,12 +78,12 @@ class MainActivity : ComponentActivity() {
 
     private fun pairingValue(intent: Intent?): String? {
         if (intent == null) return null
-        if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
-            return intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
-        }
-        if (intent.action == Intent.ACTION_PROCESS_TEXT) {
-            return intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
-        }
-        return intent.dataString ?: intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+        return PairingIntentValue.fromParts(
+            action = intent.action,
+            type = intent.type,
+            dataString = intent.dataString,
+            extraText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT),
+            processText = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)
+        )
     }
 }
