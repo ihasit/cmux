@@ -1127,10 +1127,17 @@ function renderTerminalReplay(result) {
     if (!renderGridTargetsActiveTerminal(result.render_grid)) {
       return;
     }
+    resetActiveTerminalByteSequence(result.render_grid);
     renderTerminalFrame(result.render_grid, { reset: true });
     return;
   }
+  resetActiveTerminalByteSequence(result);
   elements.terminalOutput.textContent = decodeReplayText(result) || t("terminal.empty");
+}
+
+function resetActiveTerminalByteSequence(payload = {}) {
+  const surfaceId = payload.surface_id || payload.surfaceID || payload.surfaceId || state.activeTerminal?.id || "active";
+  state.terminalByteEndSeqBySurface.delete(surfaceId);
 }
 
 function appendTerminalBytes(payload) {
