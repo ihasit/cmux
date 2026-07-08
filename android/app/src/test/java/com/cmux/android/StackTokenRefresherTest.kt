@@ -27,13 +27,13 @@ class StackTokenRefresherTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"access_token":"new-access-token"}""")
+                .setBody("""{"access_token":"new-access-token","refresh_token":"new-refresh-token"}""")
         )
         val refresher = refresher()
 
         val outcome = refresher.refresh(" refresh token/with spaces ")
 
-        assertEquals(StackRefreshOutcome.Success("new-access-token"), outcome)
+        assertEquals(StackRefreshOutcome.Success("new-access-token", "new-refresh-token"), outcome)
         val request = server.takeRequest()
         assertEquals("/stack-base/api/v1/auth/oauth/token", request.path)
         assertEquals("POST", request.method)
