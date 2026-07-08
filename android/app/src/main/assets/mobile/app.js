@@ -146,6 +146,7 @@ const messages = {
     "scroll.up": "Scroll up",
     "scroll.down": "Scroll down",
     "paste": "Paste",
+    "clear": "Clear",
     "send": "Send",
     "forget": "Forget",
     "connect": "Connect",
@@ -270,6 +271,7 @@ const messages = {
     "scroll.up": "上へスクロール",
     "scroll.down": "下へスクロール",
     "paste": "貼り付け",
+    "clear": "消去",
     "send": "送信",
     "forget": "削除",
     "connect": "接続",
@@ -322,6 +324,7 @@ const elements = {
   imageInput: document.getElementById("imageInput"),
   pasteInput: document.getElementById("pasteInput"),
   pasteImage: document.getElementById("pasteImage"),
+  clearTerminalInput: document.getElementById("clearTerminalInput"),
   sendInput: document.getElementById("sendInput"),
   toast: document.getElementById("toast"),
 };
@@ -448,6 +451,7 @@ function renderConnectionControls() {
   setDisabled(elements.terminalInput, disconnected);
   setDisabled(elements.pasteInput, disconnected);
   setDisabled(elements.pasteImage, disconnected);
+  setDisabled(elements.clearTerminalInput, disconnected);
   setDisabled(elements.sendInput, disconnected);
 }
 
@@ -852,6 +856,11 @@ function handleTerminalInputKeydown(event) {
   if (event.key !== "Enter" || !event.ctrlKey) return;
   event.preventDefault();
   sendTerminalInput(event.shiftKey ? "paste" : "input");
+}
+
+function clearTerminalInput() {
+  elements.terminalInput.value = "";
+  elements.terminalInput.focus();
 }
 
 function sendTerminalKey(key) {
@@ -1517,6 +1526,7 @@ elements.terminalKeybar.addEventListener("click", (event) => {
 elements.sendInput.addEventListener("click", () => sendTerminalInput("input"));
 elements.pasteInput.addEventListener("click", () => sendTerminalInput("paste"));
 elements.terminalInput.addEventListener("keydown", handleTerminalInputKeydown);
+elements.clearTerminalInput.addEventListener("click", clearTerminalInput);
 elements.pasteImage.addEventListener("click", chooseImageForPaste);
 elements.imageInput.addEventListener("change", pasteSelectedImage);
 window.addEventListener("resize", scheduleViewportReport);

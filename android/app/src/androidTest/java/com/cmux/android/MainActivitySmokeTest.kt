@@ -631,6 +631,26 @@ class MainActivitySmokeTest {
             val keyboardPasteText = scenario.evaluateScript("JSON.stringify(window.__lastPasteText)")
             check(keyboardPasteText.contains("\"text\":\"multi\\nline\""))
             check(keyboardPasteText.contains("\"submitKey\":\"return\""))
+
+            scenario.evaluateScript(
+                """
+                window.__lastSendInput = null;
+                window.__lastPasteText = null;
+                document.getElementById('terminalInput').value = 'discard me';
+                true;
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "clearTerminalInput"))
+                .perform(webClick())
+
+            val clearedByButton = scenario.evaluateScript("document.getElementById('terminalInput').value")
+            check(clearedByButton == "\"\"")
+            val sendAfterClear = scenario.evaluateScript("JSON.stringify(window.__lastSendInput)")
+            val pasteAfterClear = scenario.evaluateScript("JSON.stringify(window.__lastPasteText)")
+            check(sendAfterClear == "null")
+            check(pasteAfterClear == "null")
         }
     }
 
