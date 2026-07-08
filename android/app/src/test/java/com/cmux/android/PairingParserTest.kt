@@ -354,6 +354,30 @@ class PairingParserTest {
         assertNotNull(decoded.primaryRoute)
     }
 
+    @Test
+    fun pairedMacJsonDropsInvalidStoredWebSocketRoutes() {
+        val decoded = PairedMac.fromJson(
+            JSONObject()
+                .put("id", "mac-stored-routes")
+                .put("routes", JSONArray()
+                    .put(JSONObject()
+                        .put("id", "bad-websocket")
+                        .put("kind", "websocket")
+                        .put("priority", 1)
+                        .put("url", "https://cmux.example.test/mobile"))
+                    .put(JSONObject()
+                        .put("id", "tailscale")
+                        .put("kind", "tailscale")
+                        .put("host", "100.64.0.9")
+                        .put("port", 58465)
+                        .put("priority", 10)))
+        )
+
+        assertEquals(1, decoded.routes.size)
+        assertEquals("tailscale", decoded.routes.single().id)
+        assertEquals(decoded.routes.single(), decoded.primaryRoute)
+    }
+
     private fun base64Url(json: JSONObject): String {
         return Base64.getUrlEncoder()
             .withoutPadding()
