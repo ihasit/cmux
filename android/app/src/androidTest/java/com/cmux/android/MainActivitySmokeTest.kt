@@ -205,6 +205,83 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun workspaceFiltersShowUnreadAndPinnedSubsets() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-normal",
+                          "title": "Normal Work",
+                          "preview": "ready",
+                          "is_pinned": false,
+                          "has_unread": false,
+                          "terminals": []
+                        },
+                        {
+                          "id": "workspace-unread",
+                          "title": "Unread Work",
+                          "preview": "needs attention",
+                          "is_pinned": false,
+                          "has_unread": true,
+                          "terminals": []
+                        },
+                        {
+                          "id": "workspace-pinned",
+                          "title": "Pinned Work",
+                          "preview": "important",
+                          "is_pinned": true,
+                          "has_unread": false,
+                          "terminals": []
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "workspaceList"))
+                .check(webMatches(getText(), containsString("Normal Work")))
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-workspace-filter='unread']"))
+                .perform(webClick())
+
+            val unreadList = scenario.evaluateScript("document.getElementById('workspaceList').textContent")
+            check(unreadList.contains("Unread Work"))
+            check(!unreadList.contains("Normal Work"))
+            check(!unreadList.contains("Pinned Work"))
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-workspace-filter='pinned']"))
+                .perform(webClick())
+
+            val pinnedList = scenario.evaluateScript("document.getElementById('workspaceList').textContent")
+            check(pinnedList.contains("Pinned Work"))
+            check(!pinnedList.contains("Normal Work"))
+            check(!pinnedList.contains("Unread Work"))
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-workspace-filter='all']"))
+                .perform(webClick())
+
+            val allList = scenario.evaluateScript("document.getElementById('workspaceList').textContent")
+            check(allList.contains("Normal Work"))
+            check(allList.contains("Unread Work"))
+            check(allList.contains("Pinned Work"))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()

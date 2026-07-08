@@ -21,6 +21,7 @@ const state = {
   nativeNotificationsCanRequest: false,
   stackAccessTokenConfigured: false,
   stackRefreshTokenConfigured: false,
+  workspaceFilter: "all",
 };
 
 const messages = {
@@ -69,8 +70,13 @@ const messages = {
     "paired.notFound": "Paired Mac was not found.",
     "workspaces.title": "Workspaces",
     "workspaces.empty": "No workspaces reported yet.",
+    "workspaces.filterEmpty": "No matching workspaces.",
     "workspace.new": "New workspace",
     "workspace.defaultTitle": "Workspace",
+    "workspace.filterLabel": "Workspace filters",
+    "workspace.filterAll": "All",
+    "workspace.filterUnread": "Unread",
+    "workspace.filterPinned": "Pinned",
     "workspace.rename": "Rename",
     "workspace.pin": "Pin",
     "workspace.unpin": "Unpin",
@@ -182,8 +188,13 @@ const messages = {
     "paired.notFound": "ペアリング済み Mac が見つかりません。",
     "workspaces.title": "ワークスペース",
     "workspaces.empty": "ワークスペースはまだ報告されていません。",
+    "workspaces.filterEmpty": "一致するワークスペースはありません。",
     "workspace.new": "新しいワークスペース",
     "workspace.defaultTitle": "ワークスペース",
+    "workspace.filterLabel": "ワークスペースフィルター",
+    "workspace.filterAll": "すべて",
+    "workspace.filterUnread": "未読",
+    "workspace.filterPinned": "ピン留め",
     "workspace.rename": "名前を変更",
     "workspace.pin": "ピン留め",
     "workspace.unpin": "ピン留め解除",
@@ -281,6 +292,7 @@ const elements = {
   enableNotifications: document.getElementById("enableNotifications"),
   syncNotifications: document.getElementById("syncNotifications"),
   dismissNotifications: document.getElementById("dismissNotifications"),
+  workspaceFilters: document.getElementById("workspaceFilters"),
   workspaceList: document.getElementById("workspaceList"),
   terminalView: document.getElementById("terminalView"),
   backToWorkspaces: document.getElementById("backToWorkspaces"),
@@ -428,12 +440,36 @@ function renderConnectionControls() {
 function renderWorkspaces() {
   updateUnreadCountFromWorkspaces();
   renderNotificationStatus();
+  renderWorkspaceFilters();
   if (state.workspaces.length === 0) {
     elements.workspaceList.innerHTML = `<article class="card"><div class="card-subtitle">${escapeHtml(t("workspaces.empty"))}</div></article>`;
     return;
   }
-  elements.workspaceList.innerHTML = workspaceListItems().join("");
+  const filteredWorkspaces = filteredWorkspaceList();
+  if (filteredWorkspaces.length === 0) {
+    elements.workspaceList.innerHTML = `<article class="card"><div class="card-subtitle">${escapeHtml(t("workspaces.filterEmpty"))}</div></article>`;
+    return;
+  }
+  elements.workspaceList.innerHTML = workspaceListItems(filteredWorkspaces).join("");
   renderConnectionControls();
+}
+
+function renderWorkspaceFilters() {
+  elements.workspaceFilters.querySelectorAll("[data-workspace-filter]").forEach((button) => {
+    const active = button.getAttribute("data-workspace-filter") === state.workspaceFilter;
+    button.classList.toggle("filter-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function filteredWorkspaceList() {
+  if (state.workspaceFilter === "unread") {
+    return state.workspaces.filter((workspace) => workspace.has_unread);
+  }
+  if (state.workspaceFilter === "pinned") {
+    return state.workspaces.filter((workspace) => workspace.is_pinned);
+  }
+  return state.workspaces;
 }
 
 function updateUnreadCountFromWorkspaces() {
@@ -459,11 +495,11 @@ function renderNotificationStatus() {
   }
 }
 
-function workspaceListItems() {
+function workspaceListItems(workspaces) {
   const groupsById = new Map((state.groups || []).map((group) => [group.id, group]));
   const emittedGroups = new Set();
   const items = [];
-  for (const workspace of state.workspaces) {
+  for (const workspace of workspaces) {
     const groupId = workspace.group_id;
     const group = groupId ? groupsById.get(groupId) : null;
     if (group && !emittedGroups.has(group.id)) {
@@ -1410,6 +1446,13 @@ elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorks
 elements.createWorkspace.addEventListener("click", () => bridge().createWorkspace());
 elements.showPairedMacs.addEventListener("click", () => showScreen("pairing"));
 elements.backToWorkspacesFromPairing.addEventListener("click", () => showScreen("workspaces"));
+elements.workspaceFilters.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-workspace-filter]");
+  const nextFilter = button?.getAttribute("data-workspace-filter");
+  if (!nextFilter || nextFilter === state.workspaceFilter) return;
+  state.workspaceFilter = nextFilter;
+  renderWorkspaces();
+});
 elements.enableNotifications.addEventListener("click", () => bridge().requestNotificationPermission());
 elements.syncNotifications.addEventListener("click", syncNotifications);
 elements.dismissNotifications.addEventListener("click", dismissSyncedNotifications);
