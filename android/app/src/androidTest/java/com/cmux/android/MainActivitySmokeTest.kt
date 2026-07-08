@@ -1297,6 +1297,62 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun newWorkspaceButtonRequiresHostCapability() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "open"
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.host.status",
+                    "result": {
+                      "capabilities": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.evaluateScript(
+                """
+                window.__createWorkspaceCalls = 0;
+                window.cmuxAndroid = {
+                  createWorkspace: function() {
+                    window.__createWorkspaceCalls += 1;
+                  }
+                };
+                true;
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "createWorkspace"))
+                .perform(webClick())
+
+            val capabilityState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  calls: window.__createWorkspaceCalls,
+                  toast: document.getElementById('toast').textContent
+                })
+                """.trimIndent()
+            )
+            check(capabilityState.contains("\"calls\":0"))
+            check(capabilityState.contains("This Mac does not support creating workspaces yet."))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
