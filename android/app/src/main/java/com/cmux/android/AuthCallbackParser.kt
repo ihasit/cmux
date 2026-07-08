@@ -61,7 +61,7 @@ class AuthCallbackParser {
     private fun decodeAccessToken(accessCookie: String): String? {
         if (!accessCookie.startsWith("[")) return accessCookie
         val array = runCatching { JSONArray(accessCookie) }.getOrNull() ?: return null
-        return array.optString(1).takeIf { it.isNotBlank() }
+        return (array.opt(1) as? String)?.takeIf { it.isNotBlank() }
     }
 
     private fun urlDecode(value: String): String {
