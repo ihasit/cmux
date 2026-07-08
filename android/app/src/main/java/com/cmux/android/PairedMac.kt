@@ -61,12 +61,16 @@ data class PairedMac(
                 val host = route.optString("host").trim()
                 val port = route.optInt("port", -1)
                 val url = route.optNullableString("url")
+                val kind = route.optString("kind", "tailscale")
+                if (kind == "websocket" && !isValidStoredWebSocketUrl(url)) {
+                    return@mapNotNull null
+                }
                 if (url == null && (host.isEmpty() || port !in 1..65535)) {
                     return@mapNotNull null
                 }
                 CmuxRoute(
                     id = route.optString("id", "route_$index"),
-                    kind = route.optString("kind", "tailscale"),
+                    kind = kind,
                     host = host,
                     port = port,
                     priority = route.optInt("priority", index * 10),
@@ -87,8 +91,26 @@ data class PairedMac(
     }
 }
 
+private fun isValidStoredWebSocketUrl(url: String?): Boolean {
+    val uri = runCatching { java.net.URI(url?.trim().orEmpty()) }.getOrNull() ?: return false
+    val scheme = uri.scheme?.lowercase()
+    val host = uri.host?.trim().orEmpty()
+    if (scheme != "ws" && scheme != "wss") return false
+    return host.isNotEmpty() && !host.isLoopbackLikeHost()
+}
+
 fun CmuxRoute.isSupportedMobileRoute(): Boolean {
     return kind == "tailscale" || kind == "debug_loopback" || kind == "websocket"
+}
+
+private fun String.isLoopbackLikeHost(): Boolean {
+    val lowered = trim().lowercase()
+    return lowered == "localhost" ||
+        lowered == "::1" ||
+        lowered == "0:0:0:0:0:0:0:1" ||
+        lowered.startsWith("127.") ||
+        lowered == "0.0.0.0" ||
+        lowered == "::"
 }
 
 fun JSONObject.optNullableString(name: String): String? {
