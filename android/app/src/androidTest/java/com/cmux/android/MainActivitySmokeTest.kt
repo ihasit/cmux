@@ -101,6 +101,24 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun manualHostPortPairingStoresPairedMacInWebView() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairingCode"))
+                .perform(clearElement())
+                .perform(webKeys("100.64.0.44:58465"))
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairButton"))
+                .perform(webClick())
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairedList"))
+                .check(webMatches(getText(), containsString("100.64.0.44:58465")))
+        }
+    }
+
+    @Test
     fun pairedMacListShowsSupportedRouteByPriority() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.emitNativeEvent(
