@@ -8,7 +8,8 @@ data class CmuxRoute(
     val kind: String,
     val host: String,
     val port: Int,
-    val priority: Int = 0
+    val priority: Int = 0,
+    val url: String? = null
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -16,6 +17,7 @@ data class CmuxRoute(
         .put("host", host)
         .put("port", port)
         .put("priority", priority)
+        .put("url", url)
 }
 
 data class PairedMac(
@@ -30,7 +32,7 @@ data class PairedMac(
 ) {
     val primaryRoute: CmuxRoute?
         get() = routes
-            .filter { it.kind == "tailscale" || it.kind == "debug_loopback" }
+            .filter { it.kind == "tailscale" || it.kind == "debug_loopback" || it.kind == "websocket" }
             .minWithOrNull(compareBy<CmuxRoute> { it.priority }.thenBy { it.id })
 
     fun toJson(): JSONObject {
@@ -54,7 +56,8 @@ data class PairedMac(
                 val route = routesJson.optJSONObject(index) ?: return@mapNotNull null
                 val host = route.optString("host").trim()
                 val port = route.optInt("port", -1)
-                if (host.isEmpty() || port !in 1..65535) {
+                val url = route.optNullableString("url")
+                if (url == null && (host.isEmpty() || port !in 1..65535)) {
                     return@mapNotNull null
                 }
                 CmuxRoute(
@@ -62,7 +65,8 @@ data class PairedMac(
                     kind = route.optString("kind", "tailscale"),
                     host = host,
                     port = port,
-                    priority = route.optInt("priority", index * 10)
+                    priority = route.optInt("priority", index * 10),
+                    url = url
                 )
             }
             return PairedMac(

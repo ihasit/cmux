@@ -90,14 +90,10 @@ class PairingParser {
             val occurrence = (kindCounts[kind] ?: 0) + 1
             kindCounts[kind] = occurrence
             val endpoint = routeJson.optJSONObject("e") ?: return@mapNotNull null
-            val host = endpoint.optNullableString("h") ?: return@mapNotNull null
-            val port = endpoint.optInt("p", -1)
-            if (port !in 1..65535) return@mapNotNull null
-            CmuxRoute(
+            parseRoute(
                 id = routeJson.optNullableString("i") ?: synthesizedRouteId(kind, occurrence),
                 kind = kind,
-                host = host,
-                port = port,
+                endpoint = endpoint,
                 priority = routeJson.optInt("p", index * 10)
             )
         }
@@ -120,14 +116,10 @@ class PairingParser {
         val routes = (0 until routesJson.length()).mapNotNull { index ->
             val routeJson = routesJson.optJSONObject(index) ?: return@mapNotNull null
             val endpoint = routeJson.optJSONObject("endpoint") ?: return@mapNotNull null
-            val host = endpoint.optNullableString("host") ?: return@mapNotNull null
-            val port = endpoint.optInt("port", -1)
-            if (port !in 1..65535) return@mapNotNull null
-            CmuxRoute(
+            parseRoute(
                 id = routeJson.optNullableString("id") ?: "route_$index",
                 kind = routeJson.optString("kind", "tailscale"),
-                host = host,
-                port = port,
+                endpoint = endpoint,
                 priority = routeJson.optInt("priority", index * 10)
             )
         }
@@ -165,6 +157,17 @@ class PairingParser {
         return host to requireNotNull(port)
     }
 
+    private fun parseRoute(id: String, kind: String, endpoint: JSONObject, priority: Int): CmuxRoute? {
+        val url = endpoint.optNullableString("u") ?: endpoint.optNullableString("url")
+        if (kind == "websocket" && url != null) {
+            return CmuxRoute(id, kind, host = "", port = 0, priority = priority, url = url)
+        }
+        val host = endpoint.optNullableString("h") ?: endpoint.optNullableString("host") ?: return null
+        val port = endpoint.optNullableInt("p") ?: endpoint.optNullableInt("port") ?: return null
+        if (port !in 1..65535) return null
+        return CmuxRoute(id, kind, host, port, priority)
+    }
+
     private fun isLoopbackHost(host: String): Boolean {
         val lowered = host.trim().lowercase()
         return lowered == "localhost" ||
@@ -181,7 +184,9 @@ class PairingParser {
 
     private fun stableMacId(deviceId: String?, routes: List<CmuxRoute>): String {
         if (!deviceId.isNullOrBlank()) return deviceId
-        val routeKey = routes.joinToString("|") { "${it.kind}:${it.host}:${it.port}" }
+        val routeKey = routes.joinToString("|") { route ->
+            route.url?.let { "${route.kind}:$it" } ?: "${route.kind}:${route.host}:${route.port}"
+        }
         return UUID.nameUUIDFromBytes(routeKey.toByteArray(StandardCharsets.UTF_8)).toString()
     }
 

@@ -43,6 +43,7 @@ Implemented:
 - Parse older `attach` / `pair` payload links enough to recover host/port routes.
 - Persist paired Macs with Android Keystore-backed encrypted storage.
 - Connect to the selected host route over the length-prefixed mobile TCP protocol.
+- Connect to WebSocket attach routes when a pairing payload advertises one.
 - Call `mobile.host.status`, `mobile.workspace.list`, `mobile.terminal.replay`, `mobile.terminal.input`, `mobile.terminal.paste`, and `mobile.terminal.create`.
 - Subscribe to `workspace.updated`, `terminal.render_grid`, `notification.badge`, and `notification.dismissed` host events for live refresh.
 - Render workspace rows, groups, and styled render-grid terminal output in the WebView.
@@ -56,7 +57,6 @@ Implemented:
 Not implemented yet:
 
 - Stack Auth account preflight / token auth.
-- WebSocket transport.
 - Android instrumentation/unit tests.
 
 ## Protocol target
@@ -111,4 +111,4 @@ If the repository later adds a Gradle wrapper, prefer:
 - Persist paired Mac routes in encrypted Android storage. Done with Android Keystore AES-GCM.
 - Render terminal output in the WebView. Done for styled render-grid frames.
 - Add QR scanning with CameraX or a small native scanner module. Done with ZXing embedded scanner.
-- Add WebSocket transport once the Mac side advertises `.websocket` routes.
+- Add WebSocket transport once the Mac side advertises `.websocket` routes. Done for compact/full attach payloads.

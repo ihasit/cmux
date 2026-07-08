@@ -10,29 +10,22 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 class MobileTcpClient(
-    private val callback: Callback,
+    private val callback: MobileFrameClient.Callback,
     private val connectTimeoutMillis: Int = 15_000
-) {
-    interface Callback {
-        fun onOpen()
-        fun onFrame(payload: String)
-        fun onClose(reason: String)
-        fun onError(message: String)
-    }
-
+) : MobileFrameClient {
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val closed = AtomicBoolean(true)
     private var socket: Socket? = null
     private var output: BufferedOutputStream? = null
 
-    fun connect(host: String, port: Int) {
+    override fun connect(route: CmuxRoute) {
         close("reconnecting")
         closed.set(false)
         executor.execute {
             try {
                 val nextSocket = Socket()
                 nextSocket.tcpNoDelay = true
-                nextSocket.connect(InetSocketAddress(host, port), connectTimeoutMillis)
+                nextSocket.connect(InetSocketAddress(route.host, route.port), connectTimeoutMillis)
 
                 socket = nextSocket
                 output = BufferedOutputStream(nextSocket.getOutputStream())
@@ -48,7 +41,7 @@ class MobileTcpClient(
         }
     }
 
-    fun sendFrame(payload: String) {
+    override fun sendFrame(payload: String) {
         executor.execute {
             try {
                 val bytes = payload.toByteArray(Charsets.UTF_8)
@@ -66,7 +59,7 @@ class MobileTcpClient(
         }
     }
 
-    fun close(reason: String = "closed") {
+    override fun close(reason: String) {
         if (!closed.compareAndSet(false, true)) {
             return
         }
@@ -83,7 +76,7 @@ class MobileTcpClient(
         callback.onClose(reason)
     }
 
-    fun shutdown() {
+    override fun shutdown() {
         close("activity destroyed")
         executor.shutdownNow()
     }

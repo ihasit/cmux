@@ -34,4 +34,5 @@ kotlin {
 dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
