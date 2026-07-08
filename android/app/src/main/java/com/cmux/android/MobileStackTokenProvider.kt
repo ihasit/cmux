@@ -120,15 +120,15 @@ class StackTokenRefresher(
                         val json = response.body?.string()
                             ?.let { JSONObject(it) }
                         val accessToken = json
-                            ?.optString("access_token")
+                            ?.optStrictString("access_token")
                             ?.trim()
                             ?.takeIf { it.isNotEmpty() }
                         if (accessToken == null) {
                             StackRefreshOutcome.TransientFailure
                         } else {
-                            val refreshToken = json.optString("refresh_token")
-                                .trim()
-                                .takeIf { it.isNotEmpty() }
+                            val refreshToken = json.optStrictString("refresh_token")
+                                ?.trim()
+                                ?.takeIf { it.isNotEmpty() }
                             StackRefreshOutcome.Success(accessToken, refreshToken)
                         }
                     }
@@ -162,4 +162,9 @@ private fun jwtPayload(accessToken: String?): JSONObject? {
         val payload = Base64.decode(segments[1], Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
         JSONObject(String(payload, Charsets.UTF_8))
     }.getOrNull()
+}
+
+private fun JSONObject.optStrictString(name: String): String? {
+    if (!has(name) || isNull(name)) return null
+    return opt(name) as? String
 }
