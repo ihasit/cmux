@@ -61,7 +61,7 @@ data class PairedMac(
                 val host = route.optString("host").trim()
                 val port = route.optInt("port", -1)
                 val url = route.optNullableString("url")
-                val kind = route.optString("kind", "tailscale")
+                val kind = route.optString("kind", "tailscale").trim()
                 if (kind == "websocket" && !isValidStoredWebSocketUrl(url)) {
                     return@mapNotNull null
                 }
