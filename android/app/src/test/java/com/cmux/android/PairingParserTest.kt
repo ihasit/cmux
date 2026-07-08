@@ -378,6 +378,30 @@ class PairingParserTest {
         assertEquals(decoded.routes.single(), decoded.primaryRoute)
     }
 
+    @Test
+    fun pairedMacJsonDropsHostPortRoutesWithoutValidHostPortEvenWhenUrlIsPresent() {
+        val decoded = PairedMac.fromJson(
+            JSONObject()
+                .put("id", "mac-invalid-hostport")
+                .put("routes", JSONArray()
+                    .put(JSONObject()
+                        .put("id", "bad-tailscale")
+                        .put("kind", "tailscale")
+                        .put("priority", 1)
+                        .put("url", "wss://cmux.example.test/mobile"))
+                    .put(JSONObject()
+                        .put("id", "debug")
+                        .put("kind", "debug_loopback")
+                        .put("host", "127.0.0.1")
+                        .put("port", 58465)
+                        .put("priority", 10)))
+        )
+
+        assertEquals(1, decoded.routes.size)
+        assertEquals("debug", decoded.routes.single().id)
+        assertEquals(decoded.routes.single(), decoded.primaryRoute)
+    }
+
     private fun base64Url(json: JSONObject): String {
         return Base64.getUrlEncoder()
             .withoutPadding()
