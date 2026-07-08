@@ -461,7 +461,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         if (type == "notification.badge") {
             notificationBridge.applyUnreadCount(payload.optNullableInt("unread_count"))
         } else if (type == "notification.dismissed") {
-            notificationBridge.cancelDismissed(payload.optStringArray("ids"))
+            notificationBridge.cancelDismissed(payload.optFirstStringArray("ids", "handled_ids", "notification_ids"))
             notificationBridge.applyUnreadCount(payload.optNullableInt("unread_count"))
         }
         emit("push", JSONObject().put("type", type).put("payload", payload))
@@ -574,4 +574,12 @@ private fun JSONObject.optStringArray(name: String): List<String> {
     return (0 until array.length()).mapNotNull { index ->
         array.optString(index).trim().takeIf { it.isNotEmpty() }
     }
+}
+
+private fun JSONObject.optFirstStringArray(vararg names: String): List<String> {
+    for (name in names) {
+        val values = optStringArray(name)
+        if (values.isNotEmpty()) return values
+    }
+    return emptyList()
 }

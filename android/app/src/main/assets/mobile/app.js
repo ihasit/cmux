@@ -1475,7 +1475,7 @@ function handlePushEvent(type, payload) {
     return;
   }
   if (type === "notification.dismissed") {
-    const ids = Array.isArray(payload.ids) ? payload.ids : [];
+    const ids = notificationIdsFromPayload(payload);
     if (ids.length > 0) {
       const dismissed = new Set(ids);
       state.deliveredNotificationIds = state.deliveredNotificationIds.filter((id) => !dismissed.has(id));
@@ -1486,6 +1486,13 @@ function handlePushEvent(type, payload) {
     renderNotificationStatus();
     bridge().refreshWorkspaces();
   }
+}
+
+function notificationIdsFromPayload(payload) {
+  for (const key of ["ids", "handled_ids", "notification_ids"]) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+  return [];
 }
 
 function refreshWorkspacesOnce() {
