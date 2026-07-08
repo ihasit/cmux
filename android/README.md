@@ -32,6 +32,8 @@ android/
         PairedMac.kt
         PairedMacStore.kt
         PairingParser.kt
+      androidTest/java/com/cmux/android/
+        MainActivitySmokeTest.kt
       assets/mobile/
         index.html
         app.js
@@ -58,12 +60,13 @@ Implemented:
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
 - Run JVM unit tests for pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, and mobile RPC auth envelopes.
+- Provide an Android instrumentation smoke test for the launched WebView shell.
 - Provide English and Japanese WebView strings.
 
 Not implemented yet:
 
 - Integrated Stack Auth sign-in. The current client supports manual Stack access token entry only.
-- Android instrumentation tests.
+- Broader Android instrumentation and end-to-end tests beyond the initial launch smoke test.
 
 ## Protocol target
 
@@ -107,6 +110,18 @@ Run the JVM unit tests with:
 
 ```bash
 JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home gradle :app:testDebugUnitTest
+```
+
+Build the Android instrumentation test APK with:
+
+```bash
+JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home gradle :app:assembleDebugAndroidTest
+```
+
+Run instrumentation tests on a connected emulator/device with:
+
+```bash
+JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home gradle :app:connectedDebugAndroidTest
 ```
 
 If the repository later adds a Gradle wrapper, prefer:
