@@ -89,12 +89,7 @@ class PairingParser {
     }
 
     private fun parseManualWebSocketUrl(rawValue: String): PairedMac {
-        val uri = runCatching { URI(rawValue) }
-            .getOrElse { throw PairingException("pair.error.invalidRoute") }
-        val scheme = uri.scheme?.lowercase()
-        checkPairing(scheme == "ws" || scheme == "wss", "pair.error.invalidRoute")
-        checkPairing(!uri.host.isNullOrBlank(), "pair.error.invalidRoute")
-        checkPairing(!isLoopbackHost(uri.host), "pair.error.loopback")
+        checkWebSocketUrl(rawValue)
         val route = CmuxRoute(
             id = "manual_websocket",
             kind = "websocket",
@@ -251,6 +246,7 @@ class PairingParser {
     private fun parseRoute(id: String, kind: String, endpoint: JSONObject, priority: Int): CmuxRoute? {
         val url = endpoint.optNullableString("u") ?: endpoint.optNullableString("url")
         if (kind == "websocket" && url != null) {
+            checkWebSocketUrl(url)
             return CmuxRoute(id, kind, host = "", port = 0, priority = priority, url = url)
         }
         val host = endpoint.optNullableString("h") ?: endpoint.optNullableString("host") ?: return null
@@ -258,6 +254,15 @@ class PairingParser {
         if (port !in 1..65535) return null
         checkPairing(kind == "debug_loopback" || !isLoopbackHost(host), "pair.error.loopback")
         return CmuxRoute(id, kind, host, port, priority)
+    }
+
+    private fun checkWebSocketUrl(rawValue: String) {
+        val uri = runCatching { URI(rawValue) }
+            .getOrElse { throw PairingException("pair.error.invalidRoute") }
+        val scheme = uri.scheme?.lowercase()
+        checkPairing(scheme == "ws" || scheme == "wss", "pair.error.invalidRoute")
+        checkPairing(!uri.host.isNullOrBlank(), "pair.error.invalidRoute")
+        checkPairing(!isLoopbackHost(uri.host), "pair.error.loopback")
     }
 
     private fun isLoopbackHost(host: String): Boolean {
