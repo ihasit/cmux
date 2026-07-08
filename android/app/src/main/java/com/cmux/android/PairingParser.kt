@@ -174,7 +174,7 @@ class PairingParser {
         val kindCounts = mutableMapOf<String, Int>()
         val routes = (0 until routesJson.length()).mapNotNull { index ->
             val routeJson = routesJson.optJSONObject(index) ?: return@mapNotNull null
-            val kind = routeJson.optString("k", "tailscale").trim()
+            val kind = routeJson.optString("k", "tailscale").trim().lowercase()
             val occurrence = (kindCounts[kind] ?: 0) + 1
             kindCounts[kind] = occurrence
             val endpoint = routeJson.optJSONObject("e") ?: return@mapNotNull null
@@ -206,7 +206,7 @@ class PairingParser {
             val endpoint = routeJson.optJSONObject("endpoint") ?: return@mapNotNull null
             parseRoute(
                 id = routeJson.optNullableString("id") ?: "route_$index",
-                kind = routeJson.optString("kind", "tailscale").trim(),
+                kind = routeJson.optString("kind", "tailscale").trim().lowercase(),
                 endpoint = endpoint,
                 priority = routeJson.optInt("priority", index * 10)
             )
