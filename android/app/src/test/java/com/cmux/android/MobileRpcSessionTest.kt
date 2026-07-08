@@ -281,7 +281,7 @@ class MobileRpcSessionTest {
     }
 
     @Test
-    fun responseWithNonBooleanOkReportsParseError() {
+    fun responseWithUnknownIdIsIgnored() {
         val callback = RecordingCallback()
         val session = MobileRpcSession(
             callback = callback,
@@ -289,10 +289,27 @@ class MobileRpcSessionTest {
         )
         session.connect(tcpRoute())
 
-        session.onFrame(JSONObject().put("id", 7).put("ok", "true").toString())
+        session.onFrame(JSONObject().put("id", 99).put("ok", true).put("result", JSONObject().put("ignored", true)).toString())
+
+        assertTrue(callback.results.isEmpty())
+        assertTrue(callback.errors.isEmpty())
+        assertTrue(callback.pushEvents.isEmpty())
+    }
+
+    @Test
+    fun responseWithNonBooleanOkReportsParseError() {
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> RecordingFrameClient() }
+        )
+        session.connect(tcpRoute())
+        val requestId = session.request("mobile.workspace.list")
+
+        session.onFrame(JSONObject().put("id", requestId).put("ok", "true").toString())
 
         assertEquals(
-            listOf(RecordedError(7, null, "parse_error", "Invalid response status from host")),
+            listOf(RecordedError(requestId, "mobile.workspace.list", "parse_error", "Invalid response status from host")),
             callback.errors
         )
         assertTrue(callback.results.isEmpty())
@@ -306,11 +323,12 @@ class MobileRpcSessionTest {
             clientFactory = { _, _ -> RecordingFrameClient() }
         )
         session.connect(tcpRoute())
+        val requestId = session.request("mobile.workspace.list")
 
-        session.onFrame(JSONObject().put("id", 8).put("ok", true).put("result", "not-an-object").toString())
+        session.onFrame(JSONObject().put("id", requestId).put("ok", true).put("result", "not-an-object").toString())
 
         assertEquals(
-            listOf(RecordedError(8, null, "parse_error", "Invalid response result from host")),
+            listOf(RecordedError(requestId, "mobile.workspace.list", "parse_error", "Invalid response result from host")),
             callback.errors
         )
         assertTrue(callback.results.isEmpty())
@@ -324,11 +342,12 @@ class MobileRpcSessionTest {
             clientFactory = { _, _ -> RecordingFrameClient() }
         )
         session.connect(tcpRoute())
+        val requestId = session.request("mobile.workspace.list")
 
-        session.onFrame(JSONObject().put("id", 9).put("ok", false).put("error", "not-an-object").toString())
+        session.onFrame(JSONObject().put("id", requestId).put("ok", false).put("error", "not-an-object").toString())
 
         assertEquals(
-            listOf(RecordedError(9, null, "parse_error", "Invalid response error from host")),
+            listOf(RecordedError(requestId, "mobile.workspace.list", "parse_error", "Invalid response error from host")),
             callback.errors
         )
     }
