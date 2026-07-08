@@ -1708,29 +1708,37 @@ elements.clearStackAccessToken.addEventListener("click", () => {
 });
 
 elements.pairedList.addEventListener("click", (event) => {
-  const connectId = event.target.getAttribute("data-connect");
-  const forgetId = event.target.getAttribute("data-forget");
+  const connectId = eventTargetAttribute(event, "data-connect");
+  const forgetId = eventTargetAttribute(event, "data-forget");
   if (connectId) bridge().connect(connectId);
   if (forgetId) bridge().forget(forgetId);
 });
 
 elements.workspaceList.addEventListener("click", (event) => {
   if (!state.connected) return;
-  const terminalId = event.target.getAttribute("data-terminal-id");
-  const workspaceId = event.target.getAttribute("data-open-terminal");
-  const createWorkspaceId = event.target.getAttribute("data-create-terminal");
-  const renameWorkspaceId = event.target.getAttribute("data-rename-workspace");
-  const pinWorkspaceId = event.target.getAttribute("data-pin-workspace");
-  const readWorkspaceId = event.target.getAttribute("data-read-workspace");
-  const closeWorkspaceId = event.target.getAttribute("data-close-workspace");
-  const toggleGroupId = event.target.getAttribute("data-toggle-group");
+  const terminalButton = eventTargetWithAttribute(event, "data-terminal-id");
+  const workspaceButton = eventTargetWithAttribute(event, "data-open-terminal");
+  const createWorkspaceButton = eventTargetWithAttribute(event, "data-create-terminal");
+  const renameWorkspaceButton = eventTargetWithAttribute(event, "data-rename-workspace");
+  const pinWorkspaceButton = eventTargetWithAttribute(event, "data-pin-workspace");
+  const readWorkspaceButton = eventTargetWithAttribute(event, "data-read-workspace");
+  const closeWorkspaceButton = eventTargetWithAttribute(event, "data-close-workspace");
+  const toggleGroupButton = eventTargetWithAttribute(event, "data-toggle-group");
+  const terminalId = terminalButton?.getAttribute("data-terminal-id");
+  const workspaceId = workspaceButton?.getAttribute("data-open-terminal");
+  const createWorkspaceId = createWorkspaceButton?.getAttribute("data-create-terminal");
+  const renameWorkspaceId = renameWorkspaceButton?.getAttribute("data-rename-workspace");
+  const pinWorkspaceId = pinWorkspaceButton?.getAttribute("data-pin-workspace");
+  const readWorkspaceId = readWorkspaceButton?.getAttribute("data-read-workspace");
+  const closeWorkspaceId = closeWorkspaceButton?.getAttribute("data-close-workspace");
+  const toggleGroupId = toggleGroupButton?.getAttribute("data-toggle-group");
   if (workspaceId && terminalId) openTerminal(workspaceId, terminalId);
   if (createWorkspaceId) createTerminal(createWorkspaceId);
   if (renameWorkspaceId) renameWorkspace(renameWorkspaceId);
-  if (pinWorkspaceId) toggleWorkspacePinned(pinWorkspaceId, event.target.getAttribute("data-pinned") === "true");
-  if (readWorkspaceId) toggleWorkspaceUnread(readWorkspaceId, event.target.getAttribute("data-unread") === "true");
+  if (pinWorkspaceId) toggleWorkspacePinned(pinWorkspaceId, pinWorkspaceButton?.getAttribute("data-pinned") === "true");
+  if (readWorkspaceId) toggleWorkspaceUnread(readWorkspaceId, readWorkspaceButton?.getAttribute("data-unread") === "true");
   if (closeWorkspaceId) closeWorkspace(closeWorkspaceId);
-  if (toggleGroupId) toggleWorkspaceGroup(toggleGroupId, event.target.getAttribute("data-collapsed") === "true");
+  if (toggleGroupId) toggleWorkspaceGroup(toggleGroupId, toggleGroupButton?.getAttribute("data-collapsed") === "true");
 });
 
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
@@ -1763,7 +1771,7 @@ elements.refreshTerminal.addEventListener("click", replayActiveTerminal);
 elements.scrollUp.addEventListener("click", () => queueTerminalScroll(-terminalRows()));
 elements.scrollDown.addEventListener("click", () => queueTerminalScroll(terminalRows()));
 elements.terminalKeybar.addEventListener("click", (event) => {
-  const key = event.target.getAttribute("data-terminal-key");
+  const key = eventTargetAttribute(event, "data-terminal-key");
   if (key) sendTerminalKey(key);
 });
 elements.sendInput.addEventListener("click", () => sendTerminalInput("input"));
@@ -1786,6 +1794,14 @@ function escapeHtml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function eventTargetWithAttribute(event, attribute) {
+  return event.target?.closest?.(`[${attribute}]`) || null;
+}
+
+function eventTargetAttribute(event, attribute) {
+  return eventTargetWithAttribute(event, attribute)?.getAttribute(attribute) || null;
 }
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
