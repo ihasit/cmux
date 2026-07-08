@@ -65,7 +65,7 @@ data class PairedMac(
                 if (kind == "websocket" && !isValidStoredWebSocketUrl(url)) {
                     return@mapNotNull null
                 }
-                if (url == null && (host.isEmpty() || port !in 1..65535)) {
+                if (kind != "websocket" && (host.isEmpty() || port !in 1..65535)) {
                     return@mapNotNull null
                 }
                 CmuxRoute(
