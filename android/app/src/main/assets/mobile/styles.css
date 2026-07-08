@@ -198,7 +198,25 @@ textarea {
   font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.35;
-  white-space: pre-wrap;
+  white-space: pre;
+}
+
+.terminal-line {
+  display: block;
+  min-height: 1.35em;
+}
+
+.terminal-cell {
+  display: inline;
+}
+
+.terminal-cursor {
+  background-color: var(--terminal-cursor-color, #d7f8d0);
+  color: #111318;
+}
+
+.terminal-scrollback {
+  opacity: 0.78;
 }
 
 .composer {

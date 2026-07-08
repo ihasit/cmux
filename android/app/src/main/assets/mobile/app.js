@@ -5,6 +5,10 @@ const state = {
   workspaces: [],
   activeWorkspace: null,
   activeTerminal: null,
+  terminalFrames: new Map(),
+  effectiveViewport: null,
+  lastViewportReport: "",
+  viewportReportTimer: 0,
 };
 
 const messages = {
@@ -224,10 +228,13 @@ function openTerminal(workspaceId, terminalId) {
   }
   state.activeWorkspace = workspace;
   state.activeTerminal = terminal;
+  state.effectiveViewport = null;
+  state.lastViewportReport = "";
   elements.terminalTitle.textContent = terminal.title || t("terminal.defaultTitle");
   elements.terminalMeta.textContent = workspace.title || "";
   elements.terminalOutput.textContent = t("terminal.loading");
   showScreen("terminal");
+  reportActiveViewport();
   replayActiveTerminal();
 }
 
@@ -239,6 +246,36 @@ function replayActiveTerminal() {
     terminalColumns(),
     terminalRows(),
   );
+}
+
+function reportActiveViewport() {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  const columns = terminalColumns();
+  const rows = terminalRows();
+  const signature = `${state.activeWorkspace.id}:${state.activeTerminal.id}:${columns}x${rows}`;
+  if (signature === state.lastViewportReport) return;
+  state.lastViewportReport = signature;
+  bridge().reportViewport(state.activeWorkspace.id, state.activeTerminal.id, columns, rows);
+}
+
+function scheduleViewportReport() {
+  if (!state.activeWorkspace || !state.activeTerminal || elements.terminalView.classList.contains("hidden")) return;
+  window.clearTimeout(state.viewportReportTimer);
+  state.viewportReportTimer = window.setTimeout(() => {
+    reportActiveViewport();
+    replayActiveTerminal();
+  }, 180);
+}
+
+function closeActiveTerminal() {
+  if (state.activeWorkspace && state.activeTerminal) {
+    bridge().clearViewport(state.activeWorkspace.id, state.activeTerminal.id);
+  }
+  state.activeWorkspace = null;
+  state.activeTerminal = null;
+  state.effectiveViewport = null;
+  state.lastViewportReport = "";
+  showScreen("workspaces");
 }
 
 function sendTerminalInput(mode) {
@@ -275,7 +312,7 @@ function terminalRows() {
   return Math.max(8, Math.min(80, Math.floor(elements.terminalOutput.clientHeight / 16)));
 }
 
-function decodeReplay(result) {
+function decodeReplayText(result) {
   if (result.render_grid) {
     return renderGridToText(result.render_grid);
   }
@@ -288,11 +325,241 @@ function decodeReplay(result) {
   return "";
 }
 
+function renderTerminalReplay(result) {
+  if (result.render_grid) {
+    renderTerminalFrame(result.render_grid, { reset: true });
+    return;
+  }
+  elements.terminalOutput.textContent = decodeReplayText(result) || t("terminal.empty");
+}
+
+function renderTerminalFrame(rawFrame, options = {}) {
+  const frame = normalizeRenderGrid(rawFrame);
+  if (!frame) {
+    elements.terminalOutput.textContent = renderGridToText(rawFrame) || t("terminal.empty");
+    return;
+  }
+
+  const surfaceId = frame.surfaceId || state.activeTerminal?.id || "active";
+  const previous = options.reset || frame.full ? null : state.terminalFrames.get(surfaceId);
+  const next = applyRenderGridFrame(previous, frame);
+  state.terminalFrames.set(surfaceId, next);
+  elements.terminalOutput.dataset.columns = String(next.columns);
+  elements.terminalOutput.innerHTML = terminalFrameToHtml(next) || escapeHtml(t("terminal.empty"));
+}
+
+function normalizeRenderGrid(rawFrame) {
+  if (!rawFrame || typeof rawFrame !== "object") return null;
+  const rowSpans = rawFrame.row_spans || rawFrame.rowSpans;
+  if (!Array.isArray(rowSpans)) return null;
+  return {
+    surfaceId: rawFrame.surface_id || rawFrame.surfaceID || rawFrame.surfaceId || "",
+    stateSeq: rawFrame.state_seq ?? rawFrame.stateSeq ?? 0,
+    columns: clampInteger(rawFrame.columns, 20, 300, terminalColumns()),
+    rows: clampInteger(rawFrame.rows, 5, 120, terminalRows()),
+    cursor: rawFrame.cursor || null,
+    full: rawFrame.full !== false,
+    clearedRows: rawFrame.cleared_rows || rawFrame.clearedRows || [],
+    styles: stylesById(rawFrame.styles || []),
+    rowSpans,
+    activeScreen: rawFrame.active_screen || rawFrame.activeScreen || "primary",
+    terminalForeground: rawFrame.terminal_foreground || rawFrame.terminalForeground || "",
+    terminalBackground: rawFrame.terminal_background || rawFrame.terminalBackground || "",
+    terminalCursorColor: rawFrame.terminal_cursor_color || rawFrame.terminalCursorColor || "",
+    scrollbackRows: clampInteger(rawFrame.scrollback_rows ?? rawFrame.scrollbackRows, 0, 20000, 0),
+    scrollbackSpans: rawFrame.scrollback_spans || rawFrame.scrollbackSpans || [],
+  };
+}
+
+function applyRenderGridFrame(previous, frame) {
+  const rows = previous?.rows?.length === frame.rows
+    ? previous.rows.map((row) => row.map((cell) => ({ ...cell })))
+    : emptyTerminalRows(frame.rows, frame.columns);
+  const touchedRows = new Set(frame.clearedRows.filter((row) => row >= 0 && row < frame.rows));
+  for (const span of frame.rowSpans) {
+    const row = Number(span.row);
+    if (Number.isInteger(row) && row >= 0 && row < frame.rows) touchedRows.add(row);
+  }
+  if (previous == null || frame.full) {
+    for (let row = 0; row < frame.rows; row += 1) touchedRows.add(row);
+  }
+
+  const spansByRow = groupSpansByRow(frame.rowSpans, frame.rows);
+  for (const row of touchedRows) {
+    rows[row] = buildRowCells(spansByRow.get(row) || [], frame.columns, frame.styles);
+  }
+
+  const scrollback = frame.full
+    ? buildRowsFromSpans(frame.scrollbackSpans, frame.scrollbackRows, frame.columns, frame.styles)
+    : previous?.scrollback || [];
+
+  return {
+    surfaceId: frame.surfaceId,
+    stateSeq: frame.stateSeq,
+    columns: frame.columns,
+    rows,
+    scrollback,
+    cursor: frame.cursor,
+    activeScreen: frame.activeScreen,
+    terminalForeground: frame.terminalForeground,
+    terminalBackground: frame.terminalBackground,
+    terminalCursorColor: frame.terminalCursorColor,
+  };
+}
+
+function buildRowsFromSpans(spans, rowCount, columns, styles) {
+  const rows = emptyTerminalRows(rowCount, columns);
+  const spansByRow = groupSpansByRow(spans, rowCount);
+  for (const [row, rowSpans] of spansByRow) {
+    rows[row] = buildRowCells(rowSpans, columns, styles);
+  }
+  return rows;
+}
+
+function emptyTerminalRows(rowCount, columns) {
+  return Array.from({ length: rowCount }, () => blankRow(columns));
+}
+
+function blankRow(columns) {
+  return Array.from({ length: columns }, () => ({ text: " ", style: null }));
+}
+
+function groupSpansByRow(spans, rowCount) {
+  const grouped = new Map();
+  for (const span of spans || []) {
+    const row = Number(span.row);
+    if (!Number.isInteger(row) || row < 0 || row >= rowCount) continue;
+    if (!grouped.has(row)) grouped.set(row, []);
+    grouped.get(row).push(span);
+  }
+  for (const rowSpans of grouped.values()) {
+    rowSpans.sort((left, right) => (left.column || 0) - (right.column || 0));
+  }
+  return grouped;
+}
+
+function buildRowCells(spans, columns, styles) {
+  const cells = blankRow(columns);
+  for (const span of spans) {
+    const start = clampInteger(span.column, 0, columns - 1, 0);
+    const style = styles.get(Number(span.style_id ?? span.styleID ?? 0)) || null;
+    const chars = Array.from(String(span.text || ""));
+    const width = clampInteger(span.cell_width ?? span.cellWidth, 0, columns - start, chars.length);
+    const writeCount = Math.min(columns - start, Math.max(chars.length, width));
+    for (let offset = 0; offset < writeCount; offset += 1) {
+      cells[start + offset] = {
+        text: chars[offset] || " ",
+        style,
+      };
+    }
+  }
+  return cells;
+}
+
+function stylesById(styles) {
+  const map = new Map();
+  for (const style of styles) {
+    if (!style || !Number.isInteger(Number(style.id))) continue;
+    map.set(Number(style.id), style);
+  }
+  return map;
+}
+
+function terminalFrameToHtml(frame) {
+  const rows = [];
+  for (const row of frame.scrollback) {
+    rows.push(rowToHtml(row, null, frame, " terminal-scrollback"));
+  }
+  frame.rows.forEach((row, index) => {
+    const cursor = frame.cursor?.visible === false ? null : frame.cursor;
+    const cursorColumn = cursor && cursor.row === index ? cursor.column : null;
+    rows.push(rowToHtml(row, cursorColumn, frame, ""));
+  });
+  return rows.join("");
+}
+
+function rowToHtml(row, cursorColumn, frame, extraClass) {
+  let html = "";
+  let index = 0;
+  while (index < row.length) {
+    const cell = row[index];
+    const isCursor = cursorColumn === index;
+    const key = `${styleKey(cell.style)}:${isCursor}`;
+    let end = index + 1;
+    while (end < row.length) {
+      const next = row[end];
+      const nextCursor = cursorColumn === end;
+      if (`${styleKey(next.style)}:${nextCursor}` !== key) break;
+      end += 1;
+    }
+    const text = row.slice(index, end).map((item) => item.text || " ").join("");
+    const classes = ["terminal-cell"];
+    if (isCursor) classes.push("terminal-cursor");
+    const style = styleToCss(cell.style, frame, isCursor);
+    html += `<span class="${classes.join(" ")}"${style ? ` style="${escapeHtml(style)}"` : ""}>${escapeHtml(text)}</span>`;
+    index = end;
+  }
+  return `<span class="terminal-line${extraClass}">${html}</span>`;
+}
+
+function styleKey(style) {
+  if (!style) return "default";
+  return [
+    style.foreground || "",
+    style.background || "",
+    style.bold ? "b" : "",
+    style.faint ? "f" : "",
+    style.italic ? "i" : "",
+    style.underline ? "u" : "",
+    style.blink ? "blink" : "",
+    style.inverse ? "inv" : "",
+    style.invisible ? "hidden" : "",
+    style.strikethrough ? "s" : "",
+    style.overline ? "o" : "",
+  ].join("|");
+}
+
+function styleToCss(style, frame, isCursor) {
+  const rules = [];
+  const foreground = safeCssColor(style?.foreground || (style?.inverse ? frame.terminalBackground : ""));
+  const background = safeCssColor(style?.background || (style?.inverse ? frame.terminalForeground : ""));
+  if (foreground) rules.push(`color:${foreground}`);
+  if (background) rules.push(`background-color:${background}`);
+  if (style?.bold) rules.push("font-weight:700");
+  if (style?.faint) rules.push("opacity:.65");
+  if (style?.italic) rules.push("font-style:italic");
+  const decorations = [];
+  if (style?.underline) decorations.push("underline");
+  if (style?.strikethrough) decorations.push("line-through");
+  if (style?.overline) decorations.push("overline");
+  if (decorations.length > 0) rules.push(`text-decoration:${decorations.join(" ")}`);
+  if (style?.invisible) rules.push("color:transparent");
+  if (isCursor) {
+    const cursorColor = safeCssColor(frame.terminalCursorColor);
+    if (cursorColor) rules.push(`--terminal-cursor-color:${cursorColor}`);
+  }
+  return rules.join(";");
+}
+
+function safeCssColor(value) {
+  const color = String(value || "").trim();
+  if (/^#[0-9a-fA-F]{3,8}$/u.test(color)) return color;
+  if (/^rgba?\(\s*[\d.]+%?\s*,\s*[\d.]+%?\s*,\s*[\d.]+%?(?:\s*,\s*(?:[\d.]+|0?\.\d+))?\s*\)$/u.test(color)) return color;
+  return "";
+}
+
+function clampInteger(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isInteger(number)) return fallback;
+  return Math.max(min, Math.min(max, number));
+}
+
 function renderGridToText(renderGrid) {
-  if (Array.isArray(renderGrid.row_spans)) {
+  const rowSpans = renderGrid.row_spans || renderGrid.rowSpans;
+  if (Array.isArray(rowSpans)) {
     const rowCount = Number.isInteger(renderGrid.rows) ? renderGrid.rows : 0;
     const rows = Array.from({ length: rowCount }, () => "");
-    const spans = [...renderGrid.row_spans].sort((left, right) => {
+    const spans = [...rowSpans].sort((left, right) => {
       const rowDelta = (left.row || 0) - (right.row || 0);
       return rowDelta === 0 ? (left.column || 0) - (right.column || 0) : rowDelta;
     });
@@ -344,11 +611,17 @@ function handleRpcResult(method, result) {
     return;
   }
   if (method === "mobile.terminal.replay") {
-    elements.terminalOutput.textContent = decodeReplay(result) || t("terminal.empty");
+    renderTerminalReplay(result);
     return;
   }
   if (method === "mobile.terminal.input" || method === "mobile.terminal.paste") {
     window.setTimeout(replayActiveTerminal, 180);
+    return;
+  }
+  if (method === "mobile.terminal.viewport") {
+    if (Number.isInteger(result.columns) && Number.isInteger(result.rows)) {
+      state.effectiveViewport = { columns: result.columns, rows: result.rows };
+    }
     return;
   }
   if (method === "mobile.events.subscribe") {
@@ -363,9 +636,9 @@ function handlePushEvent(type, payload) {
   }
   if (type === "terminal.render_grid") {
     const renderGrid = payload.render_grid || payload;
-    const surfaceId = renderGrid.surface_id || payload.surface_id;
+    const surfaceId = renderGrid.surface_id || renderGrid.surfaceID || renderGrid.surfaceId || payload.surface_id || payload.surfaceID;
     if (state.activeTerminal && surfaceId === state.activeTerminal.id) {
-      elements.terminalOutput.textContent = renderGridToText(renderGrid) || t("terminal.empty");
+      renderTerminalFrame(renderGrid);
       showToast(t("terminal.live"));
     }
   }
@@ -417,11 +690,17 @@ elements.workspaceList.addEventListener("click", (event) => {
 });
 
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
-elements.closeConnection.addEventListener("click", () => bridge().closeConnection());
-elements.backToWorkspaces.addEventListener("click", () => showScreen("workspaces"));
+elements.closeConnection.addEventListener("click", () => {
+  if (state.activeWorkspace && state.activeTerminal) {
+    bridge().clearViewport(state.activeWorkspace.id, state.activeTerminal.id);
+  }
+  bridge().closeConnection();
+});
+elements.backToWorkspaces.addEventListener("click", closeActiveTerminal);
 elements.refreshTerminal.addEventListener("click", replayActiveTerminal);
 elements.sendInput.addEventListener("click", () => sendTerminalInput("input"));
 elements.pasteInput.addEventListener("click", () => sendTerminalInput("paste"));
+window.addEventListener("resize", scheduleViewportReport);
 
 function escapeHtml(value) {
   return String(value ?? "")

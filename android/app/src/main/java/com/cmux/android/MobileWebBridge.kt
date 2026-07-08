@@ -92,6 +92,27 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     }
 
     @JavascriptInterface
+    fun reportViewport(workspaceId: String, terminalId: String, columns: Int, rows: Int) {
+        session.request(
+            "mobile.terminal.viewport",
+            terminalParams(workspaceId, terminalId, columns, rows)
+        )
+    }
+
+    @JavascriptInterface
+    fun clearViewport(workspaceId: String, terminalId: String) {
+        session.request(
+            "mobile.terminal.viewport",
+            JSONObject()
+                .put("workspace_id", workspaceId)
+                .put("surface_id", terminalId)
+                .put("terminal_id", terminalId)
+                .put("client_id", CLIENT_ID)
+                .put("clear", true)
+        )
+    }
+
+    @JavascriptInterface
     fun sendInput(workspaceId: String, terminalId: String, text: String, columns: Int, rows: Int) {
         session.request(
             "mobile.terminal.input",
@@ -174,6 +195,7 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
         return JSONObject()
             .put("workspace_id", workspaceId)
             .put("terminal_id", terminalId)
+            .put("surface_id", terminalId)
             .put("client_id", CLIENT_ID)
             .put("viewport_columns", columns.coerceIn(20, 300))
             .put("viewport_rows", rows.coerceIn(5, 120))
