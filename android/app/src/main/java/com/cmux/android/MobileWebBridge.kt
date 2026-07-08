@@ -131,6 +131,27 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     }
 
     @JavascriptInterface
+    fun scrollTerminal(
+        workspaceId: String,
+        terminalId: String,
+        deltaLines: Double,
+        column: Int,
+        row: Int,
+        maxScrollbackRows: Int,
+        columns: Int,
+        rows: Int
+    ) {
+        val params = terminalParams(workspaceId, terminalId, columns, rows)
+            .put("delta_lines", deltaLines)
+            .put("col", column.coerceAtLeast(0))
+            .put("row", row.coerceAtLeast(0))
+        if (maxScrollbackRows > 0) {
+            params.put("max_scrollback_rows", maxScrollbackRows.coerceIn(1, 20000))
+        }
+        session.request("mobile.terminal.scroll", params)
+    }
+
+    @JavascriptInterface
     fun closeConnection() {
         session.close("closed by webview")
     }

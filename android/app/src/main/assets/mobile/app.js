@@ -9,6 +9,9 @@ const state = {
   effectiveViewport: null,
   lastViewportReport: "",
   viewportReportTimer: 0,
+  pendingScrollLines: 0,
+  scrollFlushTimer: 0,
+  lastTouchY: null,
 };
 
 const messages = {
@@ -52,6 +55,8 @@ const messages = {
     "refresh": "Refresh",
     "back": "Back",
     "replay": "Replay",
+    "scroll.up": "Scroll up",
+    "scroll.down": "Scroll down",
     "paste": "Paste",
     "send": "Send",
     "forget": "Forget",
@@ -97,6 +102,8 @@ const messages = {
     "refresh": "更新",
     "back": "戻る",
     "replay": "再生",
+    "scroll.up": "上へスクロール",
+    "scroll.down": "下へスクロール",
     "paste": "貼り付け",
     "send": "送信",
     "forget": "削除",
@@ -127,6 +134,8 @@ const elements = {
   terminalMeta: document.getElementById("terminalMeta"),
   refreshTerminal: document.getElementById("refreshTerminal"),
   terminalOutput: document.getElementById("terminalOutput"),
+  scrollUp: document.getElementById("scrollUp"),
+  scrollDown: document.getElementById("scrollDown"),
   terminalInput: document.getElementById("terminalInput"),
   pasteInput: document.getElementById("pasteInput"),
   sendInput: document.getElementById("sendInput"),
@@ -276,6 +285,81 @@ function closeActiveTerminal() {
   state.effectiveViewport = null;
   state.lastViewportReport = "";
   showScreen("workspaces");
+}
+
+function queueTerminalScroll(deltaLines, options = {}) {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  if (!Number.isFinite(deltaLines) || deltaLines === 0) return;
+  state.pendingScrollLines += deltaLines;
+  window.clearTimeout(state.scrollFlushTimer);
+  state.scrollFlushTimer = window.setTimeout(() => flushTerminalScroll(options), 60);
+}
+
+function flushTerminalScroll(options = {}) {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  const deltaLines = state.pendingScrollLines;
+  state.pendingScrollLines = 0;
+  if (!Number.isFinite(deltaLines) || Math.abs(deltaLines) < 0.05) return;
+  const pointer = terminalPointerCell(options.clientX, options.clientY);
+  bridge().scrollTerminal(
+    state.activeWorkspace.id,
+    state.activeTerminal.id,
+    deltaLines,
+    pointer.column,
+    pointer.row,
+    maxScrollbackRowsFor(deltaLines),
+    terminalColumns(),
+    terminalRows(),
+  );
+}
+
+function terminalPointerCell(clientX, clientY) {
+  const bounds = elements.terminalOutput.getBoundingClientRect();
+  const x = Number.isFinite(clientX) ? clientX - bounds.left : bounds.width / 2;
+  const y = Number.isFinite(clientY) ? clientY - bounds.top : bounds.height / 2;
+  const columnWidth = Math.max(1, bounds.width / terminalColumns());
+  const rowHeight = Math.max(1, bounds.height / terminalRows());
+  return {
+    column: Math.max(0, Math.floor(x / columnWidth)),
+    row: Math.max(0, Math.floor(y / rowHeight)),
+  };
+}
+
+function maxScrollbackRowsFor(deltaLines) {
+  const magnitude = Math.abs(deltaLines);
+  if (magnitude < terminalRows()) return 0;
+  return Math.min(20000, Math.max(terminalRows() * 2, Math.ceil(magnitude * 2)));
+}
+
+function handleTerminalWheel(event) {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  event.preventDefault();
+  const lineHeight = 16;
+  const pageHeight = Math.max(lineHeight, elements.terminalOutput.clientHeight);
+  const divisor = event.deltaMode === 1
+    ? 1
+    : event.deltaMode === 2
+      ? pageHeight / lineHeight
+      : lineHeight;
+  queueTerminalScroll(event.deltaY / divisor, { clientX: event.clientX, clientY: event.clientY });
+}
+
+function handleTerminalTouchStart(event) {
+  state.lastTouchY = event.touches?.[0]?.clientY ?? null;
+}
+
+function handleTerminalTouchMove(event) {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  const touch = event.touches?.[0];
+  if (!touch || state.lastTouchY == null) return;
+  event.preventDefault();
+  const deltaPixels = state.lastTouchY - touch.clientY;
+  state.lastTouchY = touch.clientY;
+  queueTerminalScroll(deltaPixels / 16, { clientX: touch.clientX, clientY: touch.clientY });
+}
+
+function handleTerminalTouchEnd() {
+  state.lastTouchY = null;
 }
 
 function sendTerminalInput(mode) {
@@ -624,6 +708,12 @@ function handleRpcResult(method, result) {
     }
     return;
   }
+  if (method === "mobile.terminal.scroll") {
+    if (result.render_grid) {
+      renderTerminalFrame(result.render_grid);
+    }
+    return;
+  }
   if (method === "mobile.events.subscribe") {
     return;
   }
@@ -698,9 +788,16 @@ elements.closeConnection.addEventListener("click", () => {
 });
 elements.backToWorkspaces.addEventListener("click", closeActiveTerminal);
 elements.refreshTerminal.addEventListener("click", replayActiveTerminal);
+elements.scrollUp.addEventListener("click", () => queueTerminalScroll(-terminalRows()));
+elements.scrollDown.addEventListener("click", () => queueTerminalScroll(terminalRows()));
 elements.sendInput.addEventListener("click", () => sendTerminalInput("input"));
 elements.pasteInput.addEventListener("click", () => sendTerminalInput("paste"));
 window.addEventListener("resize", scheduleViewportReport);
+elements.terminalOutput.addEventListener("wheel", handleTerminalWheel, { passive: false });
+elements.terminalOutput.addEventListener("touchstart", handleTerminalTouchStart, { passive: true });
+elements.terminalOutput.addEventListener("touchmove", handleTerminalTouchMove, { passive: false });
+elements.terminalOutput.addEventListener("touchend", handleTerminalTouchEnd);
+elements.terminalOutput.addEventListener("touchcancel", handleTerminalTouchEnd);
 
 function escapeHtml(value) {
   return String(value ?? "")

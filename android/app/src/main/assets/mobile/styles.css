@@ -219,6 +219,12 @@ textarea {
   opacity: 0.78;
 }
 
+.terminal-scroll-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .composer {
   display: grid;
   gap: 8px;
