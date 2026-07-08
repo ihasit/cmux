@@ -54,6 +54,7 @@ Implemented:
 - Parse `cmux-ios://attach?v=2&r=host:port` pairing links.
 - Parse older `attach` / `pair` payload links enough to recover host/port routes.
 - Persist paired Macs with Android Keystore-backed encrypted storage.
+- Automatically reconnect the first saved paired Mac with a supported route when the WebView shell starts.
 - Connect to host routes over the length-prefixed mobile TCP protocol, automatically trying the next advertised route if the first route fails before opening.
 - Automatically reconnect to the active paired Mac after unexpected connection drops with bounded retry backoff.
 - Connect to WebSocket attach routes when a pairing payload advertises one.

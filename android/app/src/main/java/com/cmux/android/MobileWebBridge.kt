@@ -39,12 +39,22 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     @JavascriptInterface
     fun initialState() {
         pageReady = true
-        emit("pairedMacs", JSONObject().put("macs", pairedMacsJson()))
+        val macs = store.list()
+        emit("pairedMacs", JSONObject().put("macs", pairedMacsJson(macs)))
         emit("auth", authStateJson())
         emitNotificationPermissionState(requested = false)
         pendingPairingURL?.let { rawValue ->
             pendingPairingURL = null
             pair(rawValue)
+            return
+        }
+        if (activeMac == null) {
+            PairedMacSelector.startupMac(macs)?.let { mac ->
+                activeMac = mac
+                userRequestedDisconnect = false
+                reconnectPolicy.reset()
+                connectMac(mac)
+            }
         }
     }
 
