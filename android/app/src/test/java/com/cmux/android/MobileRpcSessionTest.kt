@@ -300,6 +300,24 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun pushEventWithNonObjectPayloadReportsParseError() {
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> RecordingFrameClient() }
+        )
+        session.connect(tcpRoute())
+
+        session.onFrame(JSONObject().put("topic", "workspace.updated").put("payload", "not-an-object").toString())
+
+        assertEquals(
+            listOf(RecordedError(null, null, "parse_error", "Invalid push payload from host")),
+            callback.errors
+        )
+        assertTrue(callback.pushEvents.isEmpty())
+    }
+
+    @Test
     fun remoteCloseFailsPendingRequests() {
         val client = RecordingFrameClient()
         val callback = RecordingCallback()
