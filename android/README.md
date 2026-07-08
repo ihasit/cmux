@@ -60,7 +60,7 @@ Implemented:
 - Automatically reconnect to the active paired Mac after unexpected connection drops with bounded retry backoff.
 - Connect to WebSocket attach routes when a pairing payload advertises one.
 - Call `mobile.host.status`, `mobile.workspace.list`, `mobile.terminal.replay`, `mobile.terminal.input`, `mobile.terminal.paste`, and `mobile.terminal.create`.
-- Subscribe to `workspace.updated`, `terminal.render_grid`, `notification.badge`, and `notification.dismissed` host events for live refresh.
+- Subscribe to `workspace.updated`, `terminal.render_grid`, `terminal.set_font`, `notification.badge`, and `notification.dismissed` host events for live refresh.
 - Render workspace rows, groups, and styled render-grid terminal output in the WebView.
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
 - Copy the currently visible terminal output from the WebView terminal.

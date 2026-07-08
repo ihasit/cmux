@@ -733,6 +733,21 @@ function scheduleViewportReport() {
   }, 180);
 }
 
+function handleTerminalSetFont(payload) {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  const surfaceId = payload.surface_id || payload.surfaceID || payload.surfaceId;
+  const workspaceId = payload.workspace_id || payload.workspaceID || payload.workspaceId;
+  if (surfaceId && surfaceId !== state.activeTerminal.id) return;
+  if (!surfaceId && workspaceId && workspaceId !== state.activeWorkspace.id) return;
+  const fontSize = Number(payload.font_size ?? payload.fontSize);
+  if (!Number.isFinite(fontSize) || fontSize <= 0) return;
+  const clamped = Math.max(8, Math.min(36, fontSize));
+  elements.terminalOutput.style.fontSize = `${clamped}px`;
+  state.effectiveViewport = null;
+  state.lastViewportReport = "";
+  scheduleViewportReport();
+}
+
 function closeActiveTerminal() {
   if (state.activeWorkspace && state.activeTerminal) {
     bridge().clearViewport(state.activeWorkspace.id, state.activeTerminal.id);
@@ -1394,6 +1409,10 @@ function handlePushEvent(type, payload) {
       renderTerminalFrame(renderGrid);
       showToast(t("terminal.live"));
     }
+    return;
+  }
+  if (type === "terminal.set_font") {
+    handleTerminalSetFont(payload);
     return;
   }
   if (type === "notification.badge") {
