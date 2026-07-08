@@ -248,6 +248,65 @@ class MainActivitySmokeTest {
                 .withElement(findElement(Locator.ID, "workspaceList"))
                 .check(webMatches(getText(), containsString("Build shell")))
 
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "pairedMacs",
+                  "payload": {
+                    "macs": [
+                      {
+                        "id": "mac-switcher",
+                        "display_name": "Switcher Mac",
+                        "routes": [
+                          {
+                            "id": "tailscale",
+                            "kind": "tailscale",
+                            "host": "100.64.0.99",
+                            "port": 58465,
+                            "priority": 10
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "showPairedMacs"))
+                .perform(webClick())
+
+            val pairingScreenState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  pairingHidden: document.getElementById('pairingView').classList.contains('hidden'),
+                  workspaceHidden: document.getElementById('workspaceView').classList.contains('hidden'),
+                  backHidden: document.getElementById('backToWorkspacesFromPairing').classList.contains('hidden'),
+                  pairedText: document.getElementById('pairedList').textContent
+                })
+                """.trimIndent()
+            )
+            check(pairingScreenState.contains("\"pairingHidden\":false"))
+            check(pairingScreenState.contains("\"workspaceHidden\":true"))
+            check(pairingScreenState.contains("\"backHidden\":false"))
+            check(pairingScreenState.contains("Switcher Mac"))
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "backToWorkspacesFromPairing"))
+                .perform(webClick())
+
+            val workspaceScreenState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  pairingHidden: document.getElementById('pairingView').classList.contains('hidden'),
+                  workspaceHidden: document.getElementById('workspaceView').classList.contains('hidden')
+                })
+                """.trimIndent()
+            )
+            check(workspaceScreenState.contains("\"pairingHidden\":true"))
+            check(workspaceScreenState.contains("\"workspaceHidden\":false"))
+
             onWebView()
                 .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
                 .perform(webClick())

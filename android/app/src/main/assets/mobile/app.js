@@ -64,6 +64,7 @@ const messages = {
     "auth.error.unauthorized": "Stack authorization failed. Save a fresh token, then try again.",
     "auth.error.accountMismatch": "This token belongs to a different Stack account.",
     "paired.defaultTitle": "Paired Mac",
+    "paired.manage": "Paired Macs",
     "paired.noRoute": "No supported route",
     "paired.notFound": "Paired Mac was not found.",
     "workspaces.title": "Workspaces",
@@ -176,6 +177,7 @@ const messages = {
     "auth.error.unauthorized": "Stack 認証に失敗しました。新しいトークンを保存してから再試行してください。",
     "auth.error.accountMismatch": "このトークンは別の Stack アカウントに属しています。",
     "paired.defaultTitle": "ペアリング済み Mac",
+    "paired.manage": "ペアリング済み Mac",
     "paired.noRoute": "対応する経路がありません",
     "paired.notFound": "ペアリング済み Mac が見つかりません。",
     "workspaces.title": "ワークスペース",
@@ -262,6 +264,7 @@ const elements = {
   closeConnection: document.getElementById("closeConnection"),
   pairingView: document.getElementById("pairingView"),
   pairingCode: document.getElementById("pairingCode"),
+  backToWorkspacesFromPairing: document.getElementById("backToWorkspacesFromPairing"),
   scanPairingCode: document.getElementById("scanPairingCode"),
   pairButton: document.getElementById("pairButton"),
   authStatusText: document.getElementById("authStatusText"),
@@ -274,6 +277,7 @@ const elements = {
   hostText: document.getElementById("hostText"),
   refreshWorkspaces: document.getElementById("refreshWorkspaces"),
   createWorkspace: document.getElementById("createWorkspace"),
+  showPairedMacs: document.getElementById("showPairedMacs"),
   enableNotifications: document.getElementById("enableNotifications"),
   syncNotifications: document.getElementById("syncNotifications"),
   dismissNotifications: document.getElementById("dismissNotifications"),
@@ -339,6 +343,7 @@ function showScreen(name) {
   elements.pairingView.classList.toggle("hidden", name !== "pairing");
   elements.workspaceView.classList.toggle("hidden", name !== "workspaces");
   elements.terminalView.classList.toggle("hidden", name !== "terminal");
+  elements.backToWorkspacesFromPairing.classList.toggle("hidden", name !== "pairing" || !state.connected);
 }
 
 function renderPairedMacs() {
@@ -1403,6 +1408,8 @@ elements.workspaceList.addEventListener("click", (event) => {
 
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
 elements.createWorkspace.addEventListener("click", () => bridge().createWorkspace());
+elements.showPairedMacs.addEventListener("click", () => showScreen("pairing"));
+elements.backToWorkspacesFromPairing.addEventListener("click", () => showScreen("workspaces"));
 elements.enableNotifications.addEventListener("click", () => bridge().requestNotificationPermission());
 elements.syncNotifications.addEventListener("click", syncNotifications);
 elements.dismissNotifications.addEventListener("click", dismissSyncedNotifications);
