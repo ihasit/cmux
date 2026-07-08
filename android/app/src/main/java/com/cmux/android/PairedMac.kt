@@ -68,6 +68,9 @@ data class PairedMac(
                 if (kind != "websocket" && (host.isEmpty() || port !in 1..65535)) {
                     return@mapNotNull null
                 }
+                if (kind != "websocket" && kind != "debug_loopback" && host.isLoopbackLikeHost()) {
+                    return@mapNotNull null
+                }
                 CmuxRoute(
                     id = route.optString("id", "route_$index"),
                     kind = kind,
