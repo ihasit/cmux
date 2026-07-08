@@ -236,6 +236,47 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseCompactTicketRejectsInvalidWebSocketUrlRoute() {
+        val payload = JSONObject()
+            .put("v", 1)
+            .put("d", "mac-invalid-websocket")
+            .put("r", JSONArray().put(
+                JSONObject()
+                    .put("i", "ws")
+                    .put("k", "websocket")
+                    .put("p", 1)
+                    .put("e", JSONObject().put("u", "https://cmux.example.test/mobile"))
+            ))
+
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://attach?payload=${base64Url(payload)}")
+        }
+
+        assertEquals("pair.error.invalidRoute", error.messageKey)
+    }
+
+    @Test
+    fun parseFullTicketRejectsLoopbackWebSocketUrlRoute() {
+        val payload = JSONObject()
+            .put("macDeviceID", "mac-loopback-websocket")
+            .put("routes", JSONArray().put(
+                JSONObject()
+                    .put("id", "websocket")
+                    .put("kind", "websocket")
+                    .put("priority", 1)
+                    .put("endpoint", JSONObject()
+                        .put("type", "url")
+                        .put("url", "ws://127.0.0.1:58465/mobile"))
+            ))
+
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://attach?payload=${base64Url(payload)}")
+        }
+
+        assertEquals("pair.error.loopback", error.messageKey)
+    }
+
+    @Test
     fun parseFullTicketKeepsMixedHostPortAndWebSocketRoutes() {
         val payload = JSONObject()
             .put("macDeviceID", "mac-2")
