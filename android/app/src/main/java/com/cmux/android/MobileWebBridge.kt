@@ -18,9 +18,13 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     private val parser = PairingParser()
     private val authCallbackParser = AuthCallbackParser()
     private var stackAccessToken: String? = authStore.stackAccessToken()
+    private val stackTokenProvider = StoredStackAccessTokenProvider(authStore) {
+        stackAccessToken = authStore.stackAccessToken()
+        emit("auth", authStateJson())
+    }
     private val session = MobileRpcSession(
         callback = this,
-        stackAccessTokenProvider = { stackAccessToken }
+        stackAccessTokenProvider = stackTokenProvider
     )
     private var activeMac: PairedMac? = null
     private var pageReady = false

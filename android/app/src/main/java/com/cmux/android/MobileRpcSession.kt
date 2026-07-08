@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class MobileRpcSession(
     private val callback: Callback,
-    private val stackAccessTokenProvider: () -> String? = { null },
+    private val stackAccessTokenProvider: StackAccessTokenProvider? = null,
     private val clientFactory: (MobileFrameClient.Callback, CmuxRoute) -> MobileFrameClient = { callback, route ->
         if (route.kind == "websocket") {
             MobileWebSocketClient(callback)
@@ -22,7 +22,12 @@ class MobileRpcSession(
         fun onPushEvent(type: String, payload: JSONObject)
     }
 
-    private data class PendingCall(val method: String)
+    private data class PendingCall(
+        val method: String,
+        val params: JSONObject,
+        val sentWithStackAuth: Boolean,
+        val retriedAfterAuthRefresh: Boolean = false
+    )
 
     private val nextId = AtomicInteger(1)
     private val pending = ConcurrentHashMap<Int, PendingCall>()
@@ -38,8 +43,8 @@ class MobileRpcSession(
 
     fun request(method: String, params: JSONObject = JSONObject()): Int {
         val requestId = nextId.getAndIncrement()
-        pending[requestId] = PendingCall(method)
         val request = requestEnvelope(requestId, method, params)
+        pending[requestId] = PendingCall(method, params, sentWithStackAuth = request.has("auth"))
         val activeClient = client
         if (activeClient == null) {
             pending.remove(requestId)
@@ -84,10 +89,15 @@ class MobileRpcSession(
             callback.onRpcResult(id, method ?: "unknown", json.optJSONObject("result") ?: JSONObject())
         } else {
             val error = json.optJSONObject("error") ?: JSONObject()
+            val code = error.optString("code", "host_error")
+            if (pendingCall != null && shouldRetryAfterStackAuthRefresh(pendingCall, code)) {
+                retryWithFreshStackToken(id, pendingCall)
+                return
+            }
             callback.onRpcError(
                 id,
                 method,
-                error.optString("code", "host_error"),
+                code,
                 error.optString("message", "Host returned an error")
             )
         }
@@ -111,10 +121,49 @@ class MobileRpcSession(
             .put("id", requestId)
             .put("method", method)
             .put("params", params)
-        val stackAccessToken = stackAccessTokenProvider()?.trim()
+        val stackAccessToken = stackAccessTokenProvider
+            ?.likelyValidAccessToken()
+            ?.accessToken
+            ?.trim()
         if (!stackAccessToken.isNullOrEmpty() && activeRoute?.let(MobileRouteAuthPolicy::routeAllowsStackAuth) == true) {
             request.put("auth", JSONObject().put("stack_access_token", stackAccessToken))
         }
         return request
+    }
+
+    private fun shouldRetryAfterStackAuthRefresh(pendingCall: PendingCall, code: String): Boolean {
+        if (!pendingCall.sentWithStackAuth || pendingCall.retriedAfterAuthRefresh) return false
+        if (activeRoute?.let(MobileRouteAuthPolicy::routeAllowsStackAuth) != true) return false
+        return code == "unauthorized" || code == "invalid_access_token"
+    }
+
+    private fun retryWithFreshStackToken(requestId: Int, pendingCall: PendingCall) {
+        val freshAccessToken = stackAccessTokenProvider
+            ?.forceRefreshAccessToken()
+            ?.accessToken
+            ?.trim()
+        if (freshAccessToken.isNullOrEmpty()) {
+            callback.onRpcError(
+                requestId,
+                pendingCall.method,
+                "unauthorized",
+                "Stack authorization failed"
+            )
+            return
+        }
+
+        val retry = JSONObject()
+            .put("id", requestId)
+            .put("method", pendingCall.method)
+            .put("params", pendingCall.params)
+            .put("auth", JSONObject().put("stack_access_token", freshAccessToken))
+        pending[requestId] = pendingCall.copy(sentWithStackAuth = true, retriedAfterAuthRefresh = true)
+        val activeClient = client
+        if (activeClient == null) {
+            pending.remove(requestId)
+            callback.onRpcError(requestId, pendingCall.method, "transport_error", "not connected")
+        } else {
+            activeClient.sendFrame(retry.toString())
+        }
     }
 }

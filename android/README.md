@@ -57,6 +57,7 @@ Implemented:
 - Save a manually pasted Stack access token in Android Keystore-backed encrypted storage and attach it to mobile RPC requests.
 - Launch hosted Stack Auth sign-in and accept `cmux-ios://auth-callback` token handoff deep links.
 - Persist Stack refresh/access token handoffs encrypted with Android Keystore AES-GCM.
+- Automatically refresh Stack access tokens from the stored refresh token before authorized RPCs, and retry once after host authorization rejection.
 - Send Stack access tokens only over trusted routes: Tailscale CGNAT/MagicDNS, debug loopback, or `wss://` WebSocket routes.
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
 - Scan Mac pairing QR codes with the device camera.
@@ -67,7 +68,6 @@ Implemented:
 
 Not implemented yet:
 
-- Automatic Stack access-token refresh from the stored refresh token.
 - Broader Android instrumentation and end-to-end tests beyond the initial launch smoke test.
 
 ## Protocol target
@@ -132,6 +132,16 @@ If the repository later adds a Gradle wrapper, prefer:
 ./gradlew :app:assembleDebug
 ```
 
+The hosted sign-in origin and Stack project used for token refresh can be overridden
+from `gradle.properties` or `-P` flags:
+
+```properties
+cmuxAuthOrigin=https://cmux.com
+cmuxStackBaseUrl=https://api.stack-auth.com
+cmuxStackProjectId=9790718f-14cd-4f7e-824d-eaf527a82b82
+cmuxStackPublishableClientKey=pck_kzj80gx4mh2jrzn1cx6y5e8jk0kwa01vkevh2p9zd4twr
+```
+
 ## MVP checklist
 
 - Parse `cmux-ios://` / `cmux-ios-dev://` pairing URLs. Done for attach links.
@@ -140,6 +150,7 @@ If the repository later adds a Gradle wrapper, prefer:
 - Persist paired Mac routes in encrypted Android storage. Done with Android Keystore AES-GCM.
 - Attach Stack access tokens to authorized RPC requests. Done for signed-in or manually saved tokens.
 - Accept hosted Stack Auth token handoff callbacks. Done for `cmux-ios://auth-callback`.
+- Refresh Stack access tokens automatically from stored refresh tokens. Done for proactive refresh and one retry after authorization rejection.
 - Gate Stack token transport to trusted routes. Done for Tailscale CGNAT/MagicDNS, debug loopback, and `wss://` WebSocket routes.
 - Render terminal output in the WebView. Done for styled render-grid frames.
 - Add QR scanning with CameraX or a small native scanner module. Done with ZXing embedded scanner.

@@ -40,14 +40,24 @@ class MobileAuthStore(context: Context) {
     }
 
     fun saveStackTokens(tokens: StackAuthTokens): Boolean {
-        val refreshToken = tokens.refreshToken.trim()
-        val accessToken = tokens.accessToken.trim()
-        if (refreshToken.isEmpty() || accessToken.isEmpty()) return false
+        return saveStackTokens(tokens.accessToken, tokens.refreshToken)
+    }
+
+    fun saveStackTokens(accessToken: String, refreshToken: String): Boolean {
+        val trimmedRefreshToken = refreshToken.trim()
+        val trimmedAccessToken = accessToken.trim()
+        if (trimmedRefreshToken.isEmpty() || trimmedAccessToken.isEmpty()) return false
         preferences.edit()
-            .putString(KEY_STACK_REFRESH_TOKEN_ENCRYPTED, encrypt(refreshToken))
-            .putString(KEY_STACK_ACCESS_TOKEN_ENCRYPTED, encrypt(accessToken))
+            .putString(KEY_STACK_REFRESH_TOKEN_ENCRYPTED, encrypt(trimmedRefreshToken))
+            .putString(KEY_STACK_ACCESS_TOKEN_ENCRYPTED, encrypt(trimmedAccessToken))
             .apply()
         return true
+    }
+
+    fun saveStackTokensIfRefreshTokenMatches(expectedRefreshToken: String, accessToken: String, refreshToken: String): Boolean {
+        val currentRefreshToken = stackRefreshToken() ?: return false
+        if (currentRefreshToken != expectedRefreshToken.trim()) return false
+        return saveStackTokens(accessToken, refreshToken)
     }
 
     fun clearStackAccessToken() {
@@ -55,6 +65,13 @@ class MobileAuthStore(context: Context) {
             .remove(KEY_STACK_ACCESS_TOKEN_ENCRYPTED)
             .remove(KEY_STACK_REFRESH_TOKEN_ENCRYPTED)
             .apply()
+    }
+
+    fun clearStackTokensIfRefreshTokenMatches(expectedRefreshToken: String): Boolean {
+        val currentRefreshToken = stackRefreshToken() ?: return false
+        if (currentRefreshToken != expectedRefreshToken.trim()) return false
+        clearStackAccessToken()
+        return true
     }
 
     private fun encrypt(plaintext: String): String {

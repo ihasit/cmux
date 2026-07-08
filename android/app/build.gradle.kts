@@ -8,6 +8,12 @@ android {
     compileSdk = 35
     val cmuxAuthOrigin = providers.gradleProperty("cmuxAuthOrigin")
         .orElse("https://cmux.com")
+    val cmuxStackBaseUrl = providers.gradleProperty("cmuxStackBaseUrl")
+        .orElse("https://api.stack-auth.com")
+    val cmuxStackProjectId = providers.gradleProperty("cmuxStackProjectId")
+        .orElse("9790718f-14cd-4f7e-824d-eaf527a82b82")
+    val cmuxStackPublishableClientKey = providers.gradleProperty("cmuxStackPublishableClientKey")
+        .orElse("pck_kzj80gx4mh2jrzn1cx6y5e8jk0kwa01vkevh2p9zd4twr")
 
     buildFeatures {
         buildConfig = true
@@ -21,6 +27,9 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "CMUX_AUTH_ORIGIN", "\"${cmuxAuthOrigin.get()}\"")
+        buildConfigField("String", "CMUX_STACK_BASE_URL", "\"${cmuxStackBaseUrl.get()}\"")
+        buildConfigField("String", "CMUX_STACK_PROJECT_ID", "\"${cmuxStackProjectId.get()}\"")
+        buildConfigField("String", "CMUX_STACK_PUBLISHABLE_CLIENT_KEY", "\"${cmuxStackPublishableClientKey.get()}\"")
     }
 
     compileOptions {
