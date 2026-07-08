@@ -1049,6 +1049,68 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun createdTerminalOpensContainingWorkspace() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.terminal.create",
+                    "result": {
+                      "created_terminal_id": "terminal-new",
+                      "workspaces": [
+                        {
+                          "id": "workspace-first",
+                          "title": "First Workspace",
+                          "preview": "no new terminal here",
+                          "terminals": [
+                            {
+                              "id": "terminal-old",
+                              "title": "Old shell",
+                              "current_directory": "/old"
+                            }
+                          ]
+                        },
+                        {
+                          "id": "workspace-target",
+                          "title": "Target Workspace",
+                          "preview": "new terminal lives here",
+                          "terminals": [
+                            {
+                              "id": "terminal-new",
+                              "title": "New shell",
+                              "current_directory": "/target"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val activeTerminalState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  terminalHidden: document.getElementById('terminalView').classList.contains('hidden'),
+                  workspaceHidden: document.getElementById('workspaceView').classList.contains('hidden'),
+                  title: document.getElementById('terminalTitle').textContent,
+                  meta: document.getElementById('terminalMeta').textContent
+                })
+                """.trimIndent()
+            )
+            check(activeTerminalState.contains("\"terminalHidden\":false"))
+            check(activeTerminalState.contains("\"workspaceHidden\":true"))
+            check(activeTerminalState.contains("\"title\":\"New shell\""))
+            check(activeTerminalState.contains("\"meta\":\"Target Workspace\""))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
