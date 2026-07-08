@@ -33,6 +33,17 @@ class AuthCallbackParserTest {
     }
 
     @Test
+    fun rejectsStackAccessCookiePairWhenAccessTokenIsNotString() {
+        val accessCookie = encode("[\"refresh-2\",12345]")
+        val tokens = parser.parse(
+            "cmux-ios://auth-callback?stack_refresh=refresh-2&stack_access=$accessCookie",
+            expectedState = null
+        )
+
+        assertNull(tokens)
+    }
+
+    @Test
     fun rejectsCallbackWhenStateDoesNotMatch() {
         val tokens = parser.parse(
             "cmux-ios://auth-callback?stack_refresh=refresh-1&stack_access=access-1&cmux_auth_state=other",
