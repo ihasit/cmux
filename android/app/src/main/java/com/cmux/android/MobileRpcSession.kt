@@ -123,8 +123,13 @@ class MobileRpcSession(
             }
             callback.onRpcResult(id, method ?: "unknown", result ?: JSONObject())
         } else {
-            val error = json.optJSONObject("error") ?: JSONObject()
-            val code = error.optString("code", "host_error")
+            val error = json.optJSONObject("error")
+            if (error == null && json.has("error") && !json.isNull("error")) {
+                callback.onRpcError(id, method, "parse_error", "Invalid response error from host")
+                return
+            }
+            val errorObject = error ?: JSONObject()
+            val code = errorObject.optString("code", "host_error")
             if (pendingCall != null && shouldRetryAfterStackAuthRefresh(pendingCall, code)) {
                 retryWithFreshStackToken(id, pendingCall)
                 return
@@ -133,7 +138,7 @@ class MobileRpcSession(
                 id,
                 method,
                 code,
-                error.optString("message", "Host returned an error")
+                errorObject.optString("message", "Host returned an error")
             )
         }
     }
