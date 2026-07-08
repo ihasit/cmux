@@ -231,9 +231,10 @@ class PairingParser {
         val portText: String
         if (decoded.startsWith("[")) {
             val closeIndex = decoded.indexOf("]")
-            checkPairing(closeIndex > 1 && decoded.getOrNull(closeIndex + 1) == ':', "pair.error.invalidRoute")
+            val afterBracket = decoded.substring(closeIndex + 1).trimStart()
+            checkPairing(closeIndex > 1 && afterBracket.startsWith(":"), "pair.error.invalidRoute")
             host = decoded.substring(1, closeIndex)
-            portText = decoded.substring(closeIndex + 2)
+            portText = afterBracket.substring(1)
         } else {
             val separator = decoded.lastIndexOf(":")
             checkPairing(separator > 0, "pair.error.invalidRoute")
