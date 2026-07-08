@@ -492,15 +492,12 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     private fun subscribeToEvents(capabilities: MobileEventTopics.HostStatusCapabilities) {
-        val topics = JSONArray()
-        MobileEventTopics.topicsForHostStatus(capabilities).forEach { topic ->
-            topics.put(topic)
-        }
         session.request(
             "mobile.events.subscribe",
-            JSONObject()
-                .put("stream_id", streamId)
-                .put("topics", topics)
+            MobileRpcParams.eventSubscription(
+                streamId = streamId,
+                topics = MobileEventTopics.topicsForHostStatus(capabilities)
+            )
         )
     }
 

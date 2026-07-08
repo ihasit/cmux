@@ -104,4 +104,21 @@ class MobileRpcParamsTest {
         assertEquals(7, params.getInt("row"))
         assertEquals(MobileRpcParams.CLIENT_ID, params.getString("client_id"))
     }
+
+    @Test
+    fun eventSubscriptionCarriesStreamTopicsAndAndroidClientId() {
+        val params = MobileRpcParams.eventSubscription(
+            streamId = "stream-android-1",
+            topics = listOf("workspace.updated", "terminal.bytes")
+        )
+
+        assertEquals("stream-android-1", params.getString("stream_id"))
+        assertEquals(
+            listOf("workspace.updated", "terminal.bytes"),
+            (0 until params.getJSONArray("topics").length()).map { index ->
+                params.getJSONArray("topics").getString(index)
+            }
+        )
+        assertEquals(MobileRpcParams.CLIENT_ID, params.getString("client_id"))
+    }
 }

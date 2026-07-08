@@ -1,5 +1,6 @@
 package com.cmux.android
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 object MobileRpcParams {
@@ -29,13 +30,13 @@ object MobileRpcParams {
             .put("client_id", CLIENT_ID)
     }
 
-    fun reconcileNotifications(deliveredIds: org.json.JSONArray): JSONObject {
+    fun reconcileNotifications(deliveredIds: JSONArray): JSONObject {
         return JSONObject()
             .put("client_id", CLIENT_ID)
             .put("delivered_ids", deliveredIds)
     }
 
-    fun dismissNotifications(notificationIds: org.json.JSONArray): JSONObject {
+    fun dismissNotifications(notificationIds: JSONArray): JSONObject {
         return JSONObject()
             .put("client_id", CLIENT_ID)
             .put("notification_ids", notificationIds)
@@ -44,6 +45,17 @@ object MobileRpcParams {
     fun workspaceGroup(groupId: String): JSONObject {
         return JSONObject()
             .put("group_id", groupId)
+            .put("client_id", CLIENT_ID)
+    }
+
+    fun eventSubscription(streamId: String, topics: List<String>): JSONObject {
+        val topicsJson = JSONArray()
+        topics.forEach { topic ->
+            topicsJson.put(topic)
+        }
+        return JSONObject()
+            .put("stream_id", streamId)
+            .put("topics", topicsJson)
             .put("client_id", CLIENT_ID)
     }
 
