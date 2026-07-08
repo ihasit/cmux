@@ -282,6 +282,24 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun pushEventWithNonStringTopicReportsParseError() {
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> RecordingFrameClient() }
+        )
+        session.connect(tcpRoute())
+
+        session.onFrame(JSONObject().put("topic", 123).put("payload", JSONObject().put("ok", true)).toString())
+
+        assertEquals(
+            listOf(RecordedError(null, null, "parse_error", "Invalid push topic from host")),
+            callback.errors
+        )
+        assertTrue(callback.pushEvents.isEmpty())
+    }
+
+    @Test
     fun remoteCloseFailsPendingRequests() {
         val client = RecordingFrameClient()
         val callback = RecordingCallback()
@@ -797,10 +815,16 @@ class MobileRpcSessionTest {
         val detail: String?
     )
 
+    private data class RecordedPushEvent(
+        val type: String,
+        val payload: JSONObject
+    )
+
     private class RecordingCallback : MobileRpcSession.Callback {
         val errors = mutableListOf<RecordedError>()
         val connectionStates = mutableListOf<RecordedConnectionState>()
         val results = mutableListOf<Int>()
+        val pushEvents = mutableListOf<RecordedPushEvent>()
 
         override fun onConnectionState(state: String, detail: String?) {
             connectionStates.add(RecordedConnectionState(state, detail))
@@ -814,7 +838,9 @@ class MobileRpcSessionTest {
             errors.add(RecordedError(requestId, method, code, message))
         }
 
-        override fun onPushEvent(type: String, payload: JSONObject) = Unit
+        override fun onPushEvent(type: String, payload: JSONObject) {
+            pushEvents.add(RecordedPushEvent(type, payload))
+        }
     }
 
     private object NoopCallback : MobileRpcSession.Callback {
