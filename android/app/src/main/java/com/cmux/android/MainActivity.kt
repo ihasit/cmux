@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
 
         setContentView(webView)
         webView.loadUrl("file:///android_asset/mobile/index.html")
-        bridge.handlePairingURL(intent?.dataString)
+        handleIncomingIntent(intent)
     }
 
     fun startPairingScan() {
@@ -63,12 +63,24 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        bridge.handlePairingURL(intent.dataString)
+        handleIncomingIntent(intent)
     }
 
     override fun onDestroy() {
         bridge.close()
         webView.destroy()
         super.onDestroy()
+    }
+
+    fun handleIncomingIntent(intent: Intent?) {
+        bridge.handlePairingURL(pairingValue(intent))
+    }
+
+    private fun pairingValue(intent: Intent?): String? {
+        if (intent == null) return null
+        if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            return intent.getStringExtra(Intent.EXTRA_TEXT)
+        }
+        return intent.dataString
     }
 }

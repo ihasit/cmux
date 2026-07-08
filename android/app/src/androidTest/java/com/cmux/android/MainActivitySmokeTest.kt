@@ -101,6 +101,39 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun sharedHostPortTextStoresPairedMacInWebView() {
+        val intent = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, "100.64.0.77:58465")
+
+        ActivityScenario.launch<MainActivity>(intent).use {
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairedList"))
+                .check(webMatches(getText(), containsString("100.64.0.77:58465")))
+        }
+    }
+
+    @Test
+    fun sharedAttachLinkFromNewIntentStoresPairedMacInWebView() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            val intent = Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(
+                    Intent.EXTRA_TEXT,
+                    "cmux-ios://attach?v=2&ub=instrumentation-user&pc=1&av=1.2.3&ab=42&r=100.64.0.88:58465"
+                )
+
+            scenario.onActivity { activity ->
+                activity.handleIncomingIntent(intent)
+            }
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "pairedList"))
+                .check(webMatches(getText(), containsString("100.64.0.88:58465")))
+        }
+    }
+
+    @Test
     fun manualHostPortPairingStoresPairedMacInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use {
             onWebView()
