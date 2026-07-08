@@ -502,6 +502,25 @@ class PairingParserTest {
         assertEquals(decoded.routes.single(), decoded.primaryRoute)
     }
 
+    @Test
+    fun pairedMacJsonNormalizesStoredRouteKindCase() {
+        val decoded = PairedMac.fromJson(
+            JSONObject()
+                .put("id", "mac-uppercase-stored-kind")
+                .put("routes", JSONArray()
+                    .put(JSONObject()
+                        .put("id", "stored-tailscale")
+                        .put("kind", " TAILSCALE ")
+                        .put("host", "100.64.0.9")
+                        .put("port", 58465)
+                        .put("priority", 1)))
+        )
+
+        assertEquals(1, decoded.routes.size)
+        assertEquals("tailscale", decoded.routes.single().kind)
+        assertEquals(decoded.routes.single(), decoded.primaryRoute)
+    }
+
     private fun base64Url(json: JSONObject): String {
         return Base64.getUrlEncoder()
             .withoutPadding()
