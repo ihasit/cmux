@@ -1411,6 +1411,93 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun terminalBytesPushSkipsDuplicateSequenceOverlap() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
+                .perform(webClick())
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "terminal.bytes",
+                    "payload": {
+                      "surface_id": "terminal-1",
+                      "seq": 0,
+                      "data_b64": "aGVsbG8="
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "terminal.bytes",
+                    "payload": {
+                      "surface_id": "terminal-1",
+                      "seq": 0,
+                      "data_b64": "aGVsbG8="
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "terminal.bytes",
+                    "payload": {
+                      "surface_id": "terminal-1",
+                      "seq": 3,
+                      "data_b64": "bGxvIQ=="
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val terminalText = scenario.evaluateScript("document.getElementById('terminalOutput').textContent")
+            check(terminalText == "hello!")
+        }
+    }
+
+    @Test
     fun newWorkspaceButtonRequiresHostCapability() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.emitNativeEvent(
