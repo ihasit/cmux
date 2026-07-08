@@ -309,12 +309,13 @@ class MobileRpcSession(
     private fun unsubscribeActiveStream() {
         val streamId = subscribedStreamId?.takeIf { it.isNotBlank() } ?: return
         val activeClient = client ?: return
+        val requestId = nextId.getAndIncrement()
         val request = requestEnvelope(
-            nextId.getAndIncrement(),
+            requestId,
             "mobile.events.unsubscribe",
             JSONObject().put("stream_id", streamId)
         )
-        activeClient.sendFrame(request.toString())
+        sendRequestFrame(activeClient, requestId, "mobile.events.unsubscribe", request)
         subscribedStreamId = null
     }
 
