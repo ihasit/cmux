@@ -41,7 +41,18 @@ const messages = {
     "paired.notFound": "Paired Mac was not found.",
     "workspaces.title": "Workspaces",
     "workspaces.empty": "No workspaces reported yet.",
+    "workspace.new": "New workspace",
     "workspace.defaultTitle": "Workspace",
+    "workspace.rename": "Rename",
+    "workspace.pin": "Pin",
+    "workspace.unpin": "Unpin",
+    "workspace.markRead": "Mark read",
+    "workspace.markUnread": "Mark unread",
+    "workspace.close": "Close",
+    "workspace.renamePrompt": "Workspace name",
+    "workspace.renameEmpty": "Workspace name is empty.",
+    "workspace.actionsUnsupported": "This Mac does not support workspace actions yet.",
+    "workspace.closeUnsupported": "This Mac does not support closing workspaces yet.",
     "terminal.defaultTitle": "Terminal",
     "terminal.notFound": "Terminal was not found.",
     "terminal.noTerminals": "No terminals",
@@ -88,7 +99,18 @@ const messages = {
     "paired.notFound": "ペアリング済み Mac が見つかりません。",
     "workspaces.title": "ワークスペース",
     "workspaces.empty": "ワークスペースはまだ報告されていません。",
+    "workspace.new": "新しいワークスペース",
     "workspace.defaultTitle": "ワークスペース",
+    "workspace.rename": "名前を変更",
+    "workspace.pin": "ピン留め",
+    "workspace.unpin": "ピン留め解除",
+    "workspace.markRead": "既読にする",
+    "workspace.markUnread": "未読にする",
+    "workspace.close": "閉じる",
+    "workspace.renamePrompt": "ワークスペース名",
+    "workspace.renameEmpty": "ワークスペース名が空です。",
+    "workspace.actionsUnsupported": "この Mac はまだワークスペース操作に対応していません。",
+    "workspace.closeUnsupported": "この Mac はまだワークスペースの終了に対応していません。",
     "terminal.defaultTitle": "ターミナル",
     "terminal.notFound": "ターミナルが見つかりません。",
     "terminal.noTerminals": "ターミナルなし",
@@ -129,6 +151,7 @@ const elements = {
   workspaceView: document.getElementById("workspaceView"),
   hostText: document.getElementById("hostText"),
   refreshWorkspaces: document.getElementById("refreshWorkspaces"),
+  createWorkspace: document.getElementById("createWorkspace"),
   workspaceList: document.getElementById("workspaceList"),
   terminalView: document.getElementById("terminalView"),
   backToWorkspaces: document.getElementById("backToWorkspaces"),
@@ -207,6 +230,7 @@ function renderWorkspaces() {
   }
   elements.workspaceList.innerHTML = state.workspaces.map((workspace) => {
     const terminals = workspace.terminals || [];
+    const workspaceActions = renderWorkspaceActions(workspace);
     const terminalRows = terminals.length === 0
       ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span><button data-create-terminal="${escapeHtml(workspace.id)}">${escapeHtml(t("terminal.new"))}</button></div>`
       : terminals.map((terminal) => `
@@ -224,10 +248,70 @@ function renderWorkspaces() {
           <div class="card-title">${escapeHtml(workspace.title || t("workspace.defaultTitle"))}</div>
           <div class="card-subtitle">${escapeHtml(workspace.preview || workspace.current_directory || "")}</div>
         </div>
+        ${workspaceActions}
         ${terminalRows}
       </article>
     `;
   }).join("");
+}
+
+function renderWorkspaceActions(workspace) {
+  return `
+    <div class="workspace-actions">
+      <button data-rename-workspace="${escapeHtml(workspace.id)}">${escapeHtml(t("workspace.rename"))}</button>
+      <button data-pin-workspace="${escapeHtml(workspace.id)}" data-pinned="${workspace.is_pinned ? "true" : "false"}">${escapeHtml(workspace.is_pinned ? t("workspace.unpin") : t("workspace.pin"))}</button>
+      <button data-read-workspace="${escapeHtml(workspace.id)}" data-unread="${workspace.has_unread ? "true" : "false"}">${escapeHtml(workspace.has_unread ? t("workspace.markRead") : t("workspace.markUnread"))}</button>
+      <button data-close-workspace="${escapeHtml(workspace.id)}">${escapeHtml(t("workspace.close"))}</button>
+    </div>
+  `;
+}
+
+function hostCapabilities() {
+  return state.hostStatus?.capabilities || state.hostStatus?.host_service?.capabilities || [];
+}
+
+function hasCapability(capability) {
+  return hostCapabilities().includes(capability);
+}
+
+function renameWorkspace(workspaceId) {
+  if (!hasCapability("workspace.actions.v1")) {
+    showToast(t("workspace.actionsUnsupported"));
+    return;
+  }
+  const workspace = state.workspaces.find((item) => item.id === workspaceId);
+  const currentTitle = workspace?.title || "";
+  const nextTitle = window.prompt(t("workspace.renamePrompt"), currentTitle)?.trim();
+  if (nextTitle == null) return;
+  if (!nextTitle) {
+    showToast(t("workspace.renameEmpty"));
+    return;
+  }
+  bridge().renameWorkspace(workspaceId, nextTitle);
+}
+
+function toggleWorkspacePinned(workspaceId, isPinned) {
+  if (!hasCapability("workspace.actions.v1")) {
+    showToast(t("workspace.actionsUnsupported"));
+    return;
+  }
+  bridge().setWorkspacePinned(workspaceId, !isPinned);
+}
+
+function toggleWorkspaceUnread(workspaceId, hasUnread) {
+  if (!hasCapability("workspace.read_state.v1")) {
+    showToast(t("workspace.actionsUnsupported"));
+    return;
+  }
+  bridge().setWorkspaceUnread(workspaceId, !hasUnread);
+}
+
+function closeWorkspace(workspaceId) {
+  if (!hasCapability("workspace.close.v1")) {
+    showToast(t("workspace.closeUnsupported"));
+    return;
+  }
+  bridge().closeWorkspace(workspaceId);
 }
 
 function openTerminal(workspaceId, terminalId) {
@@ -715,14 +799,22 @@ function handleRpcResult(method, result) {
     elements.hostText.textContent = name;
     return;
   }
-  if (method === "mobile.workspace.list" || method === "mobile.terminal.create") {
+  if (method === "mobile.workspace.list" || method === "mobile.terminal.create" || method === "workspace.create") {
     state.workspaces = result.workspaces || [];
     renderWorkspaces();
     showScreen("workspaces");
-    if (result.created_terminal_id) {
+    if (result.created_workspace_id && !result.created_terminal_id) {
+      const workspace = state.workspaces.find((item) => item.id === result.created_workspace_id);
+      const terminal = workspace?.terminals?.[0];
+      if (workspace && terminal) openTerminal(workspace.id, terminal.id);
+    } else if (result.created_terminal_id) {
       const workspaceId = result.created_workspace_id || result.workspaces?.[0]?.id;
       if (workspaceId) openTerminal(workspaceId, result.created_terminal_id);
     }
+    return;
+  }
+  if (method === "workspace.action" || method === "workspace.close") {
+    bridge().refreshWorkspaces();
     return;
   }
   if (method === "mobile.terminal.replay") {
@@ -809,11 +901,20 @@ elements.workspaceList.addEventListener("click", (event) => {
   const terminalId = event.target.getAttribute("data-terminal-id");
   const workspaceId = event.target.getAttribute("data-open-terminal");
   const createWorkspaceId = event.target.getAttribute("data-create-terminal");
+  const renameWorkspaceId = event.target.getAttribute("data-rename-workspace");
+  const pinWorkspaceId = event.target.getAttribute("data-pin-workspace");
+  const readWorkspaceId = event.target.getAttribute("data-read-workspace");
+  const closeWorkspaceId = event.target.getAttribute("data-close-workspace");
   if (workspaceId && terminalId) openTerminal(workspaceId, terminalId);
   if (createWorkspaceId) bridge().createTerminal(createWorkspaceId);
+  if (renameWorkspaceId) renameWorkspace(renameWorkspaceId);
+  if (pinWorkspaceId) toggleWorkspacePinned(pinWorkspaceId, event.target.getAttribute("data-pinned") === "true");
+  if (readWorkspaceId) toggleWorkspaceUnread(readWorkspaceId, event.target.getAttribute("data-unread") === "true");
+  if (closeWorkspaceId) closeWorkspace(closeWorkspaceId);
 });
 
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
+elements.createWorkspace.addEventListener("click", () => bridge().createWorkspace());
 elements.closeConnection.addEventListener("click", () => {
   if (state.activeWorkspace && state.activeTerminal) {
     bridge().clearViewport(state.activeWorkspace.id, state.activeTerminal.id);

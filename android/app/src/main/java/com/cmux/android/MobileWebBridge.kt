@@ -79,6 +79,55 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     }
 
     @JavascriptInterface
+    fun createWorkspace() {
+        session.request("workspace.create")
+    }
+
+    @JavascriptInterface
+    fun renameWorkspace(workspaceId: String, title: String) {
+        session.request(
+            "workspace.action",
+            JSONObject()
+                .put("workspace_id", workspaceId)
+                .put("client_id", CLIENT_ID)
+                .put("action", "rename")
+                .put("title", title.trim())
+        )
+    }
+
+    @JavascriptInterface
+    fun setWorkspacePinned(workspaceId: String, pinned: Boolean) {
+        session.request(
+            "workspace.action",
+            JSONObject()
+                .put("workspace_id", workspaceId)
+                .put("client_id", CLIENT_ID)
+                .put("action", if (pinned) "pin" else "unpin")
+        )
+    }
+
+    @JavascriptInterface
+    fun setWorkspaceUnread(workspaceId: String, unread: Boolean) {
+        session.request(
+            "workspace.action",
+            JSONObject()
+                .put("workspace_id", workspaceId)
+                .put("client_id", CLIENT_ID)
+                .put("action", if (unread) "mark_unread" else "mark_read")
+        )
+    }
+
+    @JavascriptInterface
+    fun closeWorkspace(workspaceId: String) {
+        session.request(
+            "workspace.close",
+            JSONObject()
+                .put("workspace_id", workspaceId)
+                .put("client_id", CLIENT_ID)
+        )
+    }
+
+    @JavascriptInterface
     fun createTerminal(workspaceId: String) {
         session.request("mobile.terminal.create", JSONObject().put("workspace_id", workspaceId))
     }
