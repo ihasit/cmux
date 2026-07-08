@@ -659,6 +659,80 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun terminalSetFontPushUpdatesActiveTerminalFontOnly() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
+                .perform(webClick())
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "terminal.set_font",
+                    "payload": {
+                      "surface_id": "other-terminal",
+                      "font_size": 20
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val unchangedFontSize = scenario.evaluateScript("document.getElementById('terminalOutput').style.fontSize")
+            check(unchangedFontSize == "\"\"")
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "terminal.set_font",
+                    "payload": {
+                      "surface_id": "terminal-1",
+                      "font_size": 18
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val activeFontSize = scenario.evaluateScript("document.getElementById('terminalOutput').style.fontSize")
+            check(activeFontSize == "\"18px\"")
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
