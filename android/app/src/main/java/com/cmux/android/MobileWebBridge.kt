@@ -452,12 +452,12 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     private fun connectMac(mac: PairedMac) {
-        val route = mac.primaryRoute
-        if (route == null) {
+        val routes = mac.supportedRoutes()
+        if (routes.isEmpty()) {
             emit("error", JSONObject().put("message_key", "paired.noRoute"))
             return
         }
-        session.connect(route)
+        session.connect(routes)
     }
 
     private fun terminalParams(workspaceId: String, terminalId: String, columns: Int, rows: Int): JSONObject {

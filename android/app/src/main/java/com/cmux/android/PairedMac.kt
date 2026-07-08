@@ -31,9 +31,13 @@ data class PairedMac(
     val routes: List<CmuxRoute>
 ) {
     val primaryRoute: CmuxRoute?
-        get() = routes
-            .filter { it.kind == "tailscale" || it.kind == "debug_loopback" || it.kind == "websocket" }
-            .minWithOrNull(compareBy<CmuxRoute> { it.priority }.thenBy { it.id })
+        get() = supportedRoutes().firstOrNull()
+
+    fun supportedRoutes(): List<CmuxRoute> {
+        return routes
+            .filter { it.isSupportedMobileRoute() }
+            .sortedWith(compareBy<CmuxRoute> { it.priority }.thenBy { it.id })
+    }
 
     fun toJson(): JSONObject {
         val routeArray = JSONArray()
@@ -81,6 +85,10 @@ data class PairedMac(
             )
         }
     }
+}
+
+fun CmuxRoute.isSupportedMobileRoute(): Boolean {
+    return kind == "tailscale" || kind == "debug_loopback" || kind == "websocket"
 }
 
 fun JSONObject.optNullableString(name: String): String? {

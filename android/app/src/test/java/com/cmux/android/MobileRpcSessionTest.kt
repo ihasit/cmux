@@ -244,6 +244,28 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun manualCloseDoesNotFailOverToNextRoute() {
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient()
+            }
+        )
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+
+        session.close("closed by user")
+
+        assertEquals(listOf("first"), connectedRoutes.map { it.id })
+        assertEquals("closed", callback.connectionStates.last().state)
+    }
+
+    @Test
     fun shutdownFailsPendingRequests() {
         val client = RecordingFrameClient()
         val callback = RecordingCallback()
@@ -259,6 +281,211 @@ class MobileRpcSessionTest {
         assertEquals(
             listOf(RecordedError(requestId, "mobile.host.status", "transport_error", "session shutdown")),
             callback.errors
+        )
+    }
+
+    @Test
+    fun connectRoutesTriesCandidatesInPriorityOrder() {
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val session = MobileRpcSession(
+            callback = NoopCallback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient()
+            }
+        )
+
+        session.connect(listOf(
+            tcpRoute().copy(id = "slow", priority = 20, host = "100.64.0.20"),
+            webSocketRoute("wss://cmux.example.test/mobile").copy(id = "fast", priority = 1),
+            tcpRoute().copy(id = "unsupported", kind = "iroh", priority = 0, host = "100.64.0.30")
+        ))
+
+        assertEquals(listOf("fast"), connectedRoutes.map { it.id })
+    }
+
+    @Test
+    fun closeBeforeOpenFailsOverToNextRoute() {
+        val clients = mutableListOf<RecordingFrameClient>()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient().also { clients.add(it) }
+            }
+        )
+
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.onClose("first refused")
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(listOf("connecting", "retrying", "connecting"), callback.connectionStates.map { it.state })
+        assertTrue(callback.errors.isEmpty())
+        assertEquals(1, clients.first().shutdownCalls)
+    }
+
+    @Test
+    fun errorThenCloseBeforeOpenFailsOverToNextRoute() {
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient()
+            }
+        )
+
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.onError("first failed")
+        assertEquals(listOf("first"), connectedRoutes.map { it.id })
+        assertTrue(callback.errors.isEmpty())
+
+        session.onClose("connect failed")
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(RecordedConnectionState("retrying", "closed: first failed"), callback.connectionStates[1])
+        assertTrue(callback.errors.isEmpty())
+    }
+
+    @Test
+    fun failoverIgnoresSynchronousShutdownCloseFromFailedClient() {
+        val firstClient = SynchronousCloseFrameClient()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { frameCallback, route ->
+                connectedRoutes.add(route)
+                if (connectedRoutes.size == 1) {
+                    firstClient.callback = frameCallback
+                    firstClient
+                } else {
+                    RecordingFrameClient()
+                }
+            }
+        )
+
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11"),
+            tcpRoute().copy(id = "third", priority = 3, host = "100.64.0.12")
+        ))
+        session.onClose("first refused")
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(
+            listOf("connecting", "retrying", "connecting"),
+            callback.connectionStates.map { it.state }
+        )
+        assertEquals(1, firstClient.shutdownCalls)
+    }
+
+    @Test
+    fun closeAfterOpenDoesNotFailOver() {
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient()
+            }
+        )
+
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.onOpen()
+        session.onClose("lost after open")
+
+        assertEquals(listOf("first"), connectedRoutes.map { it.id })
+        assertEquals("closed", callback.connectionStates.last().state)
+    }
+
+    @Test
+    fun connectRoutesReportsClosedWhenNoSupportedRouteExists() {
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> RecordingFrameClient() }
+        )
+
+        session.connect(listOf(tcpRoute().copy(id = "iroh", kind = "iroh")))
+
+        assertEquals(listOf(RecordedConnectionState("closed", "no supported route")), callback.connectionStates)
+    }
+
+    @Test
+    fun replacingConnectionIgnoresSynchronousShutdownCloseFromOldClient() {
+        val firstClient = SynchronousCloseFrameClient()
+        val secondClient = RecordingFrameClient()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { callback, route ->
+                connectedRoutes.add(route)
+                if (connectedRoutes.size == 1) {
+                    firstClient.callback = callback
+                    firstClient
+                } else {
+                    secondClient
+                }
+            }
+        )
+        session.connect(tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"))
+
+        session.connect(listOf(
+            tcpRoute().copy(id = "second", priority = 1, host = "100.64.0.11"),
+            tcpRoute().copy(id = "third", priority = 2, host = "100.64.0.12")
+        ))
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(
+            listOf(
+                RecordedConnectionState("connecting", "100.64.0.10:58465"),
+                RecordedConnectionState("connecting", "100.64.0.11:58465")
+            ),
+            callback.connectionStates
+        )
+        assertEquals(1, firstClient.shutdownCalls)
+    }
+
+    @Test
+    fun manualCloseIgnoresSynchronousClientCloseCallback() {
+        val client = SynchronousCloseFrameClient()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { frameCallback, _ ->
+                client.callback = frameCallback
+                client
+            }
+        )
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+
+        session.close("closed by user")
+
+        assertEquals(1, client.closeCalls)
+        assertEquals(
+            listOf(
+                RecordedConnectionState("connecting", "100.64.0.10:58465"),
+                RecordedConnectionState("closed", "closed by user")
+            ),
+            callback.connectionStates
         )
     }
 
@@ -286,6 +513,8 @@ class MobileRpcSessionTest {
 
     private class RecordingFrameClient : MobileFrameClient {
         val sentFrames = mutableListOf<String>()
+        var shutdownCalls = 0
+            private set
 
         override fun connect(route: CmuxRoute) = Unit
 
@@ -295,7 +524,31 @@ class MobileRpcSessionTest {
 
         override fun close(reason: String) = Unit
 
-        override fun shutdown() = Unit
+        override fun shutdown() {
+            shutdownCalls += 1
+        }
+    }
+
+    private class SynchronousCloseFrameClient : MobileFrameClient {
+        var callback: MobileFrameClient.Callback? = null
+        var closeCalls = 0
+            private set
+        var shutdownCalls = 0
+            private set
+
+        override fun connect(route: CmuxRoute) = Unit
+
+        override fun sendFrame(payload: String) = Unit
+
+        override fun close(reason: String) {
+            closeCalls += 1
+            callback?.onClose(reason)
+        }
+
+        override fun shutdown() {
+            shutdownCalls += 1
+            callback?.onClose("activity destroyed")
+        }
     }
 
     private class FakeStackAccessTokenProvider(
@@ -325,10 +578,18 @@ class MobileRpcSessionTest {
         val message: String
     )
 
+    private data class RecordedConnectionState(
+        val state: String,
+        val detail: String?
+    )
+
     private class RecordingCallback : MobileRpcSession.Callback {
         val errors = mutableListOf<RecordedError>()
+        val connectionStates = mutableListOf<RecordedConnectionState>()
 
-        override fun onConnectionState(state: String, detail: String?) = Unit
+        override fun onConnectionState(state: String, detail: String?) {
+            connectionStates.add(RecordedConnectionState(state, detail))
+        }
 
         override fun onRpcResult(requestId: Int, method: String, result: JSONObject) = Unit
 

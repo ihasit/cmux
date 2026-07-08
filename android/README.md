@@ -54,7 +54,7 @@ Implemented:
 - Parse `cmux-ios://attach?v=2&r=host:port` pairing links.
 - Parse older `attach` / `pair` payload links enough to recover host/port routes.
 - Persist paired Macs with Android Keystore-backed encrypted storage.
-- Connect to the selected host route over the length-prefixed mobile TCP protocol.
+- Connect to host routes over the length-prefixed mobile TCP protocol, automatically trying the next advertised route if the first route fails before opening.
 - Connect to WebSocket attach routes when a pairing payload advertises one.
 - Call `mobile.host.status`, `mobile.workspace.list`, `mobile.terminal.replay`, `mobile.terminal.input`, `mobile.terminal.paste`, and `mobile.terminal.create`.
 - Subscribe to `workspace.updated`, `terminal.render_grid`, `notification.badge`, and `notification.dismissed` host events for live refresh.
