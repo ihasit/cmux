@@ -661,6 +661,26 @@ class MainActivitySmokeTest {
     @Test
     fun terminalSetFontPushUpdatesActiveTerminalFontOnly() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.evaluateScript(
+                """
+                window.__reportedViewports = [];
+                window.__replayedTerminals = [];
+                const nativeBridge = window.cmuxAndroid;
+                window.cmuxAndroid = Object.assign({}, nativeBridge, {
+                  reportViewport: function(workspaceId, terminalId, columns, rows) {
+                    window.__reportedViewports.push({ workspaceId, terminalId, columns, rows });
+                  },
+                  replayTerminal: function(workspaceId, terminalId, columns, rows) {
+                    window.__replayedTerminals.push({ workspaceId, terminalId, columns, rows });
+                  }
+                });
+                const output = document.getElementById('terminalOutput');
+                Object.defineProperty(output, 'clientWidth', { configurable: true, value: 420 });
+                Object.defineProperty(output, 'clientHeight', { configurable: true, value: 240 });
+                true;
+                """.trimIndent()
+            )
+
             scenario.emitNativeEvent(
                 """
                 {
@@ -729,6 +749,12 @@ class MainActivitySmokeTest {
 
             val activeFontSize = scenario.evaluateScript("document.getElementById('terminalOutput').style.fontSize")
             check(activeFontSize == "\"18px\"")
+            val viewports = scenario.evaluateScript("JSON.stringify(window.__reportedViewports)")
+            check(viewports.contains("\"columns\":40"))
+            check(viewports.contains("\"rows\":9"))
+            val replays = scenario.evaluateScript("JSON.stringify(window.__replayedTerminals)")
+            check(replays.contains("\"columns\":40"))
+            check(replays.contains("\"rows\":9"))
         }
     }
 
