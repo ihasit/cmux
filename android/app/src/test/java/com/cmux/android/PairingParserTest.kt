@@ -13,6 +13,55 @@ class PairingParserTest {
     private val parser = PairingParser()
 
     @Test
+    fun parseManualHostPortKeepsTailscaleRoute() {
+        val mac = parser.parse("100.64.0.5:58465")
+
+        val route = mac.routes.single()
+        assertEquals("manual", route.id)
+        assertEquals("tailscale", route.kind)
+        assertEquals("100.64.0.5", route.host)
+        assertEquals(58465, route.port)
+        assertEquals(10, route.priority)
+        assertEquals(route, mac.primaryRoute)
+    }
+
+    @Test
+    fun parseManualDomainHostPortKeepsHost() {
+        val mac = parser.parse("cmux-host.test:58466")
+
+        val route = mac.routes.single()
+        assertEquals("cmux-host.test", route.host)
+        assertEquals(58466, route.port)
+    }
+
+    @Test
+    fun parseManualIpv6HostPortKeepsHost() {
+        val mac = parser.parse("[fd7a:115c:a1e0::42]:58465")
+
+        val route = mac.routes.single()
+        assertEquals("fd7a:115c:a1e0::42", route.host)
+        assertEquals(58465, route.port)
+    }
+
+    @Test
+    fun parseManualHostPortRejectsLoopbackRoutes() {
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("127.0.0.1:58465")
+        }
+
+        assertEquals("pair.error.loopback", error.messageKey)
+    }
+
+    @Test
+    fun parsePlainTextWithoutRouteStillReportsSchemeError() {
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("not a pairing code")
+        }
+
+        assertEquals("pair.error.scheme", error.messageKey)
+    }
+
+    @Test
     fun parseAttachV2KeepsTailscaleRoutesInPriorityOrder() {
         val mac = parser.parse(
             "cmux-ios://attach?v=2&ub=user-1&pc=1&av=1.2.3&ab=42" +

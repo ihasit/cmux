@@ -52,6 +52,7 @@ android/
 Implemented:
 
 - Parse `cmux-ios://attach?v=2&r=host:port` pairing links.
+- Parse manually entered `host:port` routes from the pairing form.
 - Parse older `attach` / `pair` payload links enough to recover host/port routes.
 - Persist paired Macs with Android Keystore-backed encrypted storage.
 - Automatically reconnect the first saved paired Mac with a supported route when the WebView shell starts.

@@ -47,7 +47,11 @@ class PairingParser {
     fun parse(rawValue: String): PairedMac {
         val trimmed = rawValue.trim()
         checkPairing(trimmed.isNotEmpty(), "pair.error.empty")
-        val uri = PairingUri.parse(trimmed)
+        if (!trimmed.startsWith("cmux-ios://") && !trimmed.startsWith("cmux-ios-dev://") && trimmed.contains(":")) {
+            return parseManualHostPort(trimmed)
+        }
+        val uri = runCatching { PairingUri.parse(trimmed) }
+            .getOrElse { throw PairingException("pair.error.scheme") }
         checkPairing(uri.scheme == "cmux-ios" || uri.scheme == "cmux-ios-dev", "pair.error.scheme")
         checkPairing(uri.host == "attach" || uri.host == "pair", "pair.error.host")
         return when {
@@ -56,6 +60,28 @@ class PairingParser {
             uri.host == "pair" && uri.getQueryParameter("payload") != null -> parseLegacyPairPayload(uri)
             else -> throw PairingException("pair.error.unsupported")
         }
+    }
+
+    private fun parseManualHostPort(rawValue: String): PairedMac {
+        val (host, port) = parseHostPort(rawValue)
+        checkPairing(!isLoopbackHost(host), "pair.error.loopback")
+        val route = CmuxRoute(
+            id = "manual",
+            kind = "tailscale",
+            host = host,
+            port = port,
+            priority = 10
+        )
+        return PairedMac(
+            id = stableMacId(null, listOf(route)),
+            displayName = null,
+            userId = null,
+            userEmail = null,
+            pairingCompatibilityVersion = null,
+            appVersion = null,
+            appBuild = null,
+            routes = listOf(route)
+        )
     }
 
     private fun parseAttachV2(uri: PairingUri): PairedMac {
