@@ -1146,6 +1146,11 @@ function appendTerminalBytes(payload) {
     if (Number.isInteger(deliveredEndSeq) && deliveredEndSeq >= nextEndSeq) {
       return;
     }
+    if (Number.isInteger(deliveredEndSeq) && deliveredEndSeq < sequence) {
+      state.terminalByteEndSeqBySurface.set(seqKey, nextEndSeq);
+      replayActiveTerminal();
+      return;
+    }
     if (Number.isInteger(deliveredEndSeq) && deliveredEndSeq > sequence) {
       data = data.slice(deliveredEndSeq - sequence);
     }

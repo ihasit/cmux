@@ -149,7 +149,35 @@ function testRenderGridPushWithoutSurfaceTargetsActiveTerminal() {
   );
 }
 
+function testTerminalBytesGapRequestsReplay() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
+  hooks.showScreen("terminal");
+
+  hooks.handlePushEvent("terminal.bytes", {
+    surface_id: "terminal-1",
+    seq: 0,
+    data_b64: Buffer.from("abc").toString("base64"),
+  });
+  hooks.handlePushEvent("terminal.bytes", {
+    surface_id: "terminal-1",
+    seq: 5,
+    data_b64: Buffer.from("fg").toString("base64"),
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "replayTerminal" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1"
+    )),
+    `expected replayTerminal call after terminal byte gap, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
+testTerminalBytesGapRequestsReplay();
 console.log("mobile app js tests passed");
