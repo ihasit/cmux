@@ -61,9 +61,10 @@ class MobileRpcSessionTest {
     @Test
     fun requestOmitsAuthOnPlainLanRouteEvenWhenTokenIsConfigured() {
         val client = RecordingFrameClient()
+        val provider = FakeStackAccessTokenProvider(accessToken = "stack-token-3")
         val session = MobileRpcSession(
             callback = NoopCallback,
-            stackAccessTokenProvider = FakeStackAccessTokenProvider(accessToken = "stack-token-3"),
+            stackAccessTokenProvider = provider,
             clientFactory = { _, _ -> client }
         )
         session.connect(
@@ -81,14 +82,16 @@ class MobileRpcSessionTest {
 
         val sent = JSONObject(client.sentFrames.single())
         assertFalse(sent.has("auth"))
+        assertEquals(0, provider.likelyValidCalls)
     }
 
     @Test
     fun requestOmitsAuthOnPlainWebSocketRouteEvenWhenTokenIsConfigured() {
         val client = RecordingFrameClient()
+        val provider = FakeStackAccessTokenProvider(accessToken = "stack-token-4")
         val session = MobileRpcSession(
             callback = NoopCallback,
-            stackAccessTokenProvider = FakeStackAccessTokenProvider(accessToken = "stack-token-4"),
+            stackAccessTokenProvider = provider,
             clientFactory = { _, _ -> client }
         )
         session.connect(webSocketRoute("ws://cmux.example.test/mobile"))
@@ -97,6 +100,7 @@ class MobileRpcSessionTest {
 
         val sent = JSONObject(client.sentFrames.single())
         assertFalse(sent.has("auth"))
+        assertEquals(0, provider.likelyValidCalls)
     }
 
     @Test
