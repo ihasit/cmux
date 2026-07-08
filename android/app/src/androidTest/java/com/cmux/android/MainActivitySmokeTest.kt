@@ -175,6 +175,32 @@ class MainActivitySmokeTest {
                 .withElement(findElement(Locator.ID, "terminalOutput"))
                 .check(webMatches(getText(), containsString("hello android")))
 
+            scenario.evaluateScript(
+                """
+                window.__copiedTerminalText = null;
+                navigator.clipboard = null;
+                document.execCommand = function(command) {
+                  if (command === 'copy') {
+                    window.__copiedTerminalText = document.activeElement.value;
+                    return true;
+                  }
+                  return false;
+                };
+                true;
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "copyTerminalOutput"))
+                .perform(webClick())
+
+            val copiedTerminalText = scenario.evaluateScript("window.__copiedTerminalText")
+            check(copiedTerminalText.contains("hello android"))
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "toast"))
+                .check(webMatches(getText(), containsString("Terminal output copied")))
+
             scenario.emitNativeEvent(
                 """
                 {

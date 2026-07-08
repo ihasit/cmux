@@ -103,6 +103,8 @@ const messages = {
     "terminal.empty": "(terminal is empty)",
     "terminal.inputPlaceholder": "Send input to the terminal",
     "terminal.live": "Live terminal update received.",
+    "terminal.copyEmpty": "No terminal output to copy.",
+    "terminal.copied": "Terminal output copied.",
     "terminal.keys": "Terminal keys",
     "terminal.key.enter": "Enter",
     "terminal.key.tab": "Tab",
@@ -126,6 +128,7 @@ const messages = {
     "refresh": "Refresh",
     "back": "Back",
     "replay": "Replay",
+    "copy": "Copy",
     "scroll.up": "Scroll up",
     "scroll.down": "Scroll down",
     "paste": "Paste",
@@ -212,6 +215,8 @@ const messages = {
     "terminal.empty": "（ターミナルは空です）",
     "terminal.inputPlaceholder": "ターミナルへ入力を送信",
     "terminal.live": "ターミナルのライブ更新を受信しました。",
+    "terminal.copyEmpty": "コピーできるターミナル出力がありません。",
+    "terminal.copied": "ターミナル出力をコピーしました。",
     "terminal.keys": "ターミナルキー",
     "terminal.key.enter": "Enter",
     "terminal.key.tab": "Tab",
@@ -235,6 +240,7 @@ const messages = {
     "refresh": "更新",
     "back": "戻る",
     "replay": "再生",
+    "copy": "コピー",
     "scroll.up": "上へスクロール",
     "scroll.down": "下へスクロール",
     "paste": "貼り付け",
@@ -276,6 +282,7 @@ const elements = {
   backToWorkspaces: document.getElementById("backToWorkspaces"),
   terminalTitle: document.getElementById("terminalTitle"),
   terminalMeta: document.getElementById("terminalMeta"),
+  copyTerminalOutput: document.getElementById("copyTerminalOutput"),
   refreshTerminal: document.getElementById("refreshTerminal"),
   terminalOutput: document.getElementById("terminalOutput"),
   scrollUp: document.getElementById("scrollUp"),
@@ -370,6 +377,7 @@ function renderConnectionControls() {
   setDisabled(elements.syncNotifications, disconnected);
   setDisabled(elements.dismissNotifications, disconnected || state.deliveredNotificationIds.length === 0);
   setDisabled(elements.refreshTerminal, disconnected);
+  setDisabled(elements.copyTerminalOutput, disconnected);
   setDisabled(elements.scrollUp, disconnected);
   setDisabled(elements.scrollDown, disconnected);
   if (elements.terminalKeybar) {
@@ -765,6 +773,40 @@ function sendTerminalKey(key) {
     terminalRows(),
   );
   window.setTimeout(replayActiveTerminal, 250);
+}
+
+async function copyTerminalOutput() {
+  if (!state.activeWorkspace || !state.activeTerminal) return;
+  const text = elements.terminalOutput.textContent.trimEnd();
+  if (!text) {
+    showToast(t("terminal.copyEmpty"));
+    return;
+  }
+  try {
+    await writeClipboardText(text);
+    showToast(t("terminal.copied"));
+  } catch (_) {
+    showToast(t("request.failed"));
+  }
+}
+
+async function writeClipboardText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  if (!copied) {
+    throw new Error("copy failed");
+  }
 }
 
 function chooseImageForPaste() {
@@ -1342,6 +1384,7 @@ elements.closeConnection.addEventListener("click", () => {
   bridge().closeConnection();
 });
 elements.backToWorkspaces.addEventListener("click", closeActiveTerminal);
+elements.copyTerminalOutput.addEventListener("click", copyTerminalOutput);
 elements.refreshTerminal.addEventListener("click", replayActiveTerminal);
 elements.scrollUp.addEventListener("click", () => queueTerminalScroll(-terminalRows()));
 elements.scrollDown.addEventListener("click", () => queueTerminalScroll(terminalRows()));

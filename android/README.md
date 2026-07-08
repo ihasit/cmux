@@ -61,6 +61,7 @@ Implemented:
 - Subscribe to `workspace.updated`, `terminal.render_grid`, `notification.badge`, and `notification.dismissed` host events for live refresh.
 - Render workspace rows, groups, and styled render-grid terminal output in the WebView.
 - Forward terminal scrolling, taps/clicks, text paste, and image paste to the Mac.
+- Copy the currently visible terminal output from the WebView terminal.
 - Provide terminal quick keys for Enter, Tab, Esc, Backspace, Ctrl-C, Ctrl-D, Ctrl-L, Ctrl-Z, and arrow keys in the WebView terminal.
 - Disable workspace and terminal controls while disconnected, while keeping paired Mac reconnect actions available.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
