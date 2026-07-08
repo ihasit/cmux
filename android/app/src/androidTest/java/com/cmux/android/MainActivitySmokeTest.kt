@@ -1036,6 +1036,63 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun invalidTerminalReplayBase64ShowsEmptyTerminal() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
+                .perform(webClick())
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 2,
+                    "method": "mobile.terminal.replay",
+                    "result": {
+                      "data_b64": "not valid base64!"
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "terminalOutput"))
+                .check(webMatches(getText(), containsString("(terminal is empty)")))
+        }
+    }
+
+    @Test
     fun staleTerminalScrollResultDoesNotReplaceCurrentTerminalFrame() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.emitNativeEvent(
