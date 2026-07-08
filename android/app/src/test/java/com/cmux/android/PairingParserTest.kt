@@ -67,6 +67,15 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseManualWebSocketUrlRejectsLoopbackRoutes() {
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("ws://127.0.0.1:58465/mobile")
+        }
+
+        assertEquals("pair.error.loopback", error.messageKey)
+    }
+
+    @Test
     fun parseManualWebSocketUrlAcceptsUppercaseScheme() {
         val mac = parser.parse("WSS://cmux.example.test/mobile")
 
