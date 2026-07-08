@@ -122,6 +122,28 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun requestRejectsOversizedPayloadWithoutSendingFrame() {
+        val client = RecordingFrameClient()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(tcpRoute())
+
+        val requestId = session.request(
+            "mobile.terminal.paste_image",
+            JSONObject().put("image_base64", "a".repeat(8 * 1024 * 1024 + 1))
+        )
+
+        assertTrue(client.sentFrames.isEmpty())
+        assertEquals(
+            listOf(RecordedError(requestId, "mobile.terminal.paste_image", "payload_too_large", "request frame too large")),
+            callback.errors
+        )
+    }
+
+    @Test
     fun requestUsesLikelyValidRefreshedTokenFromProvider() {
         val client = RecordingFrameClient()
         val provider = FakeStackAccessTokenProvider(accessToken = "fresh-token")
