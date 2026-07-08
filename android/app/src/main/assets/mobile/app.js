@@ -450,8 +450,11 @@ function renderConnectionControls() {
   setDisabled(elements.closeConnection, disconnected);
   setDisabled(elements.refreshWorkspaces, disconnected);
   setDisabled(elements.createWorkspace, disconnected);
-  setDisabled(elements.syncNotifications, disconnected);
-  setDisabled(elements.dismissNotifications, disconnected || state.deliveredNotificationIds.length === 0);
+  setDisabled(elements.syncNotifications, disconnected || !hasCapability("notification.reconcile.v1"));
+  setDisabled(
+    elements.dismissNotifications,
+    disconnected || !hasCapability("notification.dismiss.v1") || state.deliveredNotificationIds.length === 0,
+  );
   setDisabled(elements.refreshTerminal, disconnected);
   setDisabled(elements.copyTerminalOutput, disconnected);
   setDisabled(elements.scrollUp, disconnected);
@@ -540,8 +543,11 @@ function renderNotificationStatus() {
       ? "notification.unread"
       : "notification.unreadPlural";
   elements.notificationText.textContent = t(messageKey).replace("{count}", String(count));
+  setDisabled(elements.syncNotifications, !state.connected || !hasCapability("notification.reconcile.v1"));
   if (elements.dismissNotifications) {
-    elements.dismissNotifications.disabled = !state.connected || state.deliveredNotificationIds.length === 0;
+    elements.dismissNotifications.disabled = !state.connected ||
+      !hasCapability("notification.dismiss.v1") ||
+      state.deliveredNotificationIds.length === 0;
   }
   if (elements.enableNotifications) {
     elements.enableNotifications.classList.toggle("hidden", state.nativeNotificationsEnabled || !state.nativeNotificationsCanRequest);
@@ -695,10 +701,12 @@ function closeWorkspace(workspaceId) {
 }
 
 function syncNotifications() {
+  if (!hasCapability("notification.reconcile.v1")) return;
   bridge().reconcileNotifications(JSON.stringify(state.deliveredNotificationIds));
 }
 
 function dismissSyncedNotifications() {
+  if (!hasCapability("notification.dismiss.v1")) return;
   if (state.deliveredNotificationIds.length === 0) {
     showToast(t("notification.noDelivered"));
     return;
