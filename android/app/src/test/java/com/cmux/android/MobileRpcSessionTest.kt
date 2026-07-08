@@ -1,5 +1,6 @@
 package com.cmux.android
 
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -241,6 +242,31 @@ class MobileRpcSessionTest {
             listOf(RecordedError(requestId, "mobile.workspace.list", "transport_error", "closed by user")),
             callback.errors
         )
+    }
+
+    @Test
+    fun manualCloseSendsEventsUnsubscribeBeforeClosingTransport() {
+        val client = RecordingFrameClient()
+        val session = MobileRpcSession(
+            callback = NoopCallback,
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(tcpRoute())
+        session.request(
+            "mobile.events.subscribe",
+            JSONObject()
+                .put("stream_id", "stream-android-1")
+                .put("topics", JSONArray().put("workspace.updated"))
+        )
+
+        session.close("closed by user")
+
+        assertEquals(2, client.sentFrames.size)
+        val subscribe = JSONObject(client.sentFrames[0])
+        val unsubscribe = JSONObject(client.sentFrames[1])
+        assertEquals("mobile.events.subscribe", subscribe.getString("method"))
+        assertEquals("mobile.events.unsubscribe", unsubscribe.getString("method"))
+        assertEquals("stream-android-1", unsubscribe.getJSONObject("params").getString("stream_id"))
     }
 
     @Test
