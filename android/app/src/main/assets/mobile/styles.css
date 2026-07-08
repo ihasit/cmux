@@ -284,6 +284,17 @@ textarea {
   gap: 8px;
 }
 
+.terminal-keybar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.terminal-keybar button {
+  min-width: 0;
+  padding: 0 8px;
+}
+
 .composer {
   display: grid;
   gap: 8px;

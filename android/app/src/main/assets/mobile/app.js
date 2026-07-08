@@ -103,6 +103,11 @@ const messages = {
     "terminal.empty": "(terminal is empty)",
     "terminal.inputPlaceholder": "Send input to the terminal",
     "terminal.live": "Live terminal update received.",
+    "terminal.keys": "Terminal keys",
+    "terminal.key.enter": "Enter",
+    "terminal.key.tab": "Tab",
+    "terminal.key.escape": "Esc",
+    "terminal.key.ctrlC": "Ctrl-C",
     "image.paste": "Image",
     "image.unsupported": "This browser cannot read the selected image.",
     "image.tooLarge": "Image is too large to paste.",
@@ -199,6 +204,11 @@ const messages = {
     "terminal.empty": "（ターミナルは空です）",
     "terminal.inputPlaceholder": "ターミナルへ入力を送信",
     "terminal.live": "ターミナルのライブ更新を受信しました。",
+    "terminal.keys": "ターミナルキー",
+    "terminal.key.enter": "Enter",
+    "terminal.key.tab": "Tab",
+    "terminal.key.escape": "Esc",
+    "terminal.key.ctrlC": "Ctrl-C",
     "image.paste": "画像",
     "image.unsupported": "選択した画像を読み取れません。",
     "image.tooLarge": "画像が大きすぎて貼り付けできません。",
@@ -254,6 +264,7 @@ const elements = {
   terminalOutput: document.getElementById("terminalOutput"),
   scrollUp: document.getElementById("scrollUp"),
   scrollDown: document.getElementById("scrollDown"),
+  terminalKeybar: document.querySelector(".terminal-keybar"),
   terminalInput: document.getElementById("terminalInput"),
   imageInput: document.getElementById("imageInput"),
   pasteInput: document.getElementById("pasteInput"),
@@ -681,6 +692,24 @@ function sendTerminalInput(mode) {
     );
   }
   elements.terminalInput.value = "";
+  window.setTimeout(replayActiveTerminal, 250);
+}
+
+function sendTerminalKey(key) {
+  const text = {
+    enter: "\r",
+    tab: "\t",
+    escape: "\u001b",
+    "ctrl-c": "\u0003",
+  }[key];
+  if (!text || !state.activeWorkspace || !state.activeTerminal) return;
+  bridge().sendInput(
+    state.activeWorkspace.id,
+    state.activeTerminal.id,
+    text,
+    terminalColumns(),
+    terminalRows(),
+  );
   window.setTimeout(replayActiveTerminal, 250);
 }
 
@@ -1259,6 +1288,10 @@ elements.backToWorkspaces.addEventListener("click", closeActiveTerminal);
 elements.refreshTerminal.addEventListener("click", replayActiveTerminal);
 elements.scrollUp.addEventListener("click", () => queueTerminalScroll(-terminalRows()));
 elements.scrollDown.addEventListener("click", () => queueTerminalScroll(terminalRows()));
+elements.terminalKeybar.addEventListener("click", (event) => {
+  const key = event.target.getAttribute("data-terminal-key");
+  if (key) sendTerminalKey(key);
+});
 elements.sendInput.addEventListener("click", () => sendTerminalInput("input"));
 elements.pasteInput.addEventListener("click", () => sendTerminalInput("paste"));
 elements.pasteImage.addEventListener("click", chooseImageForPaste);

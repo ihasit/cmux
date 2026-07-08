@@ -22,6 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(AndroidJUnit4::class)
 class MainActivitySmokeTest {
@@ -173,18 +174,46 @@ class MainActivitySmokeTest {
             onWebView()
                 .withElement(findElement(Locator.ID, "terminalOutput"))
                 .check(webMatches(getText(), containsString("hello android")))
+
+            scenario.evaluateScript(
+                """
+                window.__lastSendInput = null;
+                window.cmuxAndroid = {
+                  sendInput: function(workspaceId, terminalId, text, columns, rows) {
+                    window.__lastSendInput = { workspaceId, terminalId, text, columns, rows };
+                  }
+                };
+                true;
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='ctrl-c']"))
+                .perform(webClick())
+
+            val sentInput = scenario.evaluateScript("JSON.stringify(window.__lastSendInput)")
+            check(sentInput.contains("\"workspaceId\":\"workspace-1\""))
+            check(sentInput.contains("\"terminalId\":\"terminal-1\""))
+            check(sentInput.contains("\"text\":\"\\u0003\""))
         }
     }
 
     private fun ActivityScenario<MainActivity>.emitNativeEvent(json: String) {
-        val latch = CountDownLatch(1)
         val script = "window.cmuxNativeEvent && window.cmuxNativeEvent($json)"
+        evaluateScript(script)
+    }
+
+    private fun ActivityScenario<MainActivity>.evaluateScript(script: String): String {
+        val latch = CountDownLatch(1)
+        val result = AtomicReference<String>()
         onActivity { activity ->
             val content = activity.findViewById<ViewGroup>(android.R.id.content)
             (content.getChildAt(0) as WebView).evaluateJavascript(script) {
+                result.set(it)
                 latch.countDown()
             }
         }
-        check(latch.await(5, TimeUnit.SECONDS)) { "Timed out while injecting native WebView event" }
+        check(latch.await(5, TimeUnit.SECONDS)) { "Timed out while evaluating WebView script" }
+        return result.get().orEmpty()
     }
 }
