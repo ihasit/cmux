@@ -40,6 +40,7 @@ class MobileRpcSession(
     private var allowRouteFailover: Boolean = false
     private var closedNotified: Boolean = false
     private var connectionGeneration: Int = 0
+    private var subscribedStreamId: String? = null
 
     fun connect(route: CmuxRoute) {
         connect(listOf(route))
@@ -67,17 +68,20 @@ class MobileRpcSession(
             callback.onRpcError(requestId, method, "transport_error", "not connected")
         } else {
             activeClient.sendFrame(request.toString())
+            trackSubscriptionRequest(method, params)
         }
         return requestId
     }
 
     fun close(reason: String = "closed") {
+        unsubscribeActiveStream()
         failPending("transport_error", reason)
         closeActiveClient(reason)
         notifyClosed(reason)
     }
 
     fun shutdown() {
+        unsubscribeActiveStream()
         failPending("transport_error", "session shutdown")
         shutdownActiveClient()
     }
@@ -181,6 +185,7 @@ class MobileRpcSession(
     }
 
     private fun replaceActiveClient(pendingReason: String) {
+        unsubscribeActiveStream()
         failPending("transport_error", pendingReason)
         shutdownActiveClient()
         closedNotified = false
@@ -207,6 +212,7 @@ class MobileRpcSession(
         activeRoute = null
         routeCandidates = emptyList()
         routeCandidateIndex = -1
+        subscribedStreamId = null
     }
 
     private inner class GenerationCallback(
@@ -251,6 +257,29 @@ class MobileRpcSession(
             request.put("auth", JSONObject().put("stack_access_token", stackAccessToken))
         }
         return request
+    }
+
+    private fun trackSubscriptionRequest(method: String, params: JSONObject) {
+        if (method == "mobile.events.subscribe") {
+            subscribedStreamId = params.optString("stream_id").trim().takeIf { it.isNotEmpty() }
+        } else if (method == "mobile.events.unsubscribe") {
+            val streamId = params.optString("stream_id").trim()
+            if (streamId.isNotEmpty() && streamId == subscribedStreamId) {
+                subscribedStreamId = null
+            }
+        }
+    }
+
+    private fun unsubscribeActiveStream() {
+        val streamId = subscribedStreamId?.takeIf { it.isNotBlank() } ?: return
+        val activeClient = client ?: return
+        val request = requestEnvelope(
+            nextId.getAndIncrement(),
+            "mobile.events.unsubscribe",
+            JSONObject().put("stream_id", streamId)
+        )
+        activeClient.sendFrame(request.toString())
+        subscribedStreamId = null
     }
 
     private fun shouldRetryAfterStackAuthRefresh(pendingCall: PendingCall, code: String): Boolean {
