@@ -211,6 +211,24 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun responseWithNonNumericIdReportsParseError() {
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> RecordingFrameClient() }
+        )
+        session.connect(tcpRoute())
+
+        session.onFrame(JSONObject().put("id", "not-a-number").put("ok", true).toString())
+
+        assertEquals(
+            listOf(RecordedError(null, null, "parse_error", "Invalid response id from host")),
+            callback.errors
+        )
+        assertTrue(callback.results.isEmpty())
+    }
+
+    @Test
     fun remoteCloseFailsPendingRequests() {
         val client = RecordingFrameClient()
         val callback = RecordingCallback()
@@ -729,12 +747,15 @@ class MobileRpcSessionTest {
     private class RecordingCallback : MobileRpcSession.Callback {
         val errors = mutableListOf<RecordedError>()
         val connectionStates = mutableListOf<RecordedConnectionState>()
+        val results = mutableListOf<Int>()
 
         override fun onConnectionState(state: String, detail: String?) {
             connectionStates.add(RecordedConnectionState(state, detail))
         }
 
-        override fun onRpcResult(requestId: Int, method: String, result: JSONObject) = Unit
+        override fun onRpcResult(requestId: Int, method: String, result: JSONObject) {
+            results.add(requestId)
+        }
 
         override fun onRpcError(requestId: Int?, method: String?, code: String, message: String) {
             errors.add(RecordedError(requestId, method, code, message))
