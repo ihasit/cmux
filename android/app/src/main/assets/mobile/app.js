@@ -1105,6 +1105,28 @@ function renderTerminalReplay(result) {
   elements.terminalOutput.textContent = decodeReplayText(result) || t("terminal.empty");
 }
 
+function appendTerminalBytes(payload) {
+  const surfaceId = payload.surface_id || payload.surfaceID || payload.surfaceId || "";
+  if (state.activeTerminal && surfaceId && surfaceId !== state.activeTerminal.id) return;
+  const data = decodeBase64(payload.data_b64 || payload.dataBase64 || "");
+  if (!data) return;
+  const current = elements.terminalOutput.textContent;
+  if (current === t("terminal.loading") || current === t("terminal.empty")) {
+    elements.terminalOutput.textContent = data;
+  } else {
+    elements.terminalOutput.textContent = current + data;
+  }
+}
+
+function decodeBase64(value) {
+  if (!value) return "";
+  try {
+    return atob(value);
+  } catch (_) {
+    return "";
+  }
+}
+
 function renderGridTargetsActiveTerminal(renderGrid) {
   const surfaceId = renderGrid?.surface_id || renderGrid?.surfaceID || renderGrid?.surfaceId || "";
   return !surfaceId || !state.activeTerminal || surfaceId === state.activeTerminal.id;
@@ -1482,6 +1504,10 @@ function handlePushEvent(type, payload) {
     if (state.activeTerminal && surfaceId === state.activeTerminal.id) {
       renderTerminalFrame(renderGrid);
     }
+    return;
+  }
+  if (type === "terminal.bytes") {
+    appendTerminalBytes(payload);
     return;
   }
   if (type === "terminal.set_font") {

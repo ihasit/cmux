@@ -526,6 +526,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         val topics = JSONArray()
             .put("workspace.updated")
             .put("terminal.render_grid")
+            .put("terminal.bytes")
             .put("terminal.set_font")
             .put("notification.badge")
             .put("notification.dismissed")
