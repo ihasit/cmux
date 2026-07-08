@@ -562,6 +562,71 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun notificationDismissedPushAcceptsHandledIds() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.evaluateScript(
+                """
+                window.__dismissedRefreshCount = 0;
+                const nativeBridge = window.cmuxAndroid;
+                window.cmuxAndroid = Object.assign({}, nativeBridge, {
+                  refreshWorkspaces: function() {
+                    window.__dismissedRefreshCount += 1;
+                  }
+                });
+                window.cmuxNativeEvent({
+                  type: 'connection',
+                  payload: { state: 'open' }
+                });
+                state.deliveredNotificationIds = ['notification-1'];
+                state.authoritativeUnreadNotificationCount = 2;
+                renderNotificationStatus();
+                true;
+                """.trimIndent()
+            )
+
+            val initialState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  notificationText: document.getElementById('notificationText').textContent,
+                  dismissDisabled: document.getElementById('dismissNotifications').disabled
+                })
+                """.trimIndent()
+            )
+            check(initialState.contains("\"notificationText\":\"2 unread notifications\""))
+            check(initialState.contains("\"dismissDisabled\":false"))
+
+            scenario.evaluateScript(
+                """
+                window.cmuxNativeEvent({
+                  type: 'push',
+                  payload: {
+                    type: 'notification.dismissed',
+                    payload: {
+                      handled_ids: ['notification-1'],
+                      unread_count: 1
+                    }
+                  }
+                });
+                true;
+                """.trimIndent()
+            )
+
+            val dismissedState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  notificationText: document.getElementById('notificationText').textContent,
+                  dismissDisabled: document.getElementById('dismissNotifications').disabled,
+                  refreshes: window.__dismissedRefreshCount
+                })
+                """.trimIndent()
+            )
+            check(dismissedState.contains("\"notificationText\":\"1 unread notification\""))
+            check(dismissedState.contains("\"dismissDisabled\":true"))
+            check(dismissedState.contains("\"refreshes\":1"))
+        }
+    }
+
+    @Test
     fun workspaceRefreshKeepsActiveTerminalVisibleAndCurrent() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.emitNativeEvent(
