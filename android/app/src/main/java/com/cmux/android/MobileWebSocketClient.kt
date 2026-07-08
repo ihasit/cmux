@@ -46,6 +46,11 @@ class MobileWebSocketClient(
             return
         }
         val bytes = payload.toByteArray(Charsets.UTF_8)
+        if (bytes.size > MAX_FRAME_BYTES) {
+            callback.onError("websocket frame too large: ${bytes.size}")
+            close("frame too large")
+            return
+        }
         val frame = ByteBuffer.allocate(4 + bytes.size)
             .putInt(bytes.size)
             .put(bytes)

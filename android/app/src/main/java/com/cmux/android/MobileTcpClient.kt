@@ -46,6 +46,11 @@ class MobileTcpClient(
         writeExecutor.execute {
             try {
                 val bytes = payload.toByteArray(Charsets.UTF_8)
+                if (bytes.size > MAX_FRAME_BYTES) {
+                    callback.onError("frame too large: ${bytes.size}")
+                    close("frame too large")
+                    return@execute
+                }
                 val header = ByteBuffer.allocate(4).putInt(bytes.size).array()
                 val stream = output ?: throw IllegalStateException("not connected")
                 stream.write(header)
