@@ -1194,7 +1194,7 @@ function renderTerminalFrame(rawFrame, options = {}) {
 
   const surfaceId = frame.surfaceId || state.activeTerminal?.id || "active";
   const existing = state.terminalFrames.get(surfaceId);
-  if (existing && frame.stateSeq > 0 && existing.stateSeq > frame.stateSeq) {
+  if (!options.reset && existing && frame.stateSeq > 0 && existing.stateSeq > frame.stateSeq) {
     return;
   }
   const previous = options.reset || frame.full ? null : state.terminalFrames.get(surfaceId);
