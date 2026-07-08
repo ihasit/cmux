@@ -56,12 +56,12 @@ class MobileRpcSession(
     }
 
     fun close(reason: String = "closed") {
-        pending.clear()
+        failPending("transport_error", reason)
         client?.close(reason)
     }
 
     fun shutdown() {
-        pending.clear()
+        failPending("transport_error", "session shutdown")
         client?.shutdown()
         client = null
         activeRoute = null
@@ -104,7 +104,7 @@ class MobileRpcSession(
     }
 
     override fun onClose(reason: String) {
-        pending.clear()
+        failPending("transport_error", reason)
         callback.onConnectionState("closed", reason)
     }
 
@@ -164,6 +164,14 @@ class MobileRpcSession(
             callback.onRpcError(requestId, pendingCall.method, "transport_error", "not connected")
         } else {
             activeClient.sendFrame(retry.toString())
+        }
+    }
+
+    private fun failPending(code: String, message: String) {
+        val calls = pending.entries.map { it.key to it.value }
+        pending.clear()
+        for ((requestId, call) in calls) {
+            callback.onRpcError(requestId, call.method, code, message)
         }
     }
 }

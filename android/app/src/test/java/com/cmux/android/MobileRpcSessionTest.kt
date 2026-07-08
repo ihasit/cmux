@@ -205,6 +205,63 @@ class MobileRpcSessionTest {
         assertEquals(listOf("unauthorized"), callback.errors.map { it.code })
     }
 
+    @Test
+    fun remoteCloseFailsPendingRequests() {
+        val client = RecordingFrameClient()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(tcpRoute())
+
+        val requestId = session.request("mobile.terminal.replay")
+        session.onClose("network lost")
+
+        assertEquals(
+            listOf(RecordedError(requestId, "mobile.terminal.replay", "transport_error", "network lost")),
+            callback.errors
+        )
+    }
+
+    @Test
+    fun manualCloseFailsPendingRequests() {
+        val client = RecordingFrameClient()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(tcpRoute())
+
+        val requestId = session.request("mobile.workspace.list")
+        session.close("closed by user")
+
+        assertEquals(
+            listOf(RecordedError(requestId, "mobile.workspace.list", "transport_error", "closed by user")),
+            callback.errors
+        )
+    }
+
+    @Test
+    fun shutdownFailsPendingRequests() {
+        val client = RecordingFrameClient()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(tcpRoute())
+
+        val requestId = session.request("mobile.host.status")
+        session.shutdown()
+
+        assertEquals(
+            listOf(RecordedError(requestId, "mobile.host.status", "transport_error", "session shutdown")),
+            callback.errors
+        )
+    }
+
     private fun tcpRoute(): CmuxRoute {
         return CmuxRoute(
             id = "tailscale",
