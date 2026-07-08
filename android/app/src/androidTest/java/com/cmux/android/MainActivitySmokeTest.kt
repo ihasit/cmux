@@ -2064,6 +2064,23 @@ class MainActivitySmokeTest {
             val clearedAfterKeyboardSend = scenario.evaluateScript("document.getElementById('terminalInput').value")
             check(clearedAfterKeyboardSend == "\"\"")
 
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcError",
+                  "payload": {
+                    "id": 50,
+                    "method": "mobile.terminal.input",
+                    "code": "host_error",
+                    "message": "input failed"
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val restoredAfterInputError = scenario.evaluateScript("document.getElementById('terminalInput').value")
+            check(restoredAfterInputError == "\"echo keyboard\"")
+
             scenario.evaluateScript(
                 """
                 const input = document.getElementById('terminalInput');
@@ -2076,6 +2093,23 @@ class MainActivitySmokeTest {
             val keyboardPasteText = scenario.evaluateScript("JSON.stringify(window.__lastPasteText)")
             check(keyboardPasteText.contains("\"text\":\"multi\\nline\""))
             check(keyboardPasteText.contains("\"submitKey\":\"return\""))
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcError",
+                  "payload": {
+                    "id": 51,
+                    "method": "mobile.terminal.paste",
+                    "code": "host_error",
+                    "message": "paste failed"
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val restoredAfterPasteError = scenario.evaluateScript("document.getElementById('terminalInput').value")
+            check(restoredAfterPasteError == "\"multi\\nline\"")
 
             scenario.evaluateScript(
                 """
