@@ -1618,6 +1618,83 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun newTerminalButtonRequiresHostCapability() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "open"
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.host.status",
+                    "result": {
+                      "capabilities": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 2,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-empty",
+                          "title": "Empty Workspace",
+                          "terminals": []
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.evaluateScript(
+                """
+                window.__createTerminalCalls = 0;
+                window.cmuxAndroid = {
+                  createTerminal: function() {
+                    window.__createTerminalCalls += 1;
+                  }
+                };
+                true;
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-create-terminal='workspace-empty']"))
+                .perform(webClick())
+
+            val capabilityState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  calls: window.__createTerminalCalls,
+                  toast: document.getElementById('toast').textContent
+                })
+                """.trimIndent()
+            )
+            check(capabilityState.contains("\"calls\":0"))
+            check(capabilityState.contains("This Mac does not support creating terminals yet."))
+        }
+    }
+
+    @Test
     fun workspaceGroupsRequireHostCapability() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.emitNativeEvent(
