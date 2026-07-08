@@ -948,6 +948,107 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun connectionCloseClearsActiveTerminalSurface() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "open"
+                  }
+                }
+                """.trimIndent()
+            )
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
+                .perform(webClick())
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "push",
+                  "payload": {
+                    "type": "terminal.render_grid",
+                    "payload": {
+                      "surface_id": "terminal-1",
+                      "state_seq": 1,
+                      "full": true,
+                      "rows": 1,
+                      "columns": 20,
+                      "row_spans": [
+                        { "row": 0, "column": 0, "text": "old session" }
+                      ]
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "terminalOutput"))
+                .check(webMatches(getText(), containsString("old session")))
+
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "closed",
+                    "detail": "network lost"
+                  }
+                }
+                """.trimIndent()
+            )
+
+            val closedState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  terminalHidden: document.getElementById('terminalView').classList.contains('hidden'),
+                  workspaceHidden: document.getElementById('workspaceView').classList.contains('hidden'),
+                  terminalOutput: document.getElementById('terminalOutput').textContent,
+                  openTerminalDisabled: document.querySelector('[data-open-terminal="workspace-1"]').disabled
+                })
+                """.trimIndent()
+            )
+            check(closedState.contains("\"terminalHidden\":true"))
+            check(closedState.contains("\"workspaceHidden\":false"))
+            check(closedState.contains("\"terminalOutput\":\"\""))
+            check(closedState.contains("\"openTerminalDisabled\":true"))
+        }
+    }
+
+    @Test
     fun nativeWorkspaceAndTerminalEventsRenderInWebView() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
