@@ -454,6 +454,40 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun manualCloseRejectsOversizedEventsUnsubscribeFrame() {
+        val client = RecordingFrameClient()
+        val callback = RecordingCallback()
+        val provider = SequencedStackAccessTokenProvider(
+            "subscribe-token",
+            "a".repeat(8 * 1024 * 1024 + 1)
+        )
+        val session = MobileRpcSession(
+            callback = callback,
+            stackAccessTokenProvider = provider,
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(tcpRoute())
+        session.request(
+            "mobile.events.subscribe",
+            JSONObject()
+                .put("stream_id", "stream-android-1")
+                .put("topics", JSONArray().put("workspace.updated"))
+        )
+
+        session.close("closed by user")
+
+        assertEquals(1, client.sentFrames.size)
+        assertEquals("mobile.events.subscribe", JSONObject(client.sentFrames.single()).getString("method"))
+        assertEquals(
+            listOf(
+                RecordedError(2, "mobile.events.unsubscribe", "payload_too_large", "request frame too large"),
+                RecordedError(1, "mobile.events.subscribe", "transport_error", "closed by user")
+            ),
+            callback.errors
+        )
+    }
+
+    @Test
     fun manualCloseDoesNotFailOverToNextRoute() {
         val connectedRoutes = mutableListOf<CmuxRoute>()
         val callback = RecordingCallback()
@@ -870,6 +904,20 @@ class MobileRpcSessionTest {
         override fun forceRefreshAccessToken(): StackTokenPair {
             forceRefreshCalls += 1
             return StackTokenPair(refreshToken = "refresh-token", accessToken = forceRefreshToken)
+        }
+    }
+
+    private class SequencedStackAccessTokenProvider(
+        vararg accessTokens: String?
+    ) : StackAccessTokenProvider {
+        private val tokens = ArrayDeque(accessTokens.toList())
+
+        override fun likelyValidAccessToken(): StackTokenPair {
+            return StackTokenPair(refreshToken = "refresh-token", accessToken = tokens.removeFirstOrNull())
+        }
+
+        override fun forceRefreshAccessToken(): StackTokenPair {
+            return StackTokenPair(refreshToken = "refresh-token", accessToken = tokens.removeFirstOrNull())
         }
     }
 
