@@ -93,6 +93,26 @@ class MobileWebSocketClientTest {
     }
 
     @Test
+    fun rejectsUnexpectedTextFrames() {
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    webSocket.send("""{"id":1,"ok":true}""")
+                }
+            })
+        )
+        val callback = RecordingCallback()
+        val client = mobileClient(callback)
+
+        client.connect(route())
+
+        assertTrue(callback.opened.await(2, TimeUnit.SECONDS))
+        assertEquals("unexpected websocket text frame", callback.errors.poll(2, TimeUnit.SECONDS))
+        assertEquals("invalid websocket frame", callback.closes.poll(2, TimeUnit.SECONDS))
+        assertTrue(callback.frames.isEmpty())
+    }
+
+    @Test
     fun acceptsUppercaseWebSocketScheme() {
         val accepted = CountDownLatch(1)
         server.enqueue(
