@@ -7,6 +7,7 @@ const state = {
   activeWorkspace: null,
   activeTerminal: null,
   terminalFrames: new Map(),
+  terminalByteEndSeqBySurface: new Map(),
   effectiveViewport: null,
   lastViewportReport: "",
   viewportReportTimer: 0,
@@ -789,6 +790,7 @@ function clearActiveTerminalState() {
   state.lastViewportReport = "";
   state.pendingScrollLines = 0;
   state.terminalFrames.clear();
+  state.terminalByteEndSeqBySurface.clear();
   window.clearTimeout(state.viewportReportTimer);
   window.clearTimeout(state.scrollFlushTimer);
   elements.terminalOutput.textContent = "";
@@ -1108,8 +1110,21 @@ function renderTerminalReplay(result) {
 function appendTerminalBytes(payload) {
   const surfaceId = payload.surface_id || payload.surfaceID || payload.surfaceId || "";
   if (state.activeTerminal && surfaceId && surfaceId !== state.activeTerminal.id) return;
-  const data = decodeBase64(payload.data_b64 || payload.dataBase64 || "");
+  let data = decodeBase64(payload.data_b64 || payload.dataBase64 || "");
   if (!data) return;
+  const sequence = Number(payload.seq ?? payload.sequence);
+  const seqKey = surfaceId || state.activeTerminal?.id || "active";
+  if (Number.isInteger(sequence) && sequence >= 0) {
+    const deliveredEndSeq = state.terminalByteEndSeqBySurface.get(seqKey);
+    const nextEndSeq = sequence + data.length;
+    if (Number.isInteger(deliveredEndSeq) && deliveredEndSeq >= nextEndSeq) {
+      return;
+    }
+    if (Number.isInteger(deliveredEndSeq) && deliveredEndSeq > sequence) {
+      data = data.slice(deliveredEndSeq - sequence);
+    }
+    state.terminalByteEndSeqBySurface.set(seqKey, nextEndSeq);
+  }
   const current = elements.terminalOutput.textContent;
   if (current === t("terminal.loading") || current === t("terminal.empty")) {
     elements.terminalOutput.textContent = data;
