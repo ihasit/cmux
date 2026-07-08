@@ -218,9 +218,11 @@ class MainActivitySmokeTest {
             scenario.evaluateScript(
                 """
                 window.__lastSendInput = null;
+                window.__sentInputs = [];
                 window.cmuxAndroid = {
                   sendInput: function(workspaceId, terminalId, text, columns, rows) {
                     window.__lastSendInput = { workspaceId, terminalId, text, columns, rows };
+                    window.__sentInputs.push(window.__lastSendInput);
                   }
                 };
                 true;
@@ -235,6 +237,18 @@ class MainActivitySmokeTest {
             check(sentInput.contains("\"workspaceId\":\"workspace-1\""))
             check(sentInput.contains("\"terminalId\":\"terminal-1\""))
             check(sentInput.contains("\"text\":\"\\u0003\""))
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='arrow-up']"))
+                .perform(webClick())
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='backspace']"))
+                .perform(webClick())
+
+            val sentInputs = scenario.evaluateScript("JSON.stringify(window.__sentInputs)")
+            check(sentInputs.contains("\"text\":\"\\u001b[A\""))
+            check(sentInputs.contains("\"text\":\"\\u007f\""))
         }
     }
 

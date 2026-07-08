@@ -294,14 +294,21 @@ textarea {
 }
 
 .terminal-keybar {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
   gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
 }
 
 .terminal-keybar button {
+  flex: 0 0 auto;
   min-width: 0;
   padding: 0 8px;
+}
+
+.terminal-keybar::-webkit-scrollbar {
+  display: none;
 }
 
 .composer {
