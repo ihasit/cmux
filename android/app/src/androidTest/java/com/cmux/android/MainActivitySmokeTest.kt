@@ -1537,6 +1537,14 @@ class MainActivitySmokeTest {
                 .perform(webClick())
 
             onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='ctrl-u']"))
+                .perform(webClick())
+
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='ctrl-w']"))
+                .perform(webClick())
+
+            onWebView()
                 .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='page-up']"))
                 .perform(webClick())
 
@@ -1547,6 +1555,8 @@ class MainActivitySmokeTest {
             val sentInputs = scenario.evaluateScript("JSON.stringify(window.__sentInputs)")
             check(sentInputs.contains("\"text\":\"\\u001b[A\""))
             check(sentInputs.contains("\"text\":\"\\u007f\""))
+            check(sentInputs.contains("\"text\":\"\\u0015\""))
+            check(sentInputs.contains("\"text\":\"\\u0017\""))
             check(sentInputs.contains("\"text\":\"\\u001b[5~\""))
             check(sentInputs.contains("\"text\":\"\\u001b[F\""))
 
