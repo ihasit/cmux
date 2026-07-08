@@ -126,6 +126,9 @@ class MobileRpcSession(
         if (allowRouteFailover && !openedActiveRoute && connectNextRoute("closed: $detail")) {
             return
         }
+        if (openedActiveRoute && connectNextRouteAfterOpen(detail)) {
+            return
+        }
         failPending("transport_error", detail)
         notifyClosed(detail)
     }
@@ -169,6 +172,12 @@ class MobileRpcSession(
         callback.onConnectionState("retrying", reason)
         connectRoute(routeCandidates[nextIndex])
         return true
+    }
+
+    private fun connectNextRouteAfterOpen(detail: String): Boolean {
+        if (routeCandidateIndex + 1 !in routeCandidates.indices) return false
+        failPending("transport_error", detail)
+        return connectNextRoute("closed: $detail")
     }
 
     private fun replaceActiveClient(pendingReason: String) {
