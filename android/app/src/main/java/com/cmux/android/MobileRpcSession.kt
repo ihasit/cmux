@@ -103,7 +103,11 @@ class MobileRpcSession(
                 callback.onRpcError(null, null, "parse_error", "Invalid response id from host")
                 return
             }
-            val topic = json.optString("topic", json.optString("type", "event"))
+            val topic = pushTopicOrNull(json)
+            if (topic == null) {
+                callback.onRpcError(null, null, "parse_error", "Invalid push topic from host")
+                return
+            }
             val payload = json.optJSONObject("payload") ?: json
             callback.onPushEvent(topic, payload)
             return
@@ -363,5 +367,15 @@ class MobileRpcSession(
     private fun strictBooleanOrNull(json: JSONObject, name: String): Boolean? {
         if (!json.has(name) || json.isNull(name)) return null
         return json.opt(name) as? Boolean
+    }
+
+    private fun pushTopicOrNull(json: JSONObject): String? {
+        if (json.has("topic") && !json.isNull("topic")) {
+            return json.opt("topic") as? String
+        }
+        if (json.has("type") && !json.isNull("type")) {
+            return json.opt("type") as? String
+        }
+        return "event"
     }
 }
