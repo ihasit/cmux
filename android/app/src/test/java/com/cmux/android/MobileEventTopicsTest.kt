@@ -31,4 +31,20 @@ class MobileEventTopicsTest {
             MobileEventTopics.topicsForCapabilities(emptySet())
         )
     }
+
+    @Test
+    fun terminalFidelityKeepsOlderRenderGridHostsOnRenderGridTopic() {
+        assertEquals(
+            listOf(
+                "workspace.updated",
+                "terminal.render_grid",
+                "terminal.set_font",
+                "notification.badge",
+                "notification.dismissed"
+            ),
+            MobileEventTopics.topicsForHostStatus(
+                MobileEventTopics.HostStatusCapabilities(terminalFidelity = "render_grid")
+            )
+        )
+    }
 }

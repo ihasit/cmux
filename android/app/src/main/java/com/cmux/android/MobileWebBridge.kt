@@ -35,6 +35,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     private var pendingPairingURL: String? = null
     private var pendingAuthState: String? = null
     private var streamId = UUID.randomUUID().toString()
+    private var hostStatusCapabilities = MobileEventTopics.HostStatusCapabilities()
 
     @JavascriptInterface
     fun initialState() {
@@ -434,7 +435,9 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
             reconnectPolicy.reset()
             cancelReconnect()
             userRequestedDisconnect = false
-            subscribeToEvents()
+            hostStatusCapabilities = MobileEventTopics.HostStatusCapabilities()
+            streamId = UUID.randomUUID().toString()
+            subscribeToEvents(hostStatusCapabilities)
             session.request("mobile.host.status")
             session.request("mobile.workspace.list")
         } else if (state == "closed") {
@@ -443,6 +446,10 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     override fun onRpcResult(requestId: Int, method: String, result: JSONObject) {
+        if (method == "mobile.host.status") {
+            hostStatusCapabilities = result.hostStatusCapabilities()
+            subscribeToEvents(hostStatusCapabilities)
+        }
         emit("rpcResult", JSONObject().put("id", requestId).put("method", method).put("result", result))
     }
 
@@ -521,15 +528,11 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
             .put("viewport_rows", rows.coerceIn(5, 120))
     }
 
-    private fun subscribeToEvents() {
-        streamId = UUID.randomUUID().toString()
+    private fun subscribeToEvents(capabilities: MobileEventTopics.HostStatusCapabilities) {
         val topics = JSONArray()
-            .put("workspace.updated")
-            .put("terminal.render_grid")
-            .put("terminal.bytes")
-            .put("terminal.set_font")
-            .put("notification.badge")
-            .put("notification.dismissed")
+        MobileEventTopics.topicsForHostStatus(capabilities).forEach { topic ->
+            topics.put(topic)
+        }
         session.request(
             "mobile.events.subscribe",
             JSONObject()
@@ -583,4 +586,20 @@ private fun JSONObject.optFirstStringArray(vararg names: String): List<String> {
         if (values.isNotEmpty()) return values
     }
     return emptyList()
+}
+
+private fun JSONObject.hostStatusCapabilities(): MobileEventTopics.HostStatusCapabilities {
+    val topLevel = optFirstStringArray("capabilities")
+    val capabilities = if (topLevel.isNotEmpty()) {
+        topLevel.toSet()
+    } else {
+        optJSONObject("host_service")
+        ?.optFirstStringArray("capabilities")
+        ?.toSet()
+        ?: emptySet()
+    }
+    return MobileEventTopics.HostStatusCapabilities(
+        capabilities = capabilities,
+        terminalFidelity = optString("terminal_fidelity").takeIf { it.isNotBlank() }
+    )
 }
