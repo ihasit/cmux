@@ -449,6 +449,7 @@ function renderConnectionControls() {
     });
   }
   setDisabled(elements.terminalInput, disconnected);
+  setDisabled(elements.imageInput, disconnected);
   setDisabled(elements.pasteInput, disconnected);
   setDisabled(elements.pasteImage, disconnected);
   setDisabled(elements.clearTerminalInput, disconnected);

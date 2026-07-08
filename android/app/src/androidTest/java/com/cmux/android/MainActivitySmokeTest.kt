@@ -535,7 +535,8 @@ class MainActivitySmokeTest {
                   create: document.getElementById('createWorkspace').disabled,
                   openTerminal: document.querySelector('[data-open-terminal="workspace-1"]').disabled,
                   ctrlC: document.querySelector('[data-terminal-key="ctrl-c"]').disabled,
-                  terminalInput: document.getElementById('terminalInput').disabled
+                  terminalInput: document.getElementById('terminalInput').disabled,
+                  imageInput: document.getElementById('imageInput').disabled
                 })
                 """.trimIndent()
             )
@@ -544,6 +545,7 @@ class MainActivitySmokeTest {
             check(closedControlState.contains("\"openTerminal\":true"))
             check(closedControlState.contains("\"ctrlC\":true"))
             check(closedControlState.contains("\"terminalInput\":true"))
+            check(closedControlState.contains("\"imageInput\":true"))
 
             scenario.emitNativeEvent(
                 """
