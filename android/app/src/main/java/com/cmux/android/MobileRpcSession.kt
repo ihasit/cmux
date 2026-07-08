@@ -144,6 +144,12 @@ class MobileRpcSession(
             return
         }
         callback.onRpcError(null, null, "transport_error", message)
+        if (connectNextRouteAfterOpen(message)) {
+            return
+        }
+        failPending("transport_error", message)
+        clearActiveClientState()
+        notifyClosed(message)
     }
 
     private fun connectRoute(route: CmuxRoute) {
