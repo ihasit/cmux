@@ -156,7 +156,7 @@ class PairingParser {
         val port = json.optInt("port", -1)
         checkPairing(host.isNotEmpty() && port in 1..65535, "pair.error.invalidRoute")
         checkPairing(!isLoopbackHost(host), "pair.error.loopback")
-        val route = CmuxRoute("tailscale", json.optString("transport", "tailscale"), host, port, 10)
+        val route = CmuxRoute("tailscale", json.optString("transport", "tailscale").trim(), host, port, 10)
         return PairedMac(
             id = stableMacId(json.optNullableString("mac_device_id"), listOf(route)),
             displayName = json.optNullableString("mac_display_name"),
@@ -174,7 +174,7 @@ class PairingParser {
         val kindCounts = mutableMapOf<String, Int>()
         val routes = (0 until routesJson.length()).mapNotNull { index ->
             val routeJson = routesJson.optJSONObject(index) ?: return@mapNotNull null
-            val kind = routeJson.optString("k", "tailscale")
+            val kind = routeJson.optString("k", "tailscale").trim()
             val occurrence = (kindCounts[kind] ?: 0) + 1
             kindCounts[kind] = occurrence
             val endpoint = routeJson.optJSONObject("e") ?: return@mapNotNull null
@@ -206,7 +206,7 @@ class PairingParser {
             val endpoint = routeJson.optJSONObject("endpoint") ?: return@mapNotNull null
             parseRoute(
                 id = routeJson.optNullableString("id") ?: "route_$index",
-                kind = routeJson.optString("kind", "tailscale"),
+                kind = routeJson.optString("kind", "tailscale").trim(),
                 endpoint = endpoint,
                 priority = routeJson.optInt("priority", index * 10)
             )
