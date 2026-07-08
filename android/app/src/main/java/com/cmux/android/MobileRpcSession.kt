@@ -108,8 +108,12 @@ class MobileRpcSession(
                 callback.onRpcError(null, null, "parse_error", "Invalid push topic from host")
                 return
             }
-            val payload = json.optJSONObject("payload") ?: json
-            callback.onPushEvent(topic, payload)
+            val pushPayload = json.optJSONObject("payload")
+            if (pushPayload == null && json.has("payload") && !json.isNull("payload")) {
+                callback.onRpcError(null, null, "parse_error", "Invalid push payload from host")
+                return
+            }
+            callback.onPushEvent(topic, pushPayload ?: json)
             return
         }
         val pendingCall = pending.remove(id)
