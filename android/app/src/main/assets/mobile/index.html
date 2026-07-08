@@ -3,35 +3,65 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>cmux Android</title>
+    <title>cmux</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <section class="panel">
-        <h1>cmux</h1>
-        <p class="muted">Android Mobile Connect prototype</p>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>cmux</h1>
+          <p id="connectionText"></p>
+        </div>
+        <button id="closeConnection" class="icon-button" data-i18n-aria="disconnect">X</button>
+      </header>
 
+      <section id="pairingView" class="screen">
+        <div class="section-header">
+          <h2 data-i18n="pair.title"></h2>
+          <p data-i18n="pair.subtitle"></p>
+        </div>
         <label>
-          Host
-          <input id="host" autocomplete="off" placeholder="your-mac.tailnet.ts.net" />
+          <span data-i18n="pair.link"></span>
+          <textarea id="pairingCode" rows="4" autocomplete="off" data-i18n-placeholder="pair.placeholder"></textarea>
         </label>
+        <button id="pairButton" class="primary" data-i18n="pair.connect"></button>
 
-        <label>
-          Port
-          <input id="port" inputmode="numeric" value="58465" />
-        </label>
+        <div id="pairedList" class="paired-list"></div>
+      </section>
 
-        <div class="actions">
-          <button id="connect">Connect</button>
-          <button id="status">Host Status</button>
-          <button id="close">Close</button>
+      <section id="workspaceView" class="screen hidden">
+        <div class="section-header row">
+          <div>
+            <h2 data-i18n="workspaces.title"></h2>
+            <p id="hostText"></p>
+          </div>
+          <button id="refreshWorkspaces" data-i18n="refresh"></button>
+        </div>
+        <div id="workspaceList" class="workspace-list"></div>
+      </section>
+
+      <section id="terminalView" class="screen hidden">
+        <div class="terminal-toolbar">
+          <button id="backToWorkspaces" data-i18n="back"></button>
+          <div>
+            <strong id="terminalTitle"></strong>
+            <span id="terminalMeta"></span>
+          </div>
+          <button id="refreshTerminal" data-i18n="replay"></button>
+        </div>
+        <pre id="terminalOutput" class="terminal-output"></pre>
+        <div class="composer">
+          <textarea id="terminalInput" rows="3" data-i18n-placeholder="terminal.inputPlaceholder"></textarea>
+          <div class="composer-actions">
+            <button id="pasteInput" data-i18n="paste"></button>
+            <button id="sendInput" class="primary" data-i18n="send"></button>
+          </div>
         </div>
       </section>
 
-      <section class="panel log-panel">
-        <div class="log-title">Events</div>
-        <pre id="log"></pre>
+      <section class="event-strip">
+        <div id="toast"></div>
       </section>
     </main>
 

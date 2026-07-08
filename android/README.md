@@ -43,7 +43,20 @@ The TCP stream uses a 4-byte big-endian frame length followed by a JSON payload.
 
 ## Build
 
-Install Android Studio or an Android SDK, then from this directory run:
+Install Android Studio or an Android SDK, then make sure Gradle can find the SDK.
+Android Studio's setup wizard normally installs it at:
+
+```bash
+~/Library/Android/sdk
+```
+
+If Gradle cannot find it, create a local `local.properties` file:
+
+```properties
+sdk.dir=/Users/<you>/Library/Android/sdk
+```
+
+Then from this directory run:
 
 ```bash
 gradle :app:assembleDebug

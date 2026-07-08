@@ -68,6 +68,7 @@ build-package-local-*/
 .iter-logs/
 .claude/worktrees/
 .specstory/
+.claude/scheduled_tasks.lock
 
 # Local dogfood scratch (screenshots, recordings) — never commit
 artifacts/

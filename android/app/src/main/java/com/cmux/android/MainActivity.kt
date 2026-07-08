@@ -2,6 +2,7 @@ package com.cmux.android
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -16,7 +17,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         webView = WebView(this)
-        bridge = MobileWebBridge(webView)
+        bridge = MobileWebBridge(this, webView)
 
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
@@ -26,6 +27,13 @@ class MainActivity : Activity() {
 
         setContentView(webView)
         webView.loadUrl("file:///android_asset/mobile/index.html")
+        bridge.handlePairingURL(intent?.dataString)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        bridge.handlePairingURL(intent.dataString)
     }
 
     override fun onDestroy() {
