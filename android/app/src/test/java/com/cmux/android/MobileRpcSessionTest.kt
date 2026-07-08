@@ -233,6 +233,36 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun oversizedAuthRefreshRetryReportsErrorWithoutSendingFrame() {
+        val client = RecordingFrameClient()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            stackAccessTokenProvider = FakeStackAccessTokenProvider(
+                accessToken = "stale-token",
+                forceRefreshToken = "a".repeat(8 * 1024 * 1024 + 1)
+            ),
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(tcpRoute())
+
+        val requestId = session.request("mobile.workspace.list")
+        session.onFrame(
+            JSONObject()
+                .put("id", requestId)
+                .put("ok", false)
+                .put("error", JSONObject().put("code", "unauthorized"))
+                .toString()
+        )
+
+        assertEquals(1, client.sentFrames.size)
+        assertEquals(
+            listOf(RecordedError(requestId, "mobile.workspace.list", "payload_too_large", "request frame too large")),
+            callback.errors
+        )
+    }
+
+    @Test
     fun responseWithNonNumericIdReportsParseError() {
         val callback = RecordingCallback()
         val session = MobileRpcSession(
