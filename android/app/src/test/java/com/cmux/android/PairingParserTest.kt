@@ -54,6 +54,15 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseManualIpv6HostPortTrimsBracketSpacing() {
+        val mac = parser.parse(" [fd7a:115c:a1e0::42] : 58465 ")
+
+        val route = mac.routes.single()
+        assertEquals("fd7a:115c:a1e0::42", route.host)
+        assertEquals(58465, route.port)
+    }
+
+    @Test
     fun parseManualWebSocketUrlKeepsWebSocketRoute() {
         val mac = parser.parse("wss://cmux.example.test/mobile")
 
