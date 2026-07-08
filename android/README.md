@@ -34,6 +34,7 @@ android/
         PairedMacStore.kt
         PairingParser.kt
       test/java/com/cmux/android/
+        MobileTcpClientTest.kt
         StackTokenRefresherTest.kt
       androidTest/java/com/cmux/android/
         MainActivitySmokeTest.kt
@@ -65,7 +66,7 @@ Implemented:
 - Handle `cmux-ios://` / `cmux-ios-dev://` Android deep links.
 - Scan Mac pairing QR codes with the device camera.
 - Store paired Mac routes encrypted with Android Keystore AES-GCM, migrating older plaintext records on read.
-- Run JVM unit tests for auth callback parsing, pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, and mobile RPC auth envelopes.
+- Run JVM unit tests for auth callback parsing, pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, mobile TCP framing, and mobile RPC auth envelopes.
 - Provide an Android instrumentation smoke test for the launched WebView shell.
 - Provide English and Japanese WebView strings.
 

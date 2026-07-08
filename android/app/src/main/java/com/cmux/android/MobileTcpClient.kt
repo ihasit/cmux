@@ -13,7 +13,8 @@ class MobileTcpClient(
     private val callback: MobileFrameClient.Callback,
     private val connectTimeoutMillis: Int = 15_000
 ) : MobileFrameClient {
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val readExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val writeExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val closed = AtomicBoolean(true)
     private var socket: Socket? = null
     private var output: BufferedOutputStream? = null
@@ -21,7 +22,7 @@ class MobileTcpClient(
     override fun connect(route: CmuxRoute) {
         close("reconnecting")
         closed.set(false)
-        executor.execute {
+        readExecutor.execute {
             try {
                 val nextSocket = Socket()
                 nextSocket.tcpNoDelay = true
@@ -42,7 +43,7 @@ class MobileTcpClient(
     }
 
     override fun sendFrame(payload: String) {
-        executor.execute {
+        writeExecutor.execute {
             try {
                 val bytes = payload.toByteArray(Charsets.UTF_8)
                 val header = ByteBuffer.allocate(4).putInt(bytes.size).array()
@@ -78,7 +79,8 @@ class MobileTcpClient(
 
     override fun shutdown() {
         close("activity destroyed")
-        executor.shutdownNow()
+        readExecutor.shutdownNow()
+        writeExecutor.shutdownNow()
     }
 
     private fun readLoop(input: BufferedInputStream) {
