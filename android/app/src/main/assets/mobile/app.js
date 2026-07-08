@@ -1086,10 +1086,10 @@ function decodeReplayText(result) {
     return renderGridToText(result.render_grid);
   }
   if (result.snapshot_data_b64) {
-    return atob(result.snapshot_data_b64);
+    return decodeBase64(result.snapshot_data_b64);
   }
   if (result.data_b64) {
-    return atob(result.data_b64);
+    return decodeBase64(result.data_b64);
   }
   return "";
 }
