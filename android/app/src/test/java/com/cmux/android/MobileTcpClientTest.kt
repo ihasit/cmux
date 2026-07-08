@@ -47,6 +47,31 @@ class MobileTcpClientTest {
     }
 
     @Test
+    fun rejectsOversizedOutboundPayloadBeforeSending() {
+        val server = testServer()
+        val accepted = CountDownLatch(1)
+        val availableBytes = LinkedBlockingQueue<Int>()
+        Thread {
+            server.accept().use { socket ->
+                accepted.countDown()
+                Thread.sleep(200)
+                availableBytes.add(socket.getInputStream().available())
+            }
+        }.start()
+        val callback = RecordingCallback()
+        val client = mobileClient(callback)
+
+        client.connect(route(server))
+        assertTrue(callback.opened.await(2, TimeUnit.SECONDS))
+        assertTrue(accepted.await(2, TimeUnit.SECONDS))
+        client.sendFrame("x".repeat(8 * 1024 * 1024 + 1))
+
+        assertEquals("frame too large: 8388609", callback.errors.poll(2, TimeUnit.SECONDS))
+        assertEquals("frame too large", callback.closes.poll(2, TimeUnit.SECONDS))
+        assertEquals(0, availableBytes.poll(2, TimeUnit.SECONDS))
+    }
+
+    @Test
     fun receivesLengthPrefixedFrameFromHostEvenWhenBytesArriveInChunks() {
         val server = testServer()
         Thread {

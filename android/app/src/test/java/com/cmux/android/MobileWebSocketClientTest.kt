@@ -67,6 +67,34 @@ class MobileWebSocketClientTest {
     }
 
     @Test
+    fun rejectsOversizedOutboundPayloadBeforeSending() {
+        val receivedFrames = LinkedBlockingQueue<ByteString>()
+        val accepted = CountDownLatch(1)
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    accepted.countDown()
+                }
+
+                override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    receivedFrames.add(bytes)
+                }
+            })
+        )
+        val callback = RecordingCallback()
+        val client = mobileClient(callback)
+
+        client.connect(route())
+        assertTrue(callback.opened.await(2, TimeUnit.SECONDS))
+        assertTrue(accepted.await(2, TimeUnit.SECONDS))
+        client.sendFrame("x".repeat(8 * 1024 * 1024 + 1))
+
+        assertEquals("websocket frame too large: 8388609", callback.errors.poll(2, TimeUnit.SECONDS))
+        assertEquals("frame too large", callback.closes.poll(2, TimeUnit.SECONDS))
+        assertTrue(receivedFrames.isEmpty())
+    }
+
+    @Test
     fun receivesLengthPrefixedBinaryFramesAcrossWebSocketMessages() {
         server.enqueue(
             MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
