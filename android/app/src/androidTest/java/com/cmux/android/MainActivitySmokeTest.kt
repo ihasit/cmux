@@ -1579,6 +1579,24 @@ class MainActivitySmokeTest {
 
             scenario.evaluateScript(
                 """
+                window.__lastPasteText = null;
+                document.getElementById('terminalInput').value = 'button paste';
+                true;
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "pasteInput"))
+                .perform(webClick())
+
+            val buttonPasteText = scenario.evaluateScript("JSON.stringify(window.__lastPasteText)")
+            check(buttonPasteText.contains("\"text\":\"button paste\""))
+            check(buttonPasteText.contains("\"submitKey\":\"return\""))
+            val clearedAfterButtonPaste = scenario.evaluateScript("document.getElementById('terminalInput').value")
+            check(clearedAfterButtonPaste == "\"\"")
+
+            scenario.evaluateScript(
+                """
                 window.__lastSendInput = null;
                 window.__lastPasteText = null;
                 document.getElementById('terminalInput').value = 'discard me';
