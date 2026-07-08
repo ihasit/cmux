@@ -128,6 +128,28 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
     }
 
     @JavascriptInterface
+    fun reconcileNotifications(deliveredIdsJson: String) {
+        val deliveredIds = runCatching { JSONArray(deliveredIdsJson) }.getOrElse { JSONArray() }
+        session.request(
+            "notification.reconcile",
+            JSONObject()
+                .put("client_id", CLIENT_ID)
+                .put("delivered_ids", deliveredIds)
+        )
+    }
+
+    @JavascriptInterface
+    fun dismissNotifications(notificationIdsJson: String) {
+        val notificationIds = runCatching { JSONArray(notificationIdsJson) }.getOrElse { JSONArray() }
+        session.request(
+            "notification.dismiss",
+            JSONObject()
+                .put("client_id", CLIENT_ID)
+                .put("notification_ids", notificationIds)
+        )
+    }
+
+    @JavascriptInterface
     fun setWorkspaceGroupCollapsed(groupId: String, collapsed: Boolean) {
         session.request(
             if (collapsed) "workspace.group.collapse" else "workspace.group.expand",
@@ -317,6 +339,8 @@ class MobileWebBridge(context: Context, private val webView: WebView) : MobileRp
         val topics = JSONArray()
             .put("workspace.updated")
             .put("terminal.render_grid")
+            .put("notification.badge")
+            .put("notification.dismissed")
         session.request(
             "mobile.events.subscribe",
             JSONObject()

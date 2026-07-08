@@ -15,6 +15,8 @@ const state = {
   lastTouchY: null,
   touchStart: null,
   suppressClickUntil: 0,
+  unreadNotificationCount: null,
+  deliveredNotificationIds: [],
 };
 
 const messages = {
@@ -54,6 +56,14 @@ const messages = {
     "workspace.renameEmpty": "Workspace name is empty.",
     "workspace.actionsUnsupported": "This Mac does not support workspace actions yet.",
     "workspace.closeUnsupported": "This Mac does not support closing workspaces yet.",
+    "notification.none": "No unread notifications.",
+    "notification.unread": "{count} unread notification",
+    "notification.unreadPlural": "{count} unread notifications",
+    "notification.sync": "Sync notifications",
+    "notification.dismissAll": "Dismiss synced",
+    "notification.noDelivered": "No synced notifications to dismiss.",
+    "notification.synced": "Notifications synced.",
+    "notification.dismissed": "Notifications dismissed.",
     "group.defaultName": "Group",
     "group.expand": "Expand group",
     "group.collapse": "Collapse group",
@@ -119,6 +129,14 @@ const messages = {
     "workspace.renameEmpty": "ワークスペース名が空です。",
     "workspace.actionsUnsupported": "この Mac はまだワークスペース操作に対応していません。",
     "workspace.closeUnsupported": "この Mac はまだワークスペースの終了に対応していません。",
+    "notification.none": "未読通知はありません。",
+    "notification.unread": "未読通知 {count} 件",
+    "notification.unreadPlural": "未読通知 {count} 件",
+    "notification.sync": "通知を同期",
+    "notification.dismissAll": "同期済みを消去",
+    "notification.noDelivered": "消去できる同期済み通知はありません。",
+    "notification.synced": "通知を同期しました。",
+    "notification.dismissed": "通知を消去しました。",
     "group.defaultName": "グループ",
     "group.expand": "グループを展開",
     "group.collapse": "グループを折りたたむ",
@@ -158,6 +176,7 @@ function t(key) {
 
 const elements = {
   connectionText: document.getElementById("connectionText"),
+  notificationText: document.getElementById("notificationText"),
   closeConnection: document.getElementById("closeConnection"),
   pairingView: document.getElementById("pairingView"),
   pairingCode: document.getElementById("pairingCode"),
@@ -167,6 +186,8 @@ const elements = {
   hostText: document.getElementById("hostText"),
   refreshWorkspaces: document.getElementById("refreshWorkspaces"),
   createWorkspace: document.getElementById("createWorkspace"),
+  syncNotifications: document.getElementById("syncNotifications"),
+  dismissNotifications: document.getElementById("dismissNotifications"),
   workspaceList: document.getElementById("workspaceList"),
   terminalView: document.getElementById("terminalView"),
   backToWorkspaces: document.getElementById("backToWorkspaces"),
@@ -195,6 +216,7 @@ function localizeStaticText() {
     node.setAttribute("aria-label", t(node.getAttribute("data-i18n-aria")));
   });
   elements.connectionText.textContent = t("app.disconnected");
+  renderNotificationStatus();
   elements.hostText.textContent = t("host.connected");
   elements.terminalTitle.textContent = t("terminal.defaultTitle");
 }
@@ -241,11 +263,33 @@ function renderPairedMacs() {
 }
 
 function renderWorkspaces() {
+  updateUnreadCountFromWorkspaces();
+  renderNotificationStatus();
   if (state.workspaces.length === 0) {
     elements.workspaceList.innerHTML = `<article class="card"><div class="card-subtitle">${escapeHtml(t("workspaces.empty"))}</div></article>`;
     return;
   }
   elements.workspaceList.innerHTML = workspaceListItems().join("");
+}
+
+function updateUnreadCountFromWorkspaces() {
+  if (state.unreadNotificationCount != null) return;
+  const count = state.workspaces.filter((workspace) => workspace.has_unread).length;
+  state.unreadNotificationCount = count;
+}
+
+function renderNotificationStatus() {
+  if (!elements.notificationText) return;
+  const count = Number.isInteger(state.unreadNotificationCount) ? state.unreadNotificationCount : 0;
+  const messageKey = count === 0
+    ? "notification.none"
+    : count === 1
+      ? "notification.unread"
+      : "notification.unreadPlural";
+  elements.notificationText.textContent = t(messageKey).replace("{count}", String(count));
+  if (elements.dismissNotifications) {
+    elements.dismissNotifications.disabled = state.deliveredNotificationIds.length === 0;
+  }
 }
 
 function workspaceListItems() {
@@ -362,6 +406,18 @@ function closeWorkspace(workspaceId) {
     return;
   }
   bridge().closeWorkspace(workspaceId);
+}
+
+function syncNotifications() {
+  bridge().reconcileNotifications(JSON.stringify(state.deliveredNotificationIds));
+}
+
+function dismissSyncedNotifications() {
+  if (state.deliveredNotificationIds.length === 0) {
+    showToast(t("notification.noDelivered"));
+    return;
+  }
+  bridge().dismissNotifications(JSON.stringify(state.deliveredNotificationIds));
 }
 
 function toggleWorkspaceGroup(groupId, isCollapsed) {
@@ -929,6 +985,28 @@ function handleRpcResult(method, result) {
     bridge().refreshWorkspaces();
     return;
   }
+  if (method === "notification.reconcile") {
+    if (Number.isInteger(result.unread_count)) {
+      state.unreadNotificationCount = result.unread_count;
+    }
+    const handledIds = Array.isArray(result.handled_ids) ? result.handled_ids : [];
+    if (handledIds.length > 0) {
+      const handled = new Set(handledIds);
+      state.deliveredNotificationIds = state.deliveredNotificationIds.filter((id) => !handled.has(id));
+    }
+    renderNotificationStatus();
+    showToast(t("notification.synced"));
+    bridge().refreshWorkspaces();
+    return;
+  }
+  if (method === "notification.dismiss") {
+    state.deliveredNotificationIds = [];
+    renderNotificationStatus();
+    showToast(t("notification.dismissed"));
+    syncNotifications();
+    bridge().refreshWorkspaces();
+    return;
+  }
   if (method === "mobile.terminal.replay") {
     renderTerminalReplay(result);
     return;
@@ -973,6 +1051,26 @@ function handlePushEvent(type, payload) {
       renderTerminalFrame(renderGrid);
       showToast(t("terminal.live"));
     }
+    return;
+  }
+  if (type === "notification.badge") {
+    if (Number.isInteger(payload.unread_count)) {
+      state.unreadNotificationCount = payload.unread_count;
+      renderNotificationStatus();
+    }
+    return;
+  }
+  if (type === "notification.dismissed") {
+    const ids = Array.isArray(payload.ids) ? payload.ids : [];
+    if (ids.length > 0) {
+      const dismissed = new Set(ids);
+      state.deliveredNotificationIds = state.deliveredNotificationIds.filter((id) => !dismissed.has(id));
+    }
+    if (Number.isInteger(payload.unread_count)) {
+      state.unreadNotificationCount = payload.unread_count;
+    }
+    renderNotificationStatus();
+    bridge().refreshWorkspaces();
   }
 }
 
@@ -985,6 +1083,11 @@ window.cmuxNativeEvent = (event) => {
   if (event.type === "connection") {
     const { state: nextState, detail } = event.payload;
     state.connected = nextState === "open";
+    if (!state.connected) {
+      state.unreadNotificationCount = null;
+      state.deliveredNotificationIds = [];
+      renderNotificationStatus();
+    }
     elements.connectionText.textContent = detail ? `${nextState}: ${detail}` : nextState;
     showToast(nextState === "open" ? t("app.connected") : detail || nextState);
     return;
@@ -1033,6 +1136,8 @@ elements.workspaceList.addEventListener("click", (event) => {
 
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
 elements.createWorkspace.addEventListener("click", () => bridge().createWorkspace());
+elements.syncNotifications.addEventListener("click", syncNotifications);
+elements.dismissNotifications.addEventListener("click", dismissSyncedNotifications);
 elements.closeConnection.addEventListener("click", () => {
   if (state.activeWorkspace && state.activeTerminal) {
     bridge().clearViewport(state.activeWorkspace.id, state.activeTerminal.id);

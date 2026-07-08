@@ -162,7 +162,7 @@ class PairingParser {
         }
         val port = portText.toIntOrNull()
         checkPairing(host.isNotBlank() && port != null && port in 1..65535, "pair.error.invalidRoute")
-        return host to port
+        return host to requireNotNull(port)
     }
 
     private fun isLoopbackHost(host: String): Boolean {
