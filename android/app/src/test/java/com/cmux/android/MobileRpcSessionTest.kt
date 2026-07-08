@@ -226,6 +226,27 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun remoteCloseClearsActiveClientBeforeLaterRequests() {
+        val client = RecordingFrameClient()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> client }
+        )
+        session.connect(tcpRoute())
+        session.onOpen()
+
+        session.onClose("remote closed")
+        val requestId = session.request("mobile.workspace.list")
+
+        assertTrue(client.sentFrames.isEmpty())
+        assertEquals(
+            listOf(RecordedError(requestId, "mobile.workspace.list", "transport_error", "not connected")),
+            callback.errors
+        )
+    }
+
+    @Test
     fun manualCloseFailsPendingRequests() {
         val client = RecordingFrameClient()
         val callback = RecordingCallback()
