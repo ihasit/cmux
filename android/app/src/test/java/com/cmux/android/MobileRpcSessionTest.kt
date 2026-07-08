@@ -390,7 +390,7 @@ class MobileRpcSessionTest {
     }
 
     @Test
-    fun closeAfterOpenDoesNotFailOver() {
+    fun closeAfterOpenClosesWhenNoNextRouteExists() {
         val connectedRoutes = mutableListOf<CmuxRoute>()
         val callback = RecordingCallback()
         val session = MobileRpcSession(
@@ -401,15 +401,45 @@ class MobileRpcSessionTest {
             }
         )
 
-        session.connect(listOf(
-            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
-            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
-        ))
+        session.connect(tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"))
         session.onOpen()
         session.onClose("lost after open")
 
         assertEquals(listOf("first"), connectedRoutes.map { it.id })
         assertEquals("closed", callback.connectionStates.last().state)
+    }
+
+    @Test
+    fun closeAfterOpenFailsOverToNextRouteWhenAvailable() {
+        val clients = mutableListOf<RecordingFrameClient>()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient().also { clients.add(it) }
+            }
+        )
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.onOpen()
+        val requestId = session.request("mobile.workspace.list")
+
+        session.onClose("lost after open")
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(
+            listOf("connecting", "open", "retrying", "connecting"),
+            callback.connectionStates.map { it.state }
+        )
+        assertEquals(
+            listOf(RecordedError(requestId, "mobile.workspace.list", "transport_error", "lost after open")),
+            callback.errors
+        )
+        assertEquals(1, clients.first().shutdownCalls)
     }
 
     @Test
