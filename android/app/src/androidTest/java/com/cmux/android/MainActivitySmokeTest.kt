@@ -659,6 +659,29 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun workspaceListRpcErrorRendersVisibleFailure() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcError",
+                  "payload": {
+                    "id": 1,
+                    "method": "mobile.workspace.list",
+                    "code": "transport_error",
+                    "message": "network lost"
+                  }
+                }
+                """.trimIndent()
+            )
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "workspaceList"))
+                .check(webMatches(getText(), containsString("Could not load workspaces.")))
+        }
+    }
+
+    @Test
     fun terminalSetFontPushUpdatesActiveTerminalFontOnly() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.evaluateScript(
