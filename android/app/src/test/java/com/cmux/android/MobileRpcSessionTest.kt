@@ -229,6 +229,24 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun responseWithNonBooleanOkReportsParseError() {
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> RecordingFrameClient() }
+        )
+        session.connect(tcpRoute())
+
+        session.onFrame(JSONObject().put("id", 7).put("ok", "true").toString())
+
+        assertEquals(
+            listOf(RecordedError(7, null, "parse_error", "Invalid response status from host")),
+            callback.errors
+        )
+        assertTrue(callback.results.isEmpty())
+    }
+
+    @Test
     fun remoteCloseFailsPendingRequests() {
         val client = RecordingFrameClient()
         val callback = RecordingCallback()
