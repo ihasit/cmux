@@ -457,6 +457,32 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun errorAfterOpenClosesWhenNoNextRouteExists() {
+        val client = RecordingFrameClient()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> client }
+        )
+
+        session.connect(tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"))
+        session.onOpen()
+        session.onError("send failed")
+        val requestId = session.request("mobile.workspace.list")
+
+        assertTrue(client.sentFrames.isEmpty())
+        assertEquals(
+            listOf(
+                RecordedError(null, null, "transport_error", "send failed"),
+                RecordedError(requestId, "mobile.workspace.list", "transport_error", "not connected")
+            ),
+            callback.errors
+        )
+        assertEquals("closed", callback.connectionStates.last().state)
+        assertEquals("send failed", callback.connectionStates.last().detail)
+    }
+
+    @Test
     fun closeAfterOpenFailsOverToNextRouteWhenAvailable() {
         val clients = mutableListOf<RecordingFrameClient>()
         val connectedRoutes = mutableListOf<CmuxRoute>()
@@ -484,6 +510,42 @@ class MobileRpcSessionTest {
         )
         assertEquals(
             listOf(RecordedError(requestId, "mobile.workspace.list", "transport_error", "lost after open")),
+            callback.errors
+        )
+        assertEquals(1, clients.first().shutdownCalls)
+    }
+
+    @Test
+    fun errorAfterOpenFailsOverToNextRouteWhenAvailable() {
+        val clients = mutableListOf<RecordingFrameClient>()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient().also { clients.add(it) }
+            }
+        )
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.onOpen()
+        val requestId = session.request("mobile.workspace.list")
+
+        session.onError("send failed")
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(
+            listOf("connecting", "open", "retrying", "connecting"),
+            callback.connectionStates.map { it.state }
+        )
+        assertEquals(
+            listOf(
+                RecordedError(null, null, "transport_error", "send failed"),
+                RecordedError(requestId, "mobile.workspace.list", "transport_error", "send failed")
+            ),
             callback.errors
         )
         assertEquals(1, clients.first().shutdownCalls)
