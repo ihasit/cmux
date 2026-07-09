@@ -386,6 +386,34 @@ function testNotificationBadgeZeroClearsDeliveredIds() {
   );
 }
 
+function testNotificationDismissedZeroClearsDeliveredIds() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.state.hostStatus = {
+    capabilities: ["notification.dismiss.v1"],
+  };
+
+  hooks.handlePushEvent("notification.badge", {
+    unread_count: 3,
+    notification_ids: ["n-1", "n-2", "n-3"],
+  });
+  hooks.handlePushEvent("notification.dismissed", {
+    handled_ids: ["n-1"],
+    unread_count: 0,
+  });
+
+  assert.deepStrictEqual(
+    Array.from(hooks.state.deliveredNotificationIds),
+    [],
+    `expected dismissed zero unread to clear delivered ids, got ${JSON.stringify(hooks.state.deliveredNotificationIds)}`
+  );
+  assert.strictEqual(
+    hooks.elements.dismissNotifications.disabled,
+    true,
+    "expected dismiss button to be disabled after dismissed push returns unread to zero"
+  );
+}
+
 testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
@@ -396,4 +424,5 @@ testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
+testNotificationDismissedZeroClearsDeliveredIds();
 console.log("mobile app js tests passed");
