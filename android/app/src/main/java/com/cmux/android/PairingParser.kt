@@ -267,6 +267,7 @@ class PairingParser {
         val scheme = uri.scheme?.lowercase()
         checkPairing(scheme == "ws" || scheme == "wss", "pair.error.invalidRoute")
         checkPairing(!uri.host.isNullOrBlank(), "pair.error.invalidRoute")
+        checkPairing(uri.userInfo.isNullOrEmpty(), "pair.error.invalidRoute")
         checkPairing(!isLoopbackHost(uri.host), "pair.error.loopback")
     }
 
