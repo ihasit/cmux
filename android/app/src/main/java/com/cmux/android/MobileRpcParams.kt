@@ -111,8 +111,9 @@ object MobileRpcParams {
         columns: Int,
         rows: Int
     ): JSONObject {
+        val safeDeltaLines = if (deltaLines.isFinite()) deltaLines else 0.0
         val params = terminalViewport(workspaceId, terminalId, columns, rows)
-            .put("delta_lines", deltaLines)
+            .put("delta_lines", safeDeltaLines)
             .put("col", column.coerceAtLeast(0))
             .put("row", row.coerceAtLeast(0))
         if (maxScrollbackRows > 0) {
