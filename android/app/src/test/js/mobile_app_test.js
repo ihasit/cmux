@@ -1156,6 +1156,24 @@ function testTerminalClickRequestsPointerCell() {
   );
 }
 
+function testTerminalTouchCancelDoesNotClickTerminal() {
+  const { hooks, bridgeCalls } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+
+  hooks.elements.terminalOutput.dispatchEvent("touchstart", {
+    target: hooks.elements.terminalOutput,
+    touches: [{ clientX: 400, clientY: 160 }],
+  });
+  hooks.elements.terminalOutput.dispatchEvent("touchcancel", {
+    target: hooks.elements.terminalOutput,
+  });
+
+  assert(
+    !bridgeCalls.some((call) => call[0] === "clickTerminal"),
+    `expected cancelled touch not to click terminal, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testPasteImageRequestsActiveTerminalWithDecodedPayload() {
   const { hooks, bridgeCalls, setFileReaderResult } = loadApp();
   openTestTerminal(hooks, bridgeCalls);
@@ -1591,6 +1609,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testTerminalPasteErrorRestoresPendingText();
   testWheelRequestsTerminalScrollWithPointerAndViewport();
   testTerminalClickRequestsPointerCell();
+  testTerminalTouchCancelDoesNotClickTerminal();
   testPasteImageRequestsActiveTerminalWithDecodedPayload();
   testPasteImageRejectsInvalidOrOversizedFiles();
   await testCopyTerminalOutputWritesTrimmedTextToClipboard();
