@@ -690,6 +690,7 @@ function hasCapability(capability) {
 }
 
 function createWorkspace() {
+  if (!state.connected) return;
   if (!hasCapability("workspace.create.v1")) {
     showToast(t("workspace.createUnsupported"));
     return;
@@ -698,6 +699,7 @@ function createWorkspace() {
 }
 
 function createTerminal(workspaceId) {
+  if (!state.connected) return;
   if (!hasCapability("terminal.create.v1")) {
     showToast(t("terminal.createUnsupported"));
     return;
@@ -706,6 +708,7 @@ function createTerminal(workspaceId) {
 }
 
 function renameWorkspace(workspaceId) {
+  if (!state.connected) return;
   if (!hasCapability("workspace.actions.v1")) {
     showToast(t("workspace.actionsUnsupported"));
     return;
@@ -722,6 +725,7 @@ function renameWorkspace(workspaceId) {
 }
 
 function toggleWorkspacePinned(workspaceId, isPinned) {
+  if (!state.connected) return;
   if (!hasCapability("workspace.actions.v1")) {
     showToast(t("workspace.actionsUnsupported"));
     return;
@@ -730,6 +734,7 @@ function toggleWorkspacePinned(workspaceId, isPinned) {
 }
 
 function toggleWorkspaceUnread(workspaceId, hasUnread) {
+  if (!state.connected) return;
   if (!hasCapability("workspace.read_state.v1")) {
     showToast(t("workspace.actionsUnsupported"));
     return;
@@ -738,6 +743,7 @@ function toggleWorkspaceUnread(workspaceId, hasUnread) {
 }
 
 function closeWorkspace(workspaceId) {
+  if (!state.connected) return;
   if (!hasCapability("workspace.close.v1")) {
     showToast(t("workspace.closeUnsupported"));
     return;
@@ -746,11 +752,13 @@ function closeWorkspace(workspaceId) {
 }
 
 function syncNotifications() {
+  if (!state.connected) return;
   if (!hasCapability("notification.reconcile.v1")) return;
   bridge().reconcileNotifications(JSON.stringify(state.deliveredNotificationIds));
 }
 
 function dismissSyncedNotifications() {
+  if (!state.connected) return;
   if (!hasCapability("notification.dismiss.v1")) return;
   if (state.deliveredNotificationIds.length === 0) {
     showToast(t("notification.noDelivered"));
@@ -760,6 +768,7 @@ function dismissSyncedNotifications() {
 }
 
 function toggleWorkspaceGroup(groupId, isCollapsed) {
+  if (!state.connected) return;
   if (!hasCapability("workspace.groups.v1")) return;
   bridge().setWorkspaceGroupCollapsed(groupId, !isCollapsed);
 }
