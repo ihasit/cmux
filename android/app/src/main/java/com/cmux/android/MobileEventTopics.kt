@@ -30,8 +30,13 @@ object MobileEventTopics {
         val capabilities: Set<String> = emptySet(),
         val terminalFidelity: String? = null
     ) {
+        private val normalizedCapabilities: Set<String> = capabilities.mapNotNull { capability ->
+            capability.trim().takeIf { it.isNotEmpty() }
+        }.toSet()
+        private val normalizedTerminalFidelity: String? = terminalFidelity?.trim()?.takeIf { it.isNotEmpty() }
+
         val supportsRenderGrid: Boolean
-            get() = "terminal.render_grid.v1" in capabilities || terminalFidelity == "render_grid"
+            get() = "terminal.render_grid.v1" in normalizedCapabilities || normalizedTerminalFidelity == "render_grid"
     }
 }
 
