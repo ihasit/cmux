@@ -81,6 +81,7 @@ function loadApp() {
   const bridgeCalls = [];
   const bridge = {
     initialState: () => bridgeCalls.push(["initialState"]),
+    createWorkspace: () => bridgeCalls.push(["createWorkspace"]),
     replayTerminal: (...args) => bridgeCalls.push(["replayTerminal", ...args]),
     reportViewport: (...args) => bridgeCalls.push(["reportViewport", ...args]),
     refreshWorkspaces: () => bridgeCalls.push(["refreshWorkspaces"]),
@@ -393,6 +394,26 @@ function testWorkspaceGroupsRenderBeforeHostStatusCapabilities() {
   );
 }
 
+function testNestedHostServiceCapabilitiesEnableWorkspaceControls() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [],
+    host_service: {
+      capabilities: ["workspace.create.v1"],
+    },
+  });
+  hooks.elements.createWorkspace.dispatchEvent("click", {
+    target: hooks.elements.createWorkspace,
+  });
+
+  assert(
+    bridgeCalls.some((call) => call[0] === "createWorkspace"),
+    `expected nested host_service capabilities to enable createWorkspace, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -523,6 +544,7 @@ testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
 testWorkspaceFilterIgnoresNonElementClickTarget();
 testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
+testNestedHostServiceCapabilitiesEnableWorkspaceControls();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
