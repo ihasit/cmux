@@ -1231,6 +1231,27 @@ function testPasteImageRejectsInvalidOrOversizedFiles() {
   );
 }
 
+function testPasteImageClearsInputAfterRejectedFile() {
+  const { hooks } = loadApp();
+  openTestTerminal(hooks, []);
+
+  hooks.elements.imageInput.value = "huge.png";
+  hooks.elements.imageInput.files = [{
+    name: "huge.png",
+    type: "image/png",
+    size: 8 * 1024 * 1024 + 1,
+  }];
+  hooks.elements.imageInput.dispatchEvent("change", {
+    target: hooks.elements.imageInput,
+  });
+
+  assert.strictEqual(
+    hooks.elements.imageInput.value,
+    "",
+    `expected image input to clear after rejected file, got ${JSON.stringify(hooks.elements.imageInput.value)}`
+  );
+}
+
 async function testCopyTerminalOutputWritesTrimmedTextToClipboard() {
   const { hooks, clipboardWrites } = loadApp();
   openTestTerminal(hooks, []);
@@ -1612,6 +1633,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testTerminalTouchCancelDoesNotClickTerminal();
   testPasteImageRequestsActiveTerminalWithDecodedPayload();
   testPasteImageRejectsInvalidOrOversizedFiles();
+  testPasteImageClearsInputAfterRejectedFile();
   await testCopyTerminalOutputWritesTrimmedTextToClipboard();
   testPairingAuthAndConnectionControlsCallNativeBridge();
   testNativeToastFallsBackToMessageForUnknownKey();
