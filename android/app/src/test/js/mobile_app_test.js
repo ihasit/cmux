@@ -85,6 +85,7 @@ function loadApp() {
     createTerminal: (...args) => bridgeCalls.push(["createTerminal", ...args]),
     replayTerminal: (...args) => bridgeCalls.push(["replayTerminal", ...args]),
     reportViewport: (...args) => bridgeCalls.push(["reportViewport", ...args]),
+    sendInput: (...args) => bridgeCalls.push(["sendInput", ...args]),
     refreshWorkspaces: () => bridgeCalls.push(["refreshWorkspaces"]),
     clearViewport: (...args) => bridgeCalls.push(["clearViewport", ...args]),
     dismissNotifications: (...args) => bridgeCalls.push(["dismissNotifications", ...args]),
