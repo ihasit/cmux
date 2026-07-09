@@ -123,7 +123,7 @@ function loadApp() {
 
   const appPath = path.resolve(__dirname, "../../main/assets/mobile/app.js");
   vm.runInNewContext(fs.readFileSync(appPath, "utf8"), context, { filename: appPath });
-  return { hooks: context.__cmuxMobileTestHooks, bridgeCalls };
+  return { hooks: context.__cmuxMobileTestHooks, bridgeCalls, nativeEvent: context.window.cmuxNativeEvent };
 }
 
 function testSubscribeAckGapTriggersTerminalReplay() {
@@ -414,6 +414,38 @@ function testNestedHostServiceCapabilitiesEnableWorkspaceControls() {
   );
 }
 
+function testCreateWorkspaceButtonRequiresHostCapability() {
+  const { hooks, nativeEvent } = loadApp();
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [],
+  });
+  nativeEvent({
+    type: "connection",
+    payload: { state: "open" },
+  });
+
+  assert.strictEqual(
+    hooks.elements.createWorkspace.disabled,
+    true,
+    "expected create workspace button to stay disabled without workspace.create.v1"
+  );
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["workspace.create.v1"],
+  });
+  nativeEvent({
+    type: "connection",
+    payload: { state: "open" },
+  });
+
+  assert.strictEqual(
+    hooks.elements.createWorkspace.disabled,
+    false,
+    "expected create workspace button to enable when workspace.create.v1 is available"
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -545,6 +577,7 @@ testNestedTerminalOpenClickUsesClosestButton();
 testWorkspaceFilterIgnoresNonElementClickTarget();
 testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
 testNestedHostServiceCapabilitiesEnableWorkspaceControls();
+testCreateWorkspaceButtonRequiresHostCapability();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
