@@ -923,6 +923,23 @@ function testPasteImageRequestsActiveTerminalWithDecodedPayload() {
   );
 }
 
+async function testCopyTerminalOutputWritesTrimmedTextToClipboard() {
+  const { hooks, clipboardWrites } = loadApp();
+  openTestTerminal(hooks, []);
+  hooks.elements.terminalOutput.textContent = "build complete\n\n";
+
+  hooks.elements.copyTerminalOutput.dispatchEvent("click", {
+    target: hooks.elements.copyTerminalOutput,
+  });
+  await Promise.resolve();
+
+  assert.deepStrictEqual(
+    clipboardWrites,
+    ["build complete"],
+    `expected copied terminal output without trailing whitespace, got ${JSON.stringify(clipboardWrites)}`
+  );
+}
+
 function testPairingAuthAndConnectionControlsCallNativeBridge() {
   const { hooks, bridgeCalls, nativeEvent } = loadApp();
 
@@ -1154,33 +1171,39 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   );
 }
 
-testSubscribeAckGapTriggersTerminalReplay();
-testSubscribeAckDoesNotReplayWithoutActiveTerminal();
-testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
-testRenderGridReplayIgnoresPreviousStateSequence();
-testRenderGridColumnResizeRebuildsRows();
-testRenderGridInverseStyleSwapsForegroundAndBackground();
-testTerminalBytesGapRequestsReplay();
-testTerminalReplayResetsByteDeduplication();
-testNestedTerminalOpenClickUsesClosestButton();
-testWorkspaceFilterIgnoresNonElementClickTarget();
-testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
-testNestedHostServiceCapabilitiesEnableWorkspaceControls();
-testCreateWorkspaceButtonRequiresHostCapability();
-testWorkspaceCardActionsRequireHostCapabilities();
-testWorkspaceGroupToggleRequiresHostCapability();
-testWorkspaceGroupToggleClickRequestsNativeBridge();
-testWorkspaceWithTerminalsStillOffersCreateTerminal();
-testCreateTerminalClickRequestsWorkspaceTerminal();
-testWorkspaceActionClicksRequestNativeBridgeCalls();
-testSendInputRequestsActiveTerminalWithViewport();
-testPasteInputRequestsActiveTerminalWithSubmitKey();
-testWheelRequestsTerminalScrollWithPointerAndViewport();
-testTerminalClickRequestsPointerCell();
-testPasteImageRequestsActiveTerminalWithDecodedPayload();
-testPairingAuthAndConnectionControlsCallNativeBridge();
-testNotificationBadgeRecordsDeliveredIdsForDismissal();
-testNotificationBadgeZeroClearsDeliveredIds();
-testNotificationDismissedZeroClearsDeliveredIds();
-testNotificationReconcileZeroClearsDeliveredIds();
-console.log("mobile app js tests passed");
+(async () => {
+  testSubscribeAckGapTriggersTerminalReplay();
+  testSubscribeAckDoesNotReplayWithoutActiveTerminal();
+  testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
+  testRenderGridReplayIgnoresPreviousStateSequence();
+  testRenderGridColumnResizeRebuildsRows();
+  testRenderGridInverseStyleSwapsForegroundAndBackground();
+  testTerminalBytesGapRequestsReplay();
+  testTerminalReplayResetsByteDeduplication();
+  testNestedTerminalOpenClickUsesClosestButton();
+  testWorkspaceFilterIgnoresNonElementClickTarget();
+  testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
+  testNestedHostServiceCapabilitiesEnableWorkspaceControls();
+  testCreateWorkspaceButtonRequiresHostCapability();
+  testWorkspaceCardActionsRequireHostCapabilities();
+  testWorkspaceGroupToggleRequiresHostCapability();
+  testWorkspaceGroupToggleClickRequestsNativeBridge();
+  testWorkspaceWithTerminalsStillOffersCreateTerminal();
+  testCreateTerminalClickRequestsWorkspaceTerminal();
+  testWorkspaceActionClicksRequestNativeBridgeCalls();
+  testSendInputRequestsActiveTerminalWithViewport();
+  testPasteInputRequestsActiveTerminalWithSubmitKey();
+  testWheelRequestsTerminalScrollWithPointerAndViewport();
+  testTerminalClickRequestsPointerCell();
+  testPasteImageRequestsActiveTerminalWithDecodedPayload();
+  await testCopyTerminalOutputWritesTrimmedTextToClipboard();
+  testPairingAuthAndConnectionControlsCallNativeBridge();
+  testNotificationBadgeRecordsDeliveredIdsForDismissal();
+  testNotificationBadgeZeroClearsDeliveredIds();
+  testNotificationDismissedZeroClearsDeliveredIds();
+  testNotificationReconcileZeroClearsDeliveredIds();
+  console.log("mobile app js tests passed");
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
