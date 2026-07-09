@@ -523,6 +523,28 @@ function testNestedHostServiceCapabilitiesEnableWorkspaceControls() {
   );
 }
 
+function testHostCapabilitiesAreCaseInsensitiveForWorkspaceControls() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["WORKSPACE.CREATE.V1"],
+  });
+  hooks.elements.createWorkspace.dispatchEvent("click", {
+    target: hooks.elements.createWorkspace,
+  });
+
+  assert.strictEqual(
+    hooks.elements.createWorkspace.disabled,
+    false,
+    "expected uppercase workspace.create.v1 capability to enable create workspace button"
+  );
+  assert(
+    bridgeCalls.some((call) => call[0] === "createWorkspace"),
+    `expected uppercase workspace.create.v1 capability to allow createWorkspace, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testCreateWorkspaceButtonRequiresHostCapability() {
   const { hooks, nativeEvent } = loadApp();
 
@@ -1685,6 +1707,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testWorkspaceFilterIgnoresNonElementClickTarget();
   testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
   testNestedHostServiceCapabilitiesEnableWorkspaceControls();
+  testHostCapabilitiesAreCaseInsensitiveForWorkspaceControls();
   testCreateWorkspaceButtonRequiresHostCapability();
   testLateHostCapabilitiesRefreshRenderedWorkspaceControls();
   testWorkspaceCardActionsRequireHostCapabilities();
