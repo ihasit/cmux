@@ -1302,6 +1302,24 @@ function testPairingAuthAndConnectionControlsCallNativeBridge() {
   );
 }
 
+function testNativeToastFallsBackToMessageForUnknownKey() {
+  const { hooks, nativeEvent } = loadApp();
+
+  nativeEvent({
+    type: "toast",
+    payload: {
+      message_key: "future.toast.key",
+      message: "Readable fallback",
+    },
+  });
+
+  assert.strictEqual(
+    hooks.elements.toast.textContent,
+    "Readable fallback",
+    `expected unknown toast key to fall back to readable message, got ${JSON.stringify(hooks.elements.toast.textContent)}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -1455,6 +1473,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testPasteImageRejectsInvalidOrOversizedFiles();
   await testCopyTerminalOutputWritesTrimmedTextToClipboard();
   testPairingAuthAndConnectionControlsCallNativeBridge();
+  testNativeToastFallsBackToMessageForUnknownKey();
   testNotificationBadgeRecordsDeliveredIdsForDismissal();
   testNotificationBadgeZeroClearsDeliveredIds();
   testNotificationDismissedZeroClearsDeliveredIds();
