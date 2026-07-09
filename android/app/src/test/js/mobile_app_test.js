@@ -85,6 +85,7 @@ function loadApp() {
     reportViewport: (...args) => bridgeCalls.push(["reportViewport", ...args]),
     refreshWorkspaces: () => bridgeCalls.push(["refreshWorkspaces"]),
     clearViewport: (...args) => bridgeCalls.push(["clearViewport", ...args]),
+    dismissNotifications: (...args) => bridgeCalls.push(["dismissNotifications", ...args]),
   };
   const context = {
     console,
@@ -322,6 +323,42 @@ function testNestedTerminalOpenClickUsesClosestButton() {
   );
 }
 
+function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.state.hostStatus = {
+    capabilities: ["notification.dismiss.v1"],
+  };
+
+  hooks.handlePushEvent("notification.badge", {
+    unread_count: 2,
+    notification_ids: ["n-1", "n-2", "n-1"],
+  });
+
+  assert.deepStrictEqual(
+    hooks.state.deliveredNotificationIds,
+    ["n-1", "n-2"],
+    `expected badge notification ids to be tracked, got ${JSON.stringify(hooks.state.deliveredNotificationIds)}`
+  );
+  assert.strictEqual(
+    hooks.elements.dismissNotifications.disabled,
+    false,
+    "expected dismiss button to become enabled after delivered ids arrive"
+  );
+
+  hooks.elements.dismissNotifications.dispatchEvent("click", {
+    target: hooks.elements.dismissNotifications,
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "dismissNotifications" &&
+      call[1] === JSON.stringify(["n-1", "n-2"])
+    )),
+    `expected dismissNotifications with delivered ids, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
@@ -330,4 +367,5 @@ testRenderGridColumnResizeRebuildsRows();
 testTerminalBytesGapRequestsReplay();
 testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
+testNotificationBadgeRecordsDeliveredIdsForDismissal();
 console.log("mobile app js tests passed");
