@@ -524,6 +524,47 @@ function testWorkspaceCardActionsRequireHostCapabilities() {
   );
 }
 
+function testWorkspaceGroupToggleRequiresHostCapability() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    groups: [{ id: "group-1", name: "Builds", is_collapsed: false }],
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      group_id: "group-1",
+      terminals: [],
+    }],
+  });
+
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-toggle-group="group-1" data-collapsed="false" disabled'),
+    `expected group toggle disabled without workspace.groups.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["workspace.groups.v1"],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    groups: [{ id: "group-1", name: "Builds", is_collapsed: false }],
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      group_id: "group-1",
+      terminals: [],
+    }],
+  });
+
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-toggle-group="group-1" data-collapsed="false" disabled'),
+    `expected group toggle enabled with workspace.groups.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -657,6 +698,7 @@ testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
 testNestedHostServiceCapabilitiesEnableWorkspaceControls();
 testCreateWorkspaceButtonRequiresHostCapability();
 testWorkspaceCardActionsRequireHostCapabilities();
+testWorkspaceGroupToggleRequiresHostCapability();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
