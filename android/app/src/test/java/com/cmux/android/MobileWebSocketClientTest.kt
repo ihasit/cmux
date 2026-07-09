@@ -202,6 +202,58 @@ class MobileWebSocketClientTest {
         assertEquals(0, server.requestCount)
     }
 
+    @Test
+    fun invalidRouteLeavesClientClosedBeforeNextConnect() {
+        val accepted = CountDownLatch(1)
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    accepted.countDown()
+                }
+            })
+        )
+        val callback = RecordingCallback()
+        val client = mobileClient(callback)
+
+        client.connect(
+            CmuxRoute(
+                id = "bad",
+                kind = "websocket",
+                host = "",
+                port = 0,
+                url = "https://cmux.example.test/mobile"
+            )
+        )
+        assertEquals("invalid websocket route", callback.closes.poll(2, TimeUnit.SECONDS))
+
+        client.connect(route())
+
+        assertTrue(callback.opened.await(2, TimeUnit.SECONDS))
+        assertTrue(accepted.await(2, TimeUnit.SECONDS))
+        assertEquals(null, callback.closes.poll(100, TimeUnit.MILLISECONDS))
+        client.close("test complete")
+    }
+
+    @Test
+    fun rejectsMalformedWebSocketUrlWithoutEscaping() {
+        val callback = RecordingCallback()
+        val client = mobileClient(callback)
+
+        client.connect(
+            CmuxRoute(
+                id = "bad-url",
+                kind = "websocket",
+                host = "",
+                port = 0,
+                url = "ws://"
+            )
+        )
+
+        assertEquals("invalid websocket route", callback.errors.poll(2, TimeUnit.SECONDS))
+        assertEquals("invalid websocket route", callback.closes.poll(2, TimeUnit.SECONDS))
+        assertEquals(0, server.requestCount)
+    }
+
     private fun mobileClient(callback: RecordingCallback): MobileWebSocketClient {
         val client = MobileWebSocketClient(callback)
         clients.add(client)
