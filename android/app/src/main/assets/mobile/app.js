@@ -1610,6 +1610,9 @@ function handlePushEvent(type, payload) {
     }
     if (Number.isInteger(payload.unread_count)) {
       state.authoritativeUnreadNotificationCount = payload.unread_count;
+      if (payload.unread_count <= 0) {
+        state.deliveredNotificationIds = [];
+      }
     }
     renderNotificationStatus();
     bridge().refreshWorkspaces();
