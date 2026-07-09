@@ -103,7 +103,7 @@ private fun isValidStoredWebSocketUrl(url: String?): Boolean {
     val scheme = uri.scheme?.lowercase()
     val host = uri.host?.trim().orEmpty()
     if (scheme != "ws" && scheme != "wss") return false
-    return host.isNotEmpty() && !host.isLoopbackLikeHost()
+    return host.isNotEmpty() && uri.userInfo.isNullOrEmpty() && !host.isLoopbackLikeHost()
 }
 
 fun CmuxRoute.isSupportedMobileRoute(): Boolean {
