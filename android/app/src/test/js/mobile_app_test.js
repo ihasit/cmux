@@ -102,6 +102,7 @@ function loadApp() {
     reportViewport: (...args) => bridgeCalls.push(["reportViewport", ...args]),
     sendInput: (...args) => bridgeCalls.push(["sendInput", ...args]),
     pasteText: (...args) => bridgeCalls.push(["pasteText", ...args]),
+    pasteImage: (...args) => bridgeCalls.push(["pasteImage", ...args]),
     scrollTerminal: (...args) => bridgeCalls.push(["scrollTerminal", ...args]),
     clickTerminal: (...args) => bridgeCalls.push(["clickTerminal", ...args]),
     refreshWorkspaces: () => bridgeCalls.push(["refreshWorkspaces"]),
