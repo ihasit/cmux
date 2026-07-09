@@ -56,6 +56,15 @@ class StackTokenRefresherTest {
     }
 
     @Test
+    fun refreshTreatsInvalidGrantStatusCaseInsensitively() {
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":" Invalid_Grant "}"""))
+
+        val outcome = refresher().refresh("refresh-token")
+
+        assertEquals(StackRefreshOutcome.DefinitivelyRejected, outcome)
+    }
+
+    @Test
     fun refreshTreatsInvalidRefreshTokenStatusAsDefinitiveRejection() {
         server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"invalid_refresh_token"}"""))
 
