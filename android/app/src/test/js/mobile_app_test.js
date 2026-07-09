@@ -883,6 +883,92 @@ function testChatQuestionAndPermissionActionsSendAnswers() {
   );
 }
 
+function testChatRichTranscriptKindsRenderReadableCards() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.chat.sessions", {
+    sessions: [{
+      session_id: "chat-1",
+      agent_kind: "codex",
+      title: "Agent chat",
+      state: { state: "idle" },
+    }],
+  });
+  hooks.state.activeChatSession = hooks.state.chatSessions[0];
+  hooks.handleRpcResult("mobile.chat.history", {
+    messages: [
+      { id: "thought", seq: 1, role: "agent", kind: { type: "thought", text: "considering options" } },
+      {
+        id: "tool",
+        seq: 2,
+        role: "agent",
+        kind: {
+          type: "tool_use",
+          tool_name: "Read",
+          summary: "Read main.swift",
+          input_detail: '{"file_path":"main.swift"}',
+          output: "let x = 1",
+          status: "succeeded",
+        },
+      },
+      {
+        id: "terminal",
+        seq: 3,
+        role: "agent",
+        kind: {
+          type: "terminal",
+          command: "swift test",
+          output: "All tests passed",
+          exit_code: 0,
+          duration_seconds: 4.2,
+          is_running: false,
+        },
+      },
+      {
+        id: "file",
+        seq: 4,
+        role: "agent",
+        kind: {
+          type: "file_edit",
+          file_path: "Sources/App.swift",
+          operation: "edit",
+          additions: 12,
+          deletions: 4,
+          unified_diff: "-old\n+new",
+        },
+      },
+      { id: "status", seq: 5, role: "agent", kind: { type: "status", event: "session_started", detail: "codex" } },
+      {
+        id: "attachment",
+        seq: 6,
+        role: "user",
+        kind: {
+          type: "attachment",
+          media: "image",
+          display_name: "design.png",
+          host_path: "/tmp/design.png",
+        },
+      },
+    ],
+    has_more: false,
+  });
+
+  const html = hooks.elements.chatMessages.innerHTML;
+  for (const expected of [
+    "considering options",
+    "Read main.swift",
+    "swift test",
+    "All tests passed",
+    "Sources/App.swift",
+    "-old",
+    "session_started",
+    "design.png",
+  ]) {
+    assert(html.includes(expected), `expected rich chat card to include ${expected}, got ${html}`);
+  }
+  assert(!html.includes('{"type":"tool_use"'), `expected readable tool card instead of raw JSON, got ${html}`);
+}
+
 function testLateHostCapabilitiesRefreshRenderedWorkspaceControls() {
   const { hooks } = loadApp();
   hooks.state.connected = true;
@@ -2133,6 +2219,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testChatSessionsRenderOpenHistoryAndSendMessage();
   testChatPushEventsUpdateSessionAndMessages();
   testChatQuestionAndPermissionActionsSendAnswers();
+  testChatRichTranscriptKindsRenderReadableCards();
   testLateHostCapabilitiesRefreshRenderedWorkspaceControls();
   testWorkspaceCardActionsRequireHostCapabilities();
   testWorkspaceGroupToggleRequiresHostCapability();

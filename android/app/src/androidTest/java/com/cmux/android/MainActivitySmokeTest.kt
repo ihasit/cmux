@@ -272,6 +272,10 @@ class MainActivitySmokeTest {
                     scenario.evaluateScript("document.getElementById('chatMessages').textContent")
                         .contains("hello from fake chat")
                 }
+                waitUntil("fake host rich chat cards render") {
+                    val text = scenario.evaluateScript("document.getElementById('chatMessages').textContent")
+                    text.contains("gradle test") && text.contains("FakeHost.kt")
+                }
                 scenario.evaluateScript(
                     """
                     document.querySelector('[data-chat-answer="1"]').click();
@@ -2385,6 +2389,34 @@ class MainActivitySmokeTest {
                                     .put(JSONObject()
                                         .put("label", "Full")
                                         .put("detail", "Instrumentation checks"))))
+                    )
+                    .put(
+                        JSONObject()
+                            .put("id", "terminal-fake")
+                            .put("seq", 3)
+                            .put("role", "agent")
+                            .put("timestamp", "2026-07-10T00:00:02Z")
+                            .put("kind", JSONObject()
+                                .put("type", "terminal")
+                                .put("command", "gradle test")
+                                .put("output", "BUILD SUCCESSFUL")
+                                .put("exit_code", 0)
+                                .put("duration_seconds", 1.2)
+                                .put("is_running", false))
+                    )
+                    .put(
+                        JSONObject()
+                            .put("id", "file-fake")
+                            .put("seq", 4)
+                            .put("role", "agent")
+                            .put("timestamp", "2026-07-10T00:00:03Z")
+                            .put("kind", JSONObject()
+                                .put("type", "file_edit")
+                                .put("file_path", "FakeHost.kt")
+                                .put("operation", "edit")
+                                .put("additions", 2)
+                                .put("deletions", 1)
+                                .put("unified_diff", "-old\n+new"))
                     ))
                 .put("has_more", false)
             "mobile.chat.send" -> JSONObject()

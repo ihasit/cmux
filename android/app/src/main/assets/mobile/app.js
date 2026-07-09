@@ -126,6 +126,16 @@ const messages = {
     "chat.selected": "Selected: {label}",
     "chat.permissionApprove": "Approve",
     "chat.permissionDeny": "Deny",
+    "chat.thought": "Thought",
+    "chat.tool": "Tool",
+    "chat.terminal": "Terminal",
+    "chat.fileEdit": "File edit",
+    "chat.attachment": "Attachment",
+    "chat.status": "Status",
+    "chat.running": "running",
+    "chat.exitCode": "exit {code}",
+    "chat.additions": "+{count}",
+    "chat.deletions": "-{count}",
     "chat.unsupported": "Agent chat is unavailable.",
     "chat.error": "Could not load chat.",
     "notification.none": "No unread notifications.",
@@ -284,6 +294,16 @@ const messages = {
     "chat.selected": "選択済み: {label}",
     "chat.permissionApprove": "承認",
     "chat.permissionDeny": "拒否",
+    "chat.thought": "思考",
+    "chat.tool": "ツール",
+    "chat.terminal": "ターミナル",
+    "chat.fileEdit": "ファイル編集",
+    "chat.attachment": "添付",
+    "chat.status": "ステータス",
+    "chat.running": "実行中",
+    "chat.exitCode": "終了 {code}",
+    "chat.additions": "+{count}",
+    "chat.deletions": "-{count}",
     "chat.unsupported": "エージェントチャットを利用できません。",
     "chat.error": "チャットを読み込めませんでした。",
     "notification.none": "未読通知はありません。",
@@ -906,6 +926,12 @@ function renderChatMessageBody(message) {
   const kind = message.kind || {};
   if (kind.type === "question") return renderChatQuestion(kind);
   if (kind.type === "permission_request") return renderChatPermissionRequest(kind);
+  if (kind.type === "thought") return renderChatDetailCard(t("chat.thought"), "", kind.text || "");
+  if (kind.type === "tool_use") return renderChatToolUse(kind);
+  if (kind.type === "terminal") return renderChatTerminal(kind);
+  if (kind.type === "file_edit") return renderChatFileEdit(kind);
+  if (kind.type === "status") return renderChatStatusMessage(kind);
+  if (kind.type === "attachment") return renderChatAttachment(kind);
   return `<div class="chat-message-text">${escapeHtml(chatMessageText(message))}</div>`;
 }
 
@@ -948,6 +974,46 @@ function renderChatPermissionRequest(kind) {
       <button class="chat-answer-option" data-chat-answer="1"${disabled}>${escapeHtml(t("chat.permissionDeny"))}</button>
     </div>
     ${resolvedText}
+  `;
+}
+
+function renderChatToolUse(kind) {
+  const subtitle = [kind.tool_name, kind.status].filter(Boolean).join(" · ");
+  return renderChatDetailCard(t("chat.tool"), subtitle, [kind.summary, kind.input_detail, kind.output].filter(Boolean).join("\n\n"));
+}
+
+function renderChatTerminal(kind) {
+  const meta = [
+    kind.is_running ? t("chat.running") : "",
+    Number.isInteger(kind.exit_code) ? t("chat.exitCode").replace("{code}", String(kind.exit_code)) : "",
+    typeof kind.duration_seconds === "number" ? `${kind.duration_seconds.toFixed(1)}s` : "",
+  ].filter(Boolean).join(" · ");
+  return renderChatDetailCard(t("chat.terminal"), meta, [kind.command, kind.output].filter(Boolean).join("\n\n"));
+}
+
+function renderChatFileEdit(kind) {
+  const counts = [
+    Number.isInteger(kind.additions) ? t("chat.additions").replace("{count}", String(kind.additions)) : "",
+    Number.isInteger(kind.deletions) ? t("chat.deletions").replace("{count}", String(kind.deletions)) : "",
+  ].filter(Boolean).join(" ");
+  const subtitle = [kind.operation, counts].filter(Boolean).join(" · ");
+  return renderChatDetailCard(t("chat.fileEdit"), subtitle, [kind.file_path, kind.unified_diff].filter(Boolean).join("\n\n"));
+}
+
+function renderChatStatusMessage(kind) {
+  return renderChatDetailCard(t("chat.status"), kind.event || "", kind.detail || "");
+}
+
+function renderChatAttachment(kind) {
+  const title = kind.display_name || kind.host_path || kind.media || t("chat.attachment");
+  const subtitle = [kind.media, kind.host_path].filter(Boolean).join(" · ");
+  return renderChatDetailCard(t("chat.attachment"), subtitle, title);
+}
+
+function renderChatDetailCard(title, subtitle, body) {
+  return `
+    <div class="chat-detail-title">${escapeHtml(title)}${subtitle ? ` · ${escapeHtml(subtitle)}` : ""}</div>
+    ${body ? `<pre class="chat-detail-body">${escapeHtml(body)}</pre>` : ""}
   `;
 }
 
