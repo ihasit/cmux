@@ -1508,6 +1508,29 @@ function testNotificationDismissedZeroClearsDeliveredIds() {
   );
 }
 
+function testNotificationDismissedNormalizesHandledIds() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.state.hostStatus = {
+    capabilities: ["notification.dismiss.v1"],
+  };
+
+  hooks.handlePushEvent("notification.badge", {
+    unread_count: 3,
+    notification_ids: ["n-1", "n-2", "42"],
+  });
+  hooks.handlePushEvent("notification.dismissed", {
+    handled_ids: [" n-1 ", 42, ""],
+    unread_count: 1,
+  });
+
+  assert.deepStrictEqual(
+    Array.from(hooks.state.deliveredNotificationIds),
+    ["n-2"],
+    `expected dismissed handled ids to be normalized, got ${JSON.stringify(hooks.state.deliveredNotificationIds)}`
+  );
+}
+
 function testNotificationReconcileZeroClearsDeliveredIds() {
   const { hooks } = loadApp();
   hooks.state.connected = true;
@@ -1641,6 +1664,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testNotificationBadgeRecordsDeliveredIdsForDismissal();
   testNotificationBadgeZeroClearsDeliveredIds();
   testNotificationDismissedZeroClearsDeliveredIds();
+  testNotificationDismissedNormalizesHandledIds();
   testNotificationReconcileZeroClearsDeliveredIds();
   testNotificationDismissReconcilesDismissedIdsBeforeClearing();
   testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh();
