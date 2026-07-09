@@ -35,7 +35,6 @@ import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
@@ -180,13 +179,13 @@ class MainActivitySmokeTest {
     @Test
     fun websocketPairingConnectsToFakeHostAndRendersWorkspaceList() {
         val server = MockWebServer()
-        val receivedMethods = LinkedBlockingQueue<String>()
+        val observedMethods = java.util.Collections.synchronizedList(mutableListOf<String>())
         server.enqueue(
             MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                     val request = JSONObject(readSingleFrame(bytes.toByteArray()))
                     val method = request.getString("method")
-                    receivedMethods.add(method)
+                    observedMethods.add(method)
                     webSocket.send(ByteString.of(*rpcResponseFrame(request)))
                 }
             })
@@ -224,12 +223,34 @@ class MainActivitySmokeTest {
                 onWebView()
                     .withElement(findElement(Locator.ID, "workspaceList"))
                     .check(webMatches(getText(), containsString("Fake Shell")))
+
+                scenario.evaluateScript("openTerminal('workspace-fake', 'terminal-fake'); true;")
+                waitUntil("fake host terminal replay renders") {
+                    scenario.evaluateScript("document.getElementById('terminalOutput').textContent")
+                        .contains("fake replay ready")
+                }
+
+                onWebView()
+                    .withElement(findElement(Locator.ID, "terminalOutput"))
+                    .check(webMatches(getText(), containsString("fake replay ready")))
+
+                scenario.evaluateScript(
+                    """
+                    document.getElementById('terminalInput').value = 'echo from android';
+                    document.getElementById('sendInput').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives terminal input") {
+                    observedMethods.contains("mobile.terminal.input")
+                }
             }
 
-            val methods = drainQueue(receivedMethods)
+            val methods = observedMethods.toList()
             check("mobile.events.subscribe" in methods) { methods }
             check("mobile.host.status" in methods) { methods }
             check("mobile.workspace.list" in methods) { methods }
+            check("mobile.terminal.replay" in methods) { methods }
         } finally {
             try {
                 server.shutdown()
@@ -2249,6 +2270,26 @@ class MainActivitySmokeTest {
                         ))
                 ))
                 .put("groups", org.json.JSONArray())
+            "mobile.terminal.replay" -> JSONObject()
+                .put("workspace_id", "workspace-fake")
+                .put("surface_id", "terminal-fake")
+                .put("seq", 1)
+                .put(
+                    "data_b64",
+                    "fake replay ready\n".toByteArray(StandardCharsets.UTF_8).let {
+                        android.util.Base64.encodeToString(it, android.util.Base64.NO_WRAP)
+                    }
+                )
+            "mobile.terminal.input" -> JSONObject()
+                .put("workspace_id", "workspace-fake")
+                .put("surface_id", "terminal-fake")
+                .put("queued", false)
+                .put("terminal_seq", 2)
+            "mobile.terminal.viewport" -> JSONObject()
+                .put("workspace_id", "workspace-fake")
+                .put("surface_id", "terminal-fake")
+                .put("columns", 80)
+                .put("rows", 24)
             "mobile.events.subscribe" -> JSONObject().put("already_subscribed", false)
             else -> JSONObject()
         }
@@ -2275,12 +2316,6 @@ class MainActivitySmokeTest {
                     address != "0.0.0.0"
             }
         return checkNotNull(addresses.firstOrNull()) { "No non-loopback IPv4 address found" }
-    }
-
-    private fun <T> drainQueue(queue: LinkedBlockingQueue<T>): List<T> {
-        val values = mutableListOf<T>()
-        queue.drainTo(values)
-        return values
     }
 
     private fun waitUntil(description: String, condition: () -> Boolean) {
