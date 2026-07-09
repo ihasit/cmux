@@ -390,8 +390,21 @@ class MobileRpcSession(
             callback.onRpcError(requestId, method, "payload_too_large", "request frame too large")
             return false
         }
-        activeClient.sendFrame(framePayload)
-        return true
+        return runCatching {
+            activeClient.sendFrame(framePayload)
+        }.fold(
+            onSuccess = { true },
+            onFailure = { error ->
+                pending.remove(requestId)
+                callback.onRpcError(
+                    requestId,
+                    method,
+                    "transport_error",
+                    error.message ?: error.javaClass.simpleName
+                )
+                false
+            }
+        )
     }
 
     private fun failPending(code: String, message: String) {
