@@ -624,6 +624,39 @@ function testWorkspaceGroupToggleRequiresHostCapability() {
   );
 }
 
+function testWorkspaceGroupToggleClickRequestsNativeBridge() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["workspace.groups.v1"],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    groups: [{ id: "group-1", name: "Builds", is_collapsed: false }],
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      group_id: "group-1",
+      terminals: [],
+    }],
+  });
+
+  hooks.elements.workspaceList.dispatchEvent("click", {
+    target: eventTarget({
+      "data-toggle-group": "group-1",
+      "data-collapsed": "false",
+    }),
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "setWorkspaceGroupCollapsed" &&
+      call[1] === "group-1" &&
+      call[2] === true
+    )),
+    `expected setWorkspaceGroupCollapsed call to collapse group, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testWorkspaceWithTerminalsStillOffersCreateTerminal() {
   const { hooks } = loadApp();
   hooks.state.connected = true;
@@ -1135,6 +1168,7 @@ testNestedHostServiceCapabilitiesEnableWorkspaceControls();
 testCreateWorkspaceButtonRequiresHostCapability();
 testWorkspaceCardActionsRequireHostCapabilities();
 testWorkspaceGroupToggleRequiresHostCapability();
+testWorkspaceGroupToggleClickRequestsNativeBridge();
 testWorkspaceWithTerminalsStillOffersCreateTerminal();
 testCreateTerminalClickRequestsWorkspaceTerminal();
 testWorkspaceActionClicksRequestNativeBridgeCalls();
