@@ -2136,6 +2136,33 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
         XCTAssertEqual(activateApplicationCallCount, 1)
     }
 
+    func testTerminalPastePrefersSelectionTextWhenPasteboardAlsoAdvertisesFileURL() throws {
+        let fileURL = try makeTemporaryFile(named: "tty.usbmodem0006030020021")
+        let copiedTerminalSelection = """
+        /dev/tty.usbmodem0006030020021
+        /dev/tty.usbserial-120
+        """
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("cmux.terminal.text-fileurl.\(UUID().uuidString)"))
+        pasteboard.clearContents()
+        defer {
+            pasteboard.clearContents()
+            pasteboard.releaseGlobally()
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+
+        XCTAssertTrue(pasteboard.writeObjects([fileURL as NSURL]))
+        XCTAssertTrue(pasteboard.setString(copiedTerminalSelection, forType: .string))
+
+#if DEBUG
+        XCTAssertEqual(
+            GhosttyPasteboardTestSupport.stringContents(from: pasteboard),
+            copiedTerminalSelection
+        )
+#else
+        XCTFail("GhosttyPasteboardTestSupport is only available in DEBUG")
+#endif
+    }
+
     private func makeKeyDownEvent(
         key: String,
         modifiers: NSEvent.ModifierFlags,
@@ -2262,6 +2289,18 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
         guard let window = window(withId: windowId) else { return }
         window.performClose(nil)
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+    }
+
+    private func makeTemporaryFile(named name: String) throws -> URL {
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cmux-terminal-paste-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent(name, isDirectory: false)
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("temporary".utf8).write(to: fileURL, options: .atomic)
+        return fileURL
     }
 }
 

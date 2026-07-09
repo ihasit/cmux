@@ -180,6 +180,14 @@ private enum GhosttyPasteboardHelper {
     }
 }
 
+#if DEBUG
+enum GhosttyPasteboardTestSupport {
+    static func stringContents(from pasteboard: NSPasteboard) -> String? {
+        GhosttyPasteboardHelper.stringContents(from: pasteboard)
+    }
+}
+#endif
+
 enum TerminalOpenURLTarget: Equatable {
     case embeddedBrowser(URL)
     case external(URL)
