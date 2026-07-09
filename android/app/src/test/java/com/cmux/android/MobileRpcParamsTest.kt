@@ -31,6 +31,24 @@ class MobileRpcParamsTest {
     }
 
     @Test
+    fun workspaceAndTerminalParamsTrimIds() {
+        val workspace = MobileRpcParams.createTerminal(" workspace-1 ")
+        val action = MobileRpcParams.workspaceAction(" workspace-1 ", " rename ")
+        val close = MobileRpcParams.closeWorkspace(" workspace-1 ")
+        val group = MobileRpcParams.workspaceGroup(" group-1 ")
+        val terminal = MobileRpcParams.terminalViewport(" workspace-1 ", " terminal-1 ", 80, 24)
+
+        assertEquals("workspace-1", workspace.getString("workspace_id"))
+        assertEquals("workspace-1", action.getString("workspace_id"))
+        assertEquals("rename", action.getString("action"))
+        assertEquals("workspace-1", close.getString("workspace_id"))
+        assertEquals("group-1", group.getString("group_id"))
+        assertEquals("workspace-1", terminal.getString("workspace_id"))
+        assertEquals("terminal-1", terminal.getString("terminal_id"))
+        assertEquals("terminal-1", terminal.getString("surface_id"))
+    }
+
+    @Test
     fun terminalViewportClampsDimensionsAndCarriesAndroidClientId() {
         val params = MobileRpcParams.terminalViewport("workspace-1", "terminal-1", 500, 2)
 
