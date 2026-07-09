@@ -324,6 +324,20 @@ function testNestedTerminalOpenClickUsesClosestButton() {
   );
 }
 
+function testWorkspaceFilterIgnoresNonElementClickTarget() {
+  const { hooks } = loadApp();
+  hooks.state.workspaceFilter = "all";
+
+  assert.doesNotThrow(() => {
+    hooks.elements.workspaceFilters.dispatchEvent("click", { target: {} });
+  });
+  assert.strictEqual(
+    hooks.state.workspaceFilter,
+    "all",
+    `expected non-element filter click target to be ignored, got ${hooks.state.workspaceFilter}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -451,6 +465,7 @@ testRenderGridColumnResizeRebuildsRows();
 testTerminalBytesGapRequestsReplay();
 testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
+testWorkspaceFilterIgnoresNonElementClickTarget();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
