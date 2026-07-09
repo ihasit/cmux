@@ -81,12 +81,30 @@ class MobileRpcParamsTest {
     }
 
     @Test
+    fun terminalPasteTrimsSubmitKeyAndDefaultsBlankAfterTrim() {
+        val explicit = MobileRpcParams.terminalPaste("workspace-1", "terminal-1", "hello", " enter ", 80, 24)
+        val blank = MobileRpcParams.terminalPaste("workspace-1", "terminal-1", "hello", "  ", 80, 24)
+
+        assertEquals("enter", explicit.getString("submit_key"))
+        assertEquals("return", blank.getString("submit_key"))
+    }
+
+    @Test
     fun terminalPasteImageDefaultsBlankFormat() {
         val params = MobileRpcParams.terminalPasteImage("workspace-1", "terminal-1", "base64", "", 80, 24)
 
         assertEquals("base64", params.getString("image_base64"))
         assertEquals("png", params.getString("image_format"))
         assertEquals(MobileRpcParams.CLIENT_ID, params.getString("client_id"))
+    }
+
+    @Test
+    fun terminalPasteImageTrimsFormatAndDefaultsBlankAfterTrim() {
+        val explicit = MobileRpcParams.terminalPasteImage("workspace-1", "terminal-1", "base64", " jpeg ", 80, 24)
+        val blank = MobileRpcParams.terminalPasteImage("workspace-1", "terminal-1", "base64", "  ", 80, 24)
+
+        assertEquals("jpeg", explicit.getString("image_format"))
+        assertEquals("png", blank.getString("image_format"))
     }
 
     @Test
