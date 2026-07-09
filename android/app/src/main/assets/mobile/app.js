@@ -300,6 +300,12 @@ function t(key) {
   return messages[locale][key] || messages.en[key] || key;
 }
 
+function localizedMessage(key, fallback = "") {
+  if (key && messages[locale][key]) return messages[locale][key];
+  if (key && messages.en[key]) return messages.en[key];
+  return fallback || key || "";
+}
+
 const elements = {
   connectionText: document.getElementById("connectionText"),
   notificationText: document.getElementById("notificationText"),
@@ -1731,7 +1737,7 @@ window.cmuxNativeEvent = (event) => {
     return;
   }
   if (event.type === "toast") {
-    showToast(t(event.payload.message_key) || event.payload.message || "");
+    showToast(localizedMessage(event.payload.message_key, event.payload.message || ""));
     return;
   }
   if (event.type === "rpcError" || event.type === "error") {
@@ -1747,7 +1753,7 @@ window.cmuxNativeEvent = (event) => {
     } else if (event.payload.code === "account_mismatch") {
       showToast(t("auth.error.accountMismatch"));
     } else {
-      showToast(event.payload.message || t(event.payload.message_key) || t("request.failed"));
+      showToast(event.payload.message || localizedMessage(event.payload.message_key, t("request.failed")));
     }
   }
 };
