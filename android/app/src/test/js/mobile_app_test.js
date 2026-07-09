@@ -98,6 +98,7 @@ function loadApp() {
     setWorkspacePinned: (...args) => bridgeCalls.push(["setWorkspacePinned", ...args]),
     setWorkspaceUnread: (...args) => bridgeCalls.push(["setWorkspaceUnread", ...args]),
     closeWorkspace: (...args) => bridgeCalls.push(["closeWorkspace", ...args]),
+    setWorkspaceGroupCollapsed: (...args) => bridgeCalls.push(["setWorkspaceGroupCollapsed", ...args]),
     replayTerminal: (...args) => bridgeCalls.push(["replayTerminal", ...args]),
     reportViewport: (...args) => bridgeCalls.push(["reportViewport", ...args]),
     sendInput: (...args) => bridgeCalls.push(["sendInput", ...args]),
