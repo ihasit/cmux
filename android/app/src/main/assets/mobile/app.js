@@ -1753,7 +1753,7 @@ window.cmuxNativeEvent = (event) => {
     } else if (event.payload.code === "account_mismatch") {
       showToast(t("auth.error.accountMismatch"));
     } else {
-      showToast(event.payload.message || localizedMessage(event.payload.message_key, t("request.failed")));
+      showToast(localizedMessage(event.payload.message_key, event.payload.message || t("request.failed")));
     }
   }
 };
