@@ -81,7 +81,11 @@ data class PairedMac(
                 )
             }
             return PairedMac(
-                id = json.optString("id").ifBlank { routes.firstOrNull()?.let { "${it.host}:${it.port}" } ?: "unknown" },
+                id = json.optString("id").ifBlank {
+                    routes.firstOrNull()?.let { route ->
+                        route.url?.takeIf { it.isNotBlank() } ?: "${route.host}:${route.port}"
+                    } ?: "unknown"
+                },
                 displayName = json.optNullableString("display_name"),
                 userId = json.optNullableString("user_id"),
                 userEmail = json.optNullableString("user_email"),
