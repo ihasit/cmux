@@ -1252,6 +1252,32 @@ function testPasteImageClearsInputAfterRejectedFile() {
   );
 }
 
+function testPasteImageRejectsEmptyEncodedPayload() {
+  const { hooks, bridgeCalls, setFileReaderResult } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+  hooks.elements.imageInput.value = "empty.png";
+  hooks.elements.imageInput.files = [{
+    name: "empty.png",
+    type: "image/png",
+    size: 128,
+  }];
+  setFileReaderResult("data:image/png;base64,");
+
+  hooks.elements.imageInput.dispatchEvent("change", {
+    target: hooks.elements.imageInput,
+  });
+
+  assert(
+    !bridgeCalls.some((call) => call[0] === "pasteImage"),
+    `expected empty encoded image payload not to call pasteImage, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert.strictEqual(
+    hooks.elements.imageInput.value,
+    "",
+    `expected image input to clear after empty payload, got ${JSON.stringify(hooks.elements.imageInput.value)}`
+  );
+}
+
 async function testCopyTerminalOutputWritesTrimmedTextToClipboard() {
   const { hooks, clipboardWrites } = loadApp();
   openTestTerminal(hooks, []);
@@ -1680,6 +1706,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testPasteImageRequestsActiveTerminalWithDecodedPayload();
   testPasteImageRejectsInvalidOrOversizedFiles();
   testPasteImageClearsInputAfterRejectedFile();
+  testPasteImageRejectsEmptyEncodedPayload();
   await testCopyTerminalOutputWritesTrimmedTextToClipboard();
   testPairingAuthAndConnectionControlsCallNativeBridge();
   testNativeToastFallsBackToMessageForUnknownKey();
