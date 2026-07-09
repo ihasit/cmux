@@ -515,6 +515,49 @@ function testCreateWorkspaceButtonRequiresHostCapability() {
   );
 }
 
+function testLateHostCapabilitiesRefreshRenderedWorkspaceControls() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      group_id: "group-1",
+      terminals: [{ id: "terminal-1", title: "Shell" }],
+    }],
+    groups: [{ id: "group-1", name: "Builds", is_collapsed: false }],
+  });
+
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-create-terminal="workspace-1" disabled'),
+    `expected rendered terminal create button disabled before host capabilities, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-toggle-group="group-1" data-collapsed="false" disabled'),
+    `expected rendered group toggle disabled before host capabilities, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [
+      "terminal.create.v1",
+      "workspace.actions.v1",
+      "workspace.read_state.v1",
+      "workspace.close.v1",
+      "workspace.groups.v1",
+    ],
+  });
+
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-create-terminal="workspace-1" disabled'),
+    `expected terminal create button to refresh enabled after late host capabilities, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-toggle-group="group-1" data-collapsed="false" disabled'),
+    `expected group toggle to refresh enabled after late host capabilities, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+}
+
 function testWorkspaceCardActionsRequireHostCapabilities() {
   const { hooks } = loadApp();
   hooks.state.connected = true;
@@ -1392,6 +1435,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
   testNestedHostServiceCapabilitiesEnableWorkspaceControls();
   testCreateWorkspaceButtonRequiresHostCapability();
+  testLateHostCapabilitiesRefreshRenderedWorkspaceControls();
   testWorkspaceCardActionsRequireHostCapabilities();
   testWorkspaceGroupToggleRequiresHostCapability();
   testWorkspaceGroupToggleClickRequestsNativeBridge();
