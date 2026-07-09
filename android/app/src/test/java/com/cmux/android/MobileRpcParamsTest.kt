@@ -94,6 +94,24 @@ class MobileRpcParamsTest {
     }
 
     @Test
+    fun terminalScrollCoercesNonFiniteDeltaToZero() {
+        val params = MobileRpcParams.terminalScroll(
+            workspaceId = "workspace-1",
+            terminalId = "terminal-1",
+            deltaLines = Double.NaN,
+            column = 3,
+            row = 4,
+            maxScrollbackRows = 0,
+            columns = 80,
+            rows = 24
+        )
+
+        assertEquals(0.0, params.getDouble("delta_lines"), 0.0)
+        assertEquals(3, params.getInt("col"))
+        assertEquals(4, params.getInt("row"))
+    }
+
+    @Test
     fun terminalMouseClampsCoordinatesAndCarriesAndroidClientId() {
         val params = MobileRpcParams.terminalMouse("workspace-1", "terminal-1", -1, 7)
 
