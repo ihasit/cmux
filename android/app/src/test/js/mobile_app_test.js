@@ -82,6 +82,15 @@ function loadApp() {
   const bridgeCalls = [];
   const bridge = {
     initialState: () => bridgeCalls.push(["initialState"]),
+    pair: (...args) => bridgeCalls.push(["pair", ...args]),
+    scanPairingCode: () => bridgeCalls.push(["scanPairingCode"]),
+    saveStackAccessToken: (...args) => bridgeCalls.push(["saveStackAccessToken", ...args]),
+    startStackSignIn: () => bridgeCalls.push(["startStackSignIn"]),
+    clearStackAccessToken: () => bridgeCalls.push(["clearStackAccessToken"]),
+    connect: (...args) => bridgeCalls.push(["connect", ...args]),
+    forget: (...args) => bridgeCalls.push(["forget", ...args]),
+    requestNotificationPermission: () => bridgeCalls.push(["requestNotificationPermission"]),
+    closeConnection: () => bridgeCalls.push(["closeConnection"]),
     createWorkspace: () => bridgeCalls.push(["createWorkspace"]),
     createTerminal: (...args) => bridgeCalls.push(["createTerminal", ...args]),
     renameWorkspace: (...args) => bridgeCalls.push(["renameWorkspace", ...args]),
@@ -880,7 +889,8 @@ function testPairingAuthAndConnectionControlsCallNativeBridge() {
   hooks.elements.enableNotifications.dispatchEvent("click", {
     target: hooks.elements.enableNotifications,
   });
-  openTestTerminal(hooks, bridgeCalls);
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
   hooks.elements.closeConnection.dispatchEvent("click", {
     target: hooks.elements.closeConnection,
   });
