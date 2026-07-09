@@ -372,6 +372,27 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseFullTicketRejectsWebSocketUrlWithUserInfo() {
+        val payload = JSONObject()
+            .put("macDeviceID", "mac-userinfo-websocket")
+            .put("routes", JSONArray().put(
+                JSONObject()
+                    .put("id", "websocket")
+                    .put("kind", "websocket")
+                    .put("priority", 1)
+                    .put("endpoint", JSONObject()
+                        .put("type", "url")
+                        .put("url", "wss://user:pass@cmux.example.test/mobile"))
+            ))
+
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://attach?payload=${base64Url(payload)}")
+        }
+
+        assertEquals("pair.error.invalidRoute", error.messageKey)
+    }
+
+    @Test
     fun parseFullTicketKeepsMixedHostPortAndWebSocketRoutes() {
         val payload = JSONObject()
             .put("macDeviceID", "mac-2")
