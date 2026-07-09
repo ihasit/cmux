@@ -41,6 +41,11 @@ class MobileRouteAuthPolicyTest {
         assertFalse(MobileRouteAuthPolicy.routeAllowsStackAuth(webSocketRoute("wss://[::1]:58465/mobile")))
     }
 
+    @Test
+    fun rejectsSecureWebSocketRoutesWithUserInfo() {
+        assertFalse(MobileRouteAuthPolicy.routeAllowsStackAuth(webSocketRoute("wss://user:pass@cmux.example.test/mobile")))
+    }
+
     private fun hostRoute(host: String, kind: String): CmuxRoute {
         return CmuxRoute(
             id = kind,
