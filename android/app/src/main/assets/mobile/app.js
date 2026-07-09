@@ -614,9 +614,10 @@ function renderWorkspaceCard(workspace, group) {
   const workspaceActions = renderWorkspaceActions(workspace);
   const terminalCreateDisabled = state.connected && hasCapability("terminal.create.v1") ? "" : " disabled";
   const terminalOpenDisabled = state.connected ? "" : " disabled";
+  const createTerminalButton = `<button data-create-terminal="${escapeHtml(workspace.id)}"${terminalCreateDisabled}>${escapeHtml(t("terminal.new"))}</button>`;
   const terminalRows = terminals.length === 0
-    ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span><button data-create-terminal="${escapeHtml(workspace.id)}"${terminalCreateDisabled}>${escapeHtml(t("terminal.new"))}</button></div>`
-    : terminals.map((terminal) => `
+    ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span>${createTerminalButton}</div>`
+    : `${terminals.map((terminal) => `
         <div class="terminal-row">
           <div>
             <div class="card-title">${escapeHtml(terminal.title || t("terminal.defaultTitle"))}</div>
@@ -624,7 +625,7 @@ function renderWorkspaceCard(workspace, group) {
           </div>
           <button class="primary" data-open-terminal="${escapeHtml(workspace.id)}" data-terminal-id="${escapeHtml(terminal.id)}"${terminalOpenDisabled}>${escapeHtml(t("terminal.open"))}</button>
         </div>
-      `).join("");
+      `).join("")}<div class="terminal-row"><span></span>${createTerminalButton}</div>`;
   return `
     <article class="card workspace-card${group ? " grouped-workspace" : ""}">
       <div>
