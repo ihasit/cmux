@@ -50,8 +50,10 @@ object MobileRpcParams {
 
     fun eventSubscription(streamId: String, topics: List<String>): JSONObject {
         val topicsJson = JSONArray()
-        topics.forEach { topic ->
-            topicsJson.put(topic)
+        topics.map { it.trim() }.distinct().forEach { topic ->
+            if (topic.isNotEmpty()) {
+                topicsJson.put(topic)
+            }
         }
         return JSONObject()
             .put("stream_id", streamId)
