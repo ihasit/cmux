@@ -793,6 +793,46 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun failoverDoesNotResubscribeRejectedEventStream() {
+        val clients = mutableListOf<RecordingFrameClient>()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, route ->
+                connectedRoutes.add(route)
+                RecordingFrameClient().also { clients.add(it) }
+            }
+        )
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.onOpen()
+        val subscribeId = session.request(
+            "mobile.events.subscribe",
+            JSONObject()
+                .put("stream_id", "stream-android-1")
+                .put("topics", JSONArray().put("workspace.updated"))
+        )
+        session.onFrame(
+            JSONObject()
+                .put("id", subscribeId)
+                .put("ok", false)
+                .put("error", JSONObject().put("code", "unsupported").put("message", "no events"))
+                .toString()
+        )
+
+        session.onClose("lost after open")
+        session.onOpen()
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(1, clients[0].sentFrames.size)
+        assertTrue(clients[1].sentFrames.isEmpty())
+        assertEquals(listOf("unsupported"), callback.errors.map { it.code })
+    }
+
+    @Test
     fun failoverDoesNotResubscribeOldStreamWhenOpenCallbackSubscribesNewStream() {
         val clients = mutableListOf<RecordingFrameClient>()
         val connectedRoutes = mutableListOf<CmuxRoute>()
