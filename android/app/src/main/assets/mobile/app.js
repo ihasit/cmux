@@ -581,6 +581,7 @@ function workspaceListItems(workspaces) {
   const groupsById = new Map(groups.map((group) => [group.id, group]));
   const emittedGroups = new Set();
   const items = [];
+  const hasSearchQuery = state.workspaceSearch.trim().length > 0;
   for (const workspace of workspaces) {
     const groupId = workspace.group_id;
     const group = groupId ? groupsById.get(groupId) : null;
@@ -588,7 +589,7 @@ function workspaceListItems(workspaces) {
       emittedGroups.add(group.id);
       items.push(renderWorkspaceGroup(group));
     }
-    if (!group?.is_collapsed) {
+    if (!group?.is_collapsed || hasSearchQuery) {
       items.push(renderWorkspaceCard(workspace, group));
     }
   }
