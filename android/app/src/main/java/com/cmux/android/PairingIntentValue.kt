@@ -12,11 +12,15 @@ object PairingIntentValue {
         processText: CharSequence?
     ): String? {
         if (action == ACTION_SEND && type?.startsWith("text/") == true) {
-            return extraText?.toString()
+            return firstNonBlank(extraText?.toString(), dataString, processText?.toString())
         }
         if (action == ACTION_PROCESS_TEXT) {
-            return processText?.toString()
+            return firstNonBlank(processText?.toString(), dataString, extraText?.toString())
         }
-        return dataString ?: extraText?.toString()
+        return firstNonBlank(dataString, extraText?.toString(), processText?.toString())
+    }
+
+    private fun firstNonBlank(vararg values: String?): String? {
+        return values.firstOrNull { !it.isNullOrBlank() }
     }
 }
