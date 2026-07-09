@@ -1104,10 +1104,16 @@ function pasteSelectedImage() {
       showToast(t("image.invalid"));
       return;
     }
+    const encodedImage = dataUrl.slice(commaIndex + 1).trim();
+    if (!encodedImage) {
+      clearImageInput();
+      showToast(t("image.invalid"));
+      return;
+    }
     bridge().pasteImage(
       state.activeWorkspace.id,
       state.activeTerminal.id,
-      dataUrl.slice(commaIndex + 1),
+      encodedImage,
       imageFormatForFile(file),
       terminalColumns(),
       terminalRows(),
