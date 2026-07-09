@@ -577,6 +577,40 @@ function testCreateWorkspaceButtonRequiresHostCapability() {
   );
 }
 
+function testDisconnectedTopLevelActionsDoNotCallNativeBridge() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [
+      "workspace.create.v1",
+      "notification.reconcile.v1",
+      "notification.dismiss.v1",
+    ],
+  });
+  hooks.handlePushEvent("notification.badge", {
+    unread_count: 1,
+    notification_ids: ["notification-1"],
+  });
+
+  hooks.elements.createWorkspace.dispatchEvent("click", {
+    target: hooks.elements.createWorkspace,
+  });
+  hooks.elements.syncNotifications.dispatchEvent("click", {
+    target: hooks.elements.syncNotifications,
+  });
+  hooks.elements.dismissNotifications.dispatchEvent("click", {
+    target: hooks.elements.dismissNotifications,
+  });
+
+  assert(
+    !bridgeCalls.some((call) => [
+      "createWorkspace",
+      "reconcileNotifications",
+      "dismissNotifications",
+    ].includes(call[0])),
+    `expected disconnected top-level actions not to call native bridge, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testLateHostCapabilitiesRefreshRenderedWorkspaceControls() {
   const { hooks } = loadApp();
   hooks.state.connected = true;
@@ -1737,6 +1771,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testNestedHostServiceCapabilitiesEnableWorkspaceControls();
   testHostCapabilitiesAreCaseInsensitiveForWorkspaceControls();
   testCreateWorkspaceButtonRequiresHostCapability();
+  testDisconnectedTopLevelActionsDoNotCallNativeBridge();
   testLateHostCapabilitiesRefreshRenderedWorkspaceControls();
   testWorkspaceCardActionsRequireHostCapabilities();
   testWorkspaceGroupToggleRequiresHostCapability();
