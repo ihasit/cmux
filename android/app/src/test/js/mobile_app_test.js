@@ -1559,6 +1559,29 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   );
 }
 
+function testNotificationReconcileNormalizesHandledIds() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.state.hostStatus = {
+    capabilities: ["notification.reconcile.v1", "notification.dismiss.v1"],
+  };
+
+  hooks.handlePushEvent("notification.badge", {
+    unread_count: 3,
+    notification_ids: ["n-1", "n-2", "42"],
+  });
+  hooks.handleRpcResult("notification.reconcile", {
+    handled_ids: [" n-1 ", 42, ""],
+    unread_count: 1,
+  });
+
+  assert.deepStrictEqual(
+    Array.from(hooks.state.deliveredNotificationIds),
+    ["n-2"],
+    `expected reconcile handled ids to be normalized, got ${JSON.stringify(hooks.state.deliveredNotificationIds)}`
+  );
+}
+
 function testNotificationDismissReconcilesDismissedIdsBeforeClearing() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -1666,6 +1689,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testNotificationDismissedZeroClearsDeliveredIds();
   testNotificationDismissedNormalizesHandledIds();
   testNotificationReconcileZeroClearsDeliveredIds();
+  testNotificationReconcileNormalizesHandledIds();
   testNotificationDismissReconcilesDismissedIdsBeforeClearing();
   testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh();
   console.log("mobile app js tests passed");
