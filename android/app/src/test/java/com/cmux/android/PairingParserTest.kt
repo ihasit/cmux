@@ -171,6 +171,24 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseAttachPayloadRejectsMalformedPayloadWithPairingError() {
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://attach?payload=not-base64")
+        }
+
+        assertEquals("pair.error.invalidRoute", error.messageKey)
+    }
+
+    @Test
+    fun parseLegacyPairPayloadRejectsMalformedPayloadWithPairingError() {
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://pair?payload=not-base64")
+        }
+
+        assertEquals("pair.error.invalidRoute", error.messageKey)
+    }
+
+    @Test
     fun parseCompactTicketRejectsLoopbackHostPortRoute() {
         val payload = JSONObject()
             .put("v", 1)
