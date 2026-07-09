@@ -576,7 +576,8 @@ function refreshActiveTerminalFromWorkspaces() {
 }
 
 function workspaceListItems(workspaces) {
-  const groups = hasCapability("workspace.groups.v1") ? state.groups || [] : [];
+  const payloadGroups = state.groups || [];
+  const groups = hasCapability("workspace.groups.v1") || payloadGroups.length > 0 ? payloadGroups : [];
   const groupsById = new Map(groups.map((group) => [group.id, group]));
   const emittedGroups = new Set();
   const items = [];
