@@ -1113,6 +1113,49 @@ function testTerminalKeybarAndKeyboardShortcutsSendInput() {
   );
 }
 
+function testDisconnectedTerminalActionsDoNotCallNativeBridge() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
+  hooks.showScreen("terminal");
+  hooks.elements.terminalInput.value = "echo disconnected";
+
+  hooks.elements.sendInput.dispatchEvent("click", {
+    target: hooks.elements.sendInput,
+  });
+  hooks.elements.terminalKeybar.dispatchEvent("click", {
+    target: eventTarget({ "data-terminal-key": "escape" }),
+  });
+  hooks.elements.terminalOutput.dispatchEvent("wheel", {
+    target: hooks.elements.terminalOutput,
+    deltaY: 32,
+    deltaMode: 0,
+    clientX: 400,
+    clientY: 160,
+    preventDefault: () => {},
+  });
+  hooks.elements.terminalOutput.dispatchEvent("click", {
+    target: hooks.elements.terminalOutput,
+    clientX: 400,
+    clientY: 160,
+  });
+
+  assert(
+    !bridgeCalls.some((call) => [
+      "sendInput",
+      "pasteText",
+      "scrollTerminal",
+      "clickTerminal",
+    ].includes(call[0])),
+    `expected disconnected terminal actions not to call native bridge, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert.strictEqual(
+    hooks.elements.terminalInput.value,
+    "echo disconnected",
+    "expected disconnected send attempt to keep terminal input text"
+  );
+}
+
 function testTerminalInputErrorRestoresPendingText() {
   const { hooks, nativeEvent } = loadApp();
   openTestTerminal(hooks, []);
@@ -1784,6 +1827,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testSendInputRequestsActiveTerminalWithViewport();
   testPasteInputRequestsActiveTerminalWithSubmitKey();
   testTerminalKeybarAndKeyboardShortcutsSendInput();
+  testDisconnectedTerminalActionsDoNotCallNativeBridge();
   testTerminalInputErrorRestoresPendingText();
   testTerminalPasteErrorRestoresPendingText();
   testWheelRequestsTerminalScrollWithPointerAndViewport();
