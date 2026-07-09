@@ -249,7 +249,8 @@ class PairingParser {
 
     private fun parseRoute(id: String, kind: String, endpoint: JSONObject, priority: Int): CmuxRoute? {
         val url = endpoint.optNullableString("u") ?: endpoint.optNullableString("url")
-        if (kind == "websocket" && url != null) {
+        if (kind == "websocket") {
+            if (url == null) return null
             checkWebSocketUrl(url)
             return CmuxRoute(id, kind, host = "", port = 0, priority = priority, url = url)
         }
