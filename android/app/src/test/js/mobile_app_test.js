@@ -277,6 +277,46 @@ function testRenderGridReplayIgnoresPreviousStateSequence() {
   );
 }
 
+function testWorkspaceRefreshClearsRemovedActiveTerminalState() {
+  const { hooks } = loadApp();
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
+  hooks.showScreen("terminal");
+  hooks.handlePushEvent("terminal.render_grid", {
+    surface_id: "terminal-1",
+    rows: 1,
+    columns: 8,
+    row_spans: [
+      { row: 0, column: 0, text: "stale" },
+    ],
+  });
+
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      terminals: [],
+    }],
+    groups: [],
+  });
+
+  assert.strictEqual(
+    hooks.elements.terminalOutput.textContent,
+    "",
+    `expected removed active terminal output to be cleared, got ${JSON.stringify(hooks.elements.terminalOutput.textContent)}`
+  );
+  assert.strictEqual(
+    hooks.elements.terminalOutput.getAttribute("data-columns"),
+    null,
+    `expected removed active terminal columns metadata to be cleared, got ${hooks.elements.terminalOutput.getAttribute("data-columns")}`
+  );
+  assert.strictEqual(
+    hooks.state.terminalFrames.size,
+    0,
+    `expected removed active terminal frame cache to be cleared, got ${hooks.state.terminalFrames.size}`
+  );
+}
+
 function testRenderGridColumnResizeRebuildsRows() {
   const { hooks } = loadApp();
   hooks.state.activeWorkspace = { id: "workspace-1" };
@@ -1462,6 +1502,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testSubscribeAckDoesNotReplayWithoutActiveTerminal();
   testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
   testRenderGridReplayIgnoresPreviousStateSequence();
+  testWorkspaceRefreshClearsRemovedActiveTerminalState();
   testRenderGridColumnResizeRebuildsRows();
   testRenderGridInverseStyleSwapsForegroundAndBackground();
   testTerminalBytesGapRequestsReplay();
