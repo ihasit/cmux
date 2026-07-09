@@ -202,7 +202,7 @@ class MobileRpcParamsTest {
     }
 
     @Test
-    fun notificationParamsKeepOnlyNonBlankStringIds() {
+    fun notificationParamsKeepOnlySupportedNonBlankIds() {
         val ids = org.json.JSONArray()
             .put(" n-1 ")
             .put("")
@@ -214,13 +214,13 @@ class MobileRpcParamsTest {
         val dismiss = MobileRpcParams.dismissNotifications(ids)
 
         assertEquals(
-            listOf("n-1", "n-2"),
+            listOf("n-1", "42", "n-2"),
             (0 until reconcile.getJSONArray("delivered_ids").length()).map { index ->
                 reconcile.getJSONArray("delivered_ids").getString(index)
             }
         )
         assertEquals(
-            listOf("n-1", "n-2"),
+            listOf("n-1", "42", "n-2"),
             (0 until dismiss.getJSONArray("notification_ids").length()).map { index ->
                 dismiss.getJSONArray("notification_ids").getString(index)
             }

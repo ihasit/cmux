@@ -145,11 +145,19 @@ object MobileRpcParams {
     private fun sanitizedStringArray(values: JSONArray): JSONArray {
         val sanitized = JSONArray()
         for (index in 0 until values.length()) {
-            val value = (values.opt(index) as? String)?.trim().orEmpty()
+            val value = normalizedId(values.opt(index))
             if (value.isNotEmpty()) {
                 sanitized.put(value)
             }
         }
         return sanitized
+    }
+
+    private fun normalizedId(value: Any?): String {
+        return when (value) {
+            is String -> value.trim()
+            is Int, is Long, is Double, is Float -> value.toString().trim()
+            else -> ""
+        }
     }
 }
