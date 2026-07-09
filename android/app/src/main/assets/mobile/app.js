@@ -443,7 +443,8 @@ function displayRouteForMac(mac) {
 }
 
 function isSupportedMobileRoute(route) {
-  return route?.kind === "tailscale" || route?.kind === "debug_loopback" || route?.kind === "websocket";
+  const kind = String(route?.kind || "").trim().toLowerCase();
+  return kind === "tailscale" || kind === "debug_loopback" || kind === "websocket";
 }
 
 function routePriority(route) {
