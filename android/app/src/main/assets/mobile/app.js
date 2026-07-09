@@ -452,7 +452,7 @@ function renderConnectionControls() {
   const disconnected = !state.connected;
   setDisabled(elements.closeConnection, disconnected);
   setDisabled(elements.refreshWorkspaces, disconnected);
-  setDisabled(elements.createWorkspace, disconnected);
+  setDisabled(elements.createWorkspace, disconnected || !hasCapability("workspace.create.v1"));
   setDisabled(elements.syncNotifications, disconnected || !hasCapability("notification.reconcile.v1"));
   setDisabled(
     elements.dismissNotifications,
