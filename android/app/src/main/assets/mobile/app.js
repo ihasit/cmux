@@ -1594,6 +1594,9 @@ function handlePushEvent(type, payload) {
   if (type === "notification.badge") {
     if (Number.isInteger(payload.unread_count)) {
       state.authoritativeUnreadNotificationCount = payload.unread_count;
+      if (payload.unread_count <= 0) {
+        state.deliveredNotificationIds = [];
+      }
     }
     mergeDeliveredNotificationIds(notificationIdsFromPayload(payload));
     renderNotificationStatus();
