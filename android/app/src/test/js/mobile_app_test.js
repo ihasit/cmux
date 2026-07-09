@@ -667,6 +667,37 @@ function testWorkspaceGroupToggleClickRequestsNativeBridge() {
   );
 }
 
+function testWorkspaceSearchShowsMatchesInsideCollapsedGroups() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["workspace.groups.v1"],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    groups: [{ id: "group-1", name: "Builds", is_collapsed: true }],
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android App",
+      group_id: "group-1",
+      terminals: [{ id: "terminal-1", title: "Release Shell" }],
+    }],
+  });
+
+  hooks.elements.workspaceSearch.value = "release";
+  hooks.elements.workspaceSearch.dispatchEvent("input", {
+    target: hooks.elements.workspaceSearch,
+  });
+
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes("Android App"),
+    `expected search to show matching workspace inside collapsed group, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes("Release Shell"),
+    `expected search to show matching terminal inside collapsed group, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+}
+
 function testWorkspaceWithTerminalsStillOffersCreateTerminal() {
   const { hooks } = loadApp();
   hooks.state.connected = true;
@@ -1333,6 +1364,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testWorkspaceCardActionsRequireHostCapabilities();
   testWorkspaceGroupToggleRequiresHostCapability();
   testWorkspaceGroupToggleClickRequestsNativeBridge();
+  testWorkspaceSearchShowsMatchesInsideCollapsedGroups();
   testWorkspaceWithTerminalsStillOffersCreateTerminal();
   testCreateTerminalClickRequestsWorkspaceTerminal();
   testWorkspaceActionClicksRequestNativeBridgeCalls();
