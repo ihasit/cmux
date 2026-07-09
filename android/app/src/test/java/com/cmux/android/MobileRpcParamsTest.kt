@@ -141,6 +141,21 @@ class MobileRpcParamsTest {
     }
 
     @Test
+    fun eventSubscriptionKeepsOnlyUniqueNonBlankTopics() {
+        val params = MobileRpcParams.eventSubscription(
+            streamId = "stream-android-1",
+            topics = listOf(" workspace.updated ", "", "terminal.bytes", "workspace.updated", "  ")
+        )
+
+        assertEquals(
+            listOf("workspace.updated", "terminal.bytes"),
+            (0 until params.getJSONArray("topics").length()).map { index ->
+                params.getJSONArray("topics").getString(index)
+            }
+        )
+    }
+
+    @Test
     fun notificationParamsKeepOnlyNonBlankStringIds() {
         val ids = org.json.JSONArray()
             .put(" n-1 ")
