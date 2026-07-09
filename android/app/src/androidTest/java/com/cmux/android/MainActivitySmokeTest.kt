@@ -20,6 +20,8 @@ import org.hamcrest.CoreMatchers.containsString
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -89,6 +91,34 @@ class MainActivitySmokeTest {
             onWebView()
                 .withElement(findElement(Locator.ID, "toast"))
                 .check(webMatches(getText(), containsString("Stack access token cleared")))
+        }
+    }
+
+    @Test
+    fun authCallbackIntentStoresStackSessionInWebView() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.evaluateScript("document.readyState")
+            scenario.onActivity { activity ->
+                activity.setPendingAuthStateForTest("instrumentation-state")
+                val accessCookie = URLEncoder.encode(
+                    "[\"refresh-from-callback\",\"access-from-callback\"]",
+                    StandardCharsets.UTF_8.name()
+                )
+                activity.handleIncomingIntent(
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("cmux-ios://auth-callback?stack_access=$accessCookie&cmux_auth_state=instrumentation-state")
+                    )
+                )
+            }
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "authStatusText"))
+                .check(webMatches(getText(), containsString("Signed in with a Stack session")))
+
+            onWebView()
+                .withElement(findElement(Locator.ID, "toast"))
+                .check(webMatches(getText(), containsString("Signed in to Stack Auth")))
         }
     }
 
@@ -2092,6 +2122,15 @@ class MainActivitySmokeTest {
     private fun ActivityScenario<MainActivity>.emitNativeEvent(json: String) {
         val script = "window.cmuxNativeEvent && window.cmuxNativeEvent($json)"
         evaluateScript(script)
+    }
+
+    private fun MainActivity.setPendingAuthStateForTest(state: String) {
+        val bridgeField = MainActivity::class.java.getDeclaredField("bridge")
+        bridgeField.isAccessible = true
+        val bridge = bridgeField.get(this)
+        val stateField = bridge.javaClass.getDeclaredField("pendingAuthState")
+        stateField.isAccessible = true
+        stateField.set(bridge, state)
     }
 
     private fun ActivityScenario<MainActivity>.evaluateScript(script: String): String {
