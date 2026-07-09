@@ -13,20 +13,20 @@ object MobileRpcParams {
 
     fun createTerminal(workspaceId: String): JSONObject {
         return JSONObject()
-            .put("workspace_id", workspaceId)
+            .put("workspace_id", cleanId(workspaceId))
             .put("client_id", CLIENT_ID)
     }
 
     fun workspaceAction(workspaceId: String, action: String): JSONObject {
         return JSONObject()
-            .put("workspace_id", workspaceId)
+            .put("workspace_id", cleanId(workspaceId))
             .put("client_id", CLIENT_ID)
-            .put("action", action)
+            .put("action", cleanId(action))
     }
 
     fun closeWorkspace(workspaceId: String): JSONObject {
         return JSONObject()
-            .put("workspace_id", workspaceId)
+            .put("workspace_id", cleanId(workspaceId))
             .put("client_id", CLIENT_ID)
     }
 
@@ -44,7 +44,7 @@ object MobileRpcParams {
 
     fun workspaceGroup(groupId: String): JSONObject {
         return JSONObject()
-            .put("group_id", groupId)
+            .put("group_id", cleanId(groupId))
             .put("client_id", CLIENT_ID)
     }
 
@@ -132,10 +132,14 @@ object MobileRpcParams {
 
     private fun terminalBase(workspaceId: String, terminalId: String): JSONObject {
         return JSONObject()
-            .put("workspace_id", workspaceId)
-            .put("terminal_id", terminalId)
-            .put("surface_id", terminalId)
+            .put("workspace_id", cleanId(workspaceId))
+            .put("terminal_id", cleanId(terminalId))
+            .put("surface_id", cleanId(terminalId))
             .put("client_id", CLIENT_ID)
+    }
+
+    private fun cleanId(value: String): String {
+        return value.trim()
     }
 
     private fun sanitizedStringArray(values: JSONArray): JSONArray {
