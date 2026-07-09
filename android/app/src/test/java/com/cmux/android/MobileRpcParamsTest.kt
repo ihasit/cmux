@@ -192,6 +192,16 @@ class MobileRpcParamsTest {
     }
 
     @Test
+    fun eventSubscriptionTrimsStreamId() {
+        val params = MobileRpcParams.eventSubscription(
+            streamId = " stream-android-1 ",
+            topics = listOf("workspace.updated")
+        )
+
+        assertEquals("stream-android-1", params.getString("stream_id"))
+    }
+
+    @Test
     fun notificationParamsKeepOnlyNonBlankStringIds() {
         val ids = org.json.JSONArray()
             .put(" n-1 ")
