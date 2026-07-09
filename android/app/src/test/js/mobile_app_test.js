@@ -82,6 +82,7 @@ function loadApp() {
   const bridge = {
     initialState: () => bridgeCalls.push(["initialState"]),
     createWorkspace: () => bridgeCalls.push(["createWorkspace"]),
+    createTerminal: (...args) => bridgeCalls.push(["createTerminal", ...args]),
     replayTerminal: (...args) => bridgeCalls.push(["replayTerminal", ...args]),
     reportViewport: (...args) => bridgeCalls.push(["reportViewport", ...args]),
     refreshWorkspaces: () => bridgeCalls.push(["refreshWorkspaces"]),
