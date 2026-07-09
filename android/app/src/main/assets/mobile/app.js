@@ -1775,7 +1775,7 @@ elements.createWorkspace.addEventListener("click", createWorkspace);
 elements.showPairedMacs.addEventListener("click", () => showScreen("pairing"));
 elements.backToWorkspacesFromPairing.addEventListener("click", () => showScreen("workspaces"));
 elements.workspaceFilters.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-workspace-filter]");
+  const button = eventTargetWithAttribute(event, "data-workspace-filter");
   const nextFilter = button?.getAttribute("data-workspace-filter");
   if (!nextFilter || nextFilter === state.workspaceFilter) return;
   state.workspaceFilter = nextFilter;
