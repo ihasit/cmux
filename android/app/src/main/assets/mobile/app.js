@@ -1076,16 +1076,22 @@ function chooseImageForPaste() {
 function pasteSelectedImage() {
   if (!state.activeWorkspace || !state.activeTerminal) return;
   const file = elements.imageInput.files?.[0];
-  if (!file) return;
+  if (!file) {
+    clearImageInput();
+    return;
+  }
   if (!file.type.startsWith("image/")) {
+    clearImageInput();
     showToast(t("image.invalid"));
     return;
   }
   if (file.size > MAX_IMAGE_BYTES) {
+    clearImageInput();
     showToast(t("image.tooLarge"));
     return;
   }
   if (typeof FileReader === "undefined") {
+    clearImageInput();
     showToast(t("image.unsupported"));
     return;
   }
@@ -1094,6 +1100,7 @@ function pasteSelectedImage() {
     const dataUrl = String(reader.result || "");
     const commaIndex = dataUrl.indexOf(",");
     if (commaIndex < 0) {
+      clearImageInput();
       showToast(t("image.invalid"));
       return;
     }
@@ -1105,9 +1112,17 @@ function pasteSelectedImage() {
       terminalColumns(),
       terminalRows(),
     );
+    clearImageInput();
   };
-  reader.onerror = () => showToast(t("image.unsupported"));
+  reader.onerror = () => {
+    clearImageInput();
+    showToast(t("image.unsupported"));
+  };
   reader.readAsDataURL(file);
+}
+
+function clearImageInput() {
+  elements.imageInput.value = "";
 }
 
 function imageFormatForFile(file) {
