@@ -16,13 +16,26 @@ import androidx.test.espresso.web.webdriver.DriverAtoms.webClick
 import androidx.test.espresso.web.webdriver.DriverAtoms.webKeys
 import androidx.test.espresso.web.webdriver.Locator
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okio.ByteString
 import org.hamcrest.CoreMatchers.containsString
+import org.json.JSONObject
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.IOException
+import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.NetworkInterface
 import java.net.URLEncoder
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
@@ -161,6 +174,70 @@ class MainActivitySmokeTest {
             onWebView()
                 .withElement(findElement(Locator.ID, "pairedList"))
                 .check(webMatches(getText(), containsString("100.64.0.79:58465")))
+        }
+    }
+
+    @Test
+    fun websocketPairingConnectsToFakeHostAndRendersWorkspaceList() {
+        val server = MockWebServer()
+        val receivedMethods = LinkedBlockingQueue<String>()
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    val request = JSONObject(readSingleFrame(bytes.toByteArray()))
+                    val method = request.getString("method")
+                    receivedMethods.add(method)
+                    webSocket.send(ByteString.of(*rpcResponseFrame(request)))
+                }
+            })
+        )
+        server.start(InetAddress.getByName("0.0.0.0"), 0)
+        try {
+            val wsUrl = "ws://${instrumentationDeviceHostAddress()}:${server.port}/mobile"
+            val intent = Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .setClass(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
+                .putExtra(Intent.EXTRA_TEXT, wsUrl)
+
+            ActivityScenario.launch<MainActivity>(intent).use { scenario ->
+                waitUntil("fake host websocket opens") {
+                    scenario.evaluateScript("document.getElementById('connectionText').textContent")
+                        .contains("open")
+                }
+                waitUntil("fake host workspace list renders") {
+                    scenario.evaluateScript("document.getElementById('workspaceList').textContent")
+                        .contains("Fake Workspace")
+                }
+
+                onWebView()
+                    .withElement(findElement(Locator.ID, "connectionText"))
+                    .check(webMatches(getText(), containsString("open")))
+
+                onWebView()
+                    .withElement(findElement(Locator.ID, "hostText"))
+                    .check(webMatches(getText(), containsString("Fake Android Host")))
+
+                onWebView()
+                    .withElement(findElement(Locator.ID, "workspaceList"))
+                    .check(webMatches(getText(), containsString("Fake Workspace")))
+
+                onWebView()
+                    .withElement(findElement(Locator.ID, "workspaceList"))
+                    .check(webMatches(getText(), containsString("Fake Shell")))
+            }
+
+            val methods = drainQueue(receivedMethods)
+            check("mobile.events.subscribe" in methods) { methods }
+            check("mobile.host.status" in methods) { methods }
+            check("mobile.workspace.list" in methods) { methods }
+        } finally {
+            try {
+                server.shutdown()
+            } catch (error: IOException) {
+                if (error.message != "Gave up waiting for queue to shut down") {
+                    throw error
+                }
+            }
         }
     }
 
@@ -2131,6 +2208,88 @@ class MainActivitySmokeTest {
         val stateField = bridge.javaClass.getDeclaredField("pendingAuthState")
         stateField.isAccessible = true
         stateField.set(bridge, state)
+    }
+
+    private fun readSingleFrame(bytes: ByteArray): String {
+        check(bytes.size >= 4) { "Missing frame length" }
+        val length = ByteBuffer.wrap(bytes, 0, 4).int
+        check(length > 0 && bytes.size >= 4 + length) { "Invalid frame length: $length" }
+        return String(bytes, 4, length, StandardCharsets.UTF_8)
+    }
+
+    private fun rpcResponseFrame(request: JSONObject): ByteArray {
+        val id = request.getInt("id")
+        val method = request.getString("method")
+        val result = when (method) {
+            "mobile.host.status" -> JSONObject()
+                .put("mac_display_name", "Fake Android Host")
+                .put("capabilities", org.json.JSONArray()
+                    .put("events.v1")
+                    .put("terminal.create.v1")
+                    .put("terminal.paste_image.v1")
+                    .put("terminal.render_grid.v1")
+                    .put("terminal.replay.v1")
+                    .put("terminal.viewport.v1")
+                    .put("workspace.create.v1")
+                    .put("workspace.actions.v1")
+                    .put("workspace.read_state.v1")
+                    .put("workspace.close.v1")
+                    .put("workspace.groups.v1"))
+            "mobile.workspace.list" -> JSONObject()
+                .put("workspaces", org.json.JSONArray().put(
+                    JSONObject()
+                        .put("id", "workspace-fake")
+                        .put("title", "Fake Workspace")
+                        .put("preview", "connected through websocket")
+                        .put("terminals", org.json.JSONArray().put(
+                            JSONObject()
+                                .put("id", "terminal-fake")
+                                .put("title", "Fake Shell")
+                                .put("current_directory", "/fake")
+                        ))
+                ))
+                .put("groups", org.json.JSONArray())
+            "mobile.events.subscribe" -> JSONObject().put("already_subscribed", false)
+            else -> JSONObject()
+        }
+        val payload = JSONObject()
+            .put("id", id)
+            .put("ok", true)
+            .put("result", result)
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+        return ByteBuffer.allocate(4 + payload.size)
+            .putInt(payload.size)
+            .put(payload)
+            .array()
+    }
+
+    private fun instrumentationDeviceHostAddress(): String {
+        val addresses = NetworkInterface.getNetworkInterfaces().toList()
+            .flatMap { it.inetAddresses.toList() }
+            .filterIsInstance<Inet4Address>()
+            .map { it.hostAddress }
+            .filter { address ->
+                address != null &&
+                    !address.startsWith("127.") &&
+                    address != "0.0.0.0"
+            }
+        return checkNotNull(addresses.firstOrNull()) { "No non-loopback IPv4 address found" }
+    }
+
+    private fun <T> drainQueue(queue: LinkedBlockingQueue<T>): List<T> {
+        val values = mutableListOf<T>()
+        queue.drainTo(values)
+        return values
+    }
+
+    private fun waitUntil(description: String, condition: () -> Boolean) {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+        while (System.nanoTime() < deadline) {
+            if (condition()) return
+            Thread.sleep(100)
+        }
+        error("Timed out waiting for $description")
     }
 
     private fun ActivityScenario<MainActivity>.evaluateScript(script: String): String {
