@@ -202,7 +202,9 @@ class MobileRpcSession(
         closedNotified = false
         activeRoute = route
         callback.onConnectionState("connecting", route.displayEndpoint())
-        client = clientFactory(GenerationCallback(generation), route).also { it.connect(route) }
+        val nextClient = clientFactory(GenerationCallback(generation), route)
+        client = nextClient
+        nextClient.connect(route)
     }
 
     private fun notifyClosed(reason: String) {
