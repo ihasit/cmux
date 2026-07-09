@@ -837,6 +837,117 @@ function testTerminalClickRequestsPointerCell() {
   );
 }
 
+function testPairingAuthAndConnectionControlsCallNativeBridge() {
+  const { hooks, bridgeCalls, nativeEvent } = loadApp();
+
+  hooks.elements.pairingCode.value = "cmux-ios://attach?v=2&r=100.64.0.5:58465";
+  hooks.elements.pairButton.dispatchEvent("click", {
+    target: hooks.elements.pairButton,
+  });
+  hooks.elements.scanPairingCode.dispatchEvent("click", {
+    target: hooks.elements.scanPairingCode,
+  });
+
+  hooks.elements.stackAccessToken.value = "stack-token";
+  hooks.elements.saveStackAccessToken.dispatchEvent("click", {
+    target: hooks.elements.saveStackAccessToken,
+  });
+  hooks.elements.startStackSignIn.dispatchEvent("click", {
+    target: hooks.elements.startStackSignIn,
+  });
+  hooks.elements.stackAccessToken.value = "old-token";
+  hooks.elements.clearStackAccessToken.dispatchEvent("click", {
+    target: hooks.elements.clearStackAccessToken,
+  });
+
+  nativeEvent({
+    type: "pairedMacs",
+    payload: {
+      macs: [{
+        id: "mac-1",
+        display_name: "Work Mac",
+        routes: [{ host: "100.64.0.5", port: 58465, label: "tailnet" }],
+      }],
+    },
+  });
+  hooks.elements.pairedList.dispatchEvent("click", {
+    target: eventTarget({ "data-connect": "mac-1" }),
+  });
+  hooks.elements.pairedList.dispatchEvent("click", {
+    target: eventTarget({ "data-forget": "mac-1" }),
+  });
+
+  hooks.elements.enableNotifications.dispatchEvent("click", {
+    target: hooks.elements.enableNotifications,
+  });
+  openTestTerminal(hooks, bridgeCalls);
+  hooks.elements.closeConnection.dispatchEvent("click", {
+    target: hooks.elements.closeConnection,
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "pair" &&
+      call[1] === "cmux-ios://attach?v=2&r=100.64.0.5:58465"
+    )),
+    `expected pair call with pairing URL, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => call[0] === "scanPairingCode"),
+    `expected scanPairingCode call, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "saveStackAccessToken" &&
+      call[1] === "stack-token"
+    )),
+    `expected saveStackAccessToken call, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert.strictEqual(
+    hooks.elements.stackAccessToken.value,
+    "",
+    "expected token input to clear after auth controls run"
+  );
+  assert(
+    bridgeCalls.some((call) => call[0] === "startStackSignIn"),
+    `expected startStackSignIn call, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => call[0] === "clearStackAccessToken"),
+    `expected clearStackAccessToken call, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "connect" &&
+      call[1] === "mac-1"
+    )),
+    `expected connect call for paired Mac, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "forget" &&
+      call[1] === "mac-1"
+    )),
+    `expected forget call for paired Mac, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => call[0] === "requestNotificationPermission"),
+    `expected requestNotificationPermission call, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "clearViewport" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1"
+    )),
+    `expected close connection to clear active viewport, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => call[0] === "closeConnection"),
+    `expected closeConnection call, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -978,6 +1089,7 @@ testSendInputRequestsActiveTerminalWithViewport();
 testPasteInputRequestsActiveTerminalWithSubmitKey();
 testWheelRequestsTerminalScrollWithPointerAndViewport();
 testTerminalClickRequestsPointerCell();
+testPairingAuthAndConnectionControlsCallNativeBridge();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
