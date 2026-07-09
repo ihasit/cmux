@@ -1489,6 +1489,9 @@ function handleRpcResult(method, result) {
   if (method === "notification.reconcile") {
     if (Number.isInteger(result.unread_count)) {
       state.authoritativeUnreadNotificationCount = result.unread_count;
+      if (result.unread_count <= 0) {
+        state.deliveredNotificationIds = [];
+      }
     }
     const handledIds = Array.isArray(result.handled_ids) ? result.handled_ids : [];
     if (handledIds.length > 0) {
