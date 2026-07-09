@@ -274,6 +274,15 @@ class MainActivitySmokeTest {
                 }
                 scenario.evaluateScript(
                     """
+                    document.querySelector('[data-chat-answer="1"]').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives chat answer") {
+                    observedMethods.contains("mobile.chat.answer")
+                }
+                scenario.evaluateScript(
+                    """
                     document.getElementById('chatInput').value = 'reply from android chat';
                     document.getElementById('sendChat').click();
                     true;
@@ -292,6 +301,7 @@ class MainActivitySmokeTest {
             check("dogfood.feedback.submit" in methods) { methods }
             check("mobile.chat.sessions" in methods) { methods }
             check("mobile.chat.history" in methods) { methods }
+            check("mobile.chat.answer" in methods) { methods }
             check("mobile.chat.send" in methods) { methods }
         } finally {
             try {
@@ -2348,19 +2358,39 @@ class MainActivitySmokeTest {
                         .put("version", 1)
                 ))
             "mobile.chat.history" -> JSONObject()
-                .put("messages", org.json.JSONArray().put(
-                    JSONObject()
-                        .put("id", "message-fake")
-                        .put("seq", 1)
-                        .put("role", "agent")
-                        .put("timestamp", "2026-07-10T00:00:00Z")
-                        .put("kind", JSONObject()
-                            .put("type", "prose")
-                            .put("text", "hello from fake chat"))
-                ))
+                .put("messages", org.json.JSONArray()
+                    .put(
+                        JSONObject()
+                            .put("id", "message-fake")
+                            .put("seq", 1)
+                            .put("role", "agent")
+                            .put("timestamp", "2026-07-10T00:00:00Z")
+                            .put("kind", JSONObject()
+                                .put("type", "prose")
+                                .put("text", "hello from fake chat"))
+                    )
+                    .put(
+                        JSONObject()
+                            .put("id", "question-fake")
+                            .put("seq", 2)
+                            .put("role", "agent")
+                            .put("timestamp", "2026-07-10T00:00:01Z")
+                            .put("kind", JSONObject()
+                                .put("type", "question")
+                                .put("prompt", "Choose Android validation")
+                                .put("options", org.json.JSONArray()
+                                    .put(JSONObject()
+                                        .put("label", "Quick")
+                                        .put("detail", "Unit checks"))
+                                    .put(JSONObject()
+                                        .put("label", "Full")
+                                        .put("detail", "Instrumentation checks"))))
+                    ))
                 .put("has_more", false)
             "mobile.chat.send" -> JSONObject()
                 .put("submitted", true)
+            "mobile.chat.answer" -> JSONObject()
+                .put("answered", true)
             "mobile.events.subscribe" -> JSONObject().put("already_subscribed", false)
             else -> JSONObject()
         }

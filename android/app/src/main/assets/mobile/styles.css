@@ -307,6 +307,26 @@ textarea {
 .chat-message-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  display: grid;
+  gap: 4px;
+}
+
+.chat-answer-options {
+  display: grid;
+  gap: 8px;
+}
+
+.chat-answer-option {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+  text-align: left;
+}
+
+.chat-answer-option span,
+.chat-answer-selected {
+  color: #697386;
+  font-size: 12px;
 }
 
 .workspace-actions {

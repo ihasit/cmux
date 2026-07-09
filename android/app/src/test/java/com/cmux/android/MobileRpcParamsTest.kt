@@ -327,4 +327,15 @@ class MobileRpcParamsTest {
         assertEquals(true, params.getBoolean("hard"))
         assertEquals(MobileRpcParams.CLIENT_ID, params.getString("client_id"))
     }
+
+    @Test
+    fun chatAnswerTrimsSessionIdAndClampsOptionIndex() {
+        val low = MobileRpcParams.chatAnswer(" session-1 ", -4)
+        val high = MobileRpcParams.chatAnswer(" session-1 ", 99)
+
+        assertEquals("session-1", low.getString("session_id"))
+        assertEquals(0, low.getInt("option_index"))
+        assertEquals(8, high.getInt("option_index"))
+        assertEquals(MobileRpcParams.CLIENT_ID, high.getString("client_id"))
+    }
 }

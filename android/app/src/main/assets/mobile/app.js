@@ -122,6 +122,10 @@ const messages = {
     "chat.inputPlaceholder": "Send a prompt to the agent",
     "chat.interrupt": "Interrupt",
     "chat.sent": "Message sent.",
+    "chat.answerSent": "Answer sent.",
+    "chat.selected": "Selected: {label}",
+    "chat.permissionApprove": "Approve",
+    "chat.permissionDeny": "Deny",
     "chat.unsupported": "Agent chat is unavailable.",
     "chat.error": "Could not load chat.",
     "notification.none": "No unread notifications.",
@@ -276,6 +280,10 @@ const messages = {
     "chat.inputPlaceholder": "エージェントへプロンプトを送信",
     "chat.interrupt": "中断",
     "chat.sent": "メッセージを送信しました。",
+    "chat.answerSent": "回答を送信しました。",
+    "chat.selected": "選択済み: {label}",
+    "chat.permissionApprove": "承認",
+    "chat.permissionDeny": "拒否",
     "chat.unsupported": "エージェントチャットを利用できません。",
     "chat.error": "チャットを読み込めませんでした。",
     "notification.none": "未読通知はありません。",
@@ -818,6 +826,11 @@ function interruptChat() {
   bridge().interruptChat(state.activeChatSession.session_id, false);
 }
 
+function answerChat(optionIndex) {
+  if (!state.connected || !state.activeChatSession) return;
+  bridge().answerChat(state.activeChatSession.session_id, Number(optionIndex));
+}
+
 function renderChatStatus() {
   if (!elements.chatStatusText) return;
   if (state.chatRefreshPending) {
@@ -884,8 +897,57 @@ function renderChatMessage(message) {
   return `
     <article class="chat-message" data-chat-message="${escapeHtml(message.id || "")}">
       <div class="chat-message-role">${escapeHtml(chatRoleLabel(message.role))}</div>
-      <div class="chat-message-text">${escapeHtml(chatMessageText(message))}</div>
+      ${renderChatMessageBody(message)}
     </article>
+  `;
+}
+
+function renderChatMessageBody(message) {
+  const kind = message.kind || {};
+  if (kind.type === "question") return renderChatQuestion(kind);
+  if (kind.type === "permission_request") return renderChatPermissionRequest(kind);
+  return `<div class="chat-message-text">${escapeHtml(chatMessageText(message))}</div>`;
+}
+
+function renderChatQuestion(kind) {
+  const selected = String(kind.selected_option_label || "");
+  const options = Array.isArray(kind.options) ? kind.options.slice(0, 9) : [];
+  const optionButtons = options.map((option, index) => {
+    const label = option?.label || String(index + 1);
+    const detail = option?.detail ? `<span>${escapeHtml(option.detail)}</span>` : "";
+    const disabled = selected ? " disabled" : "";
+    return `
+      <button class="chat-answer-option" data-chat-answer="${index}"${disabled}>
+        <strong>${escapeHtml(label)}</strong>${detail}
+      </button>
+    `;
+  }).join("");
+  const selectedText = selected
+    ? `<div class="chat-answer-selected">${escapeHtml(t("chat.selected").replace("{label}", selected))}</div>`
+    : "";
+  return `
+    <div class="chat-message-text">${escapeHtml(kind.prompt || "")}</div>
+    <div class="chat-answer-options">${optionButtons}</div>
+    ${selectedText}
+  `;
+}
+
+function renderChatPermissionRequest(kind) {
+  const resolved = String(kind.resolution || "");
+  const disabled = resolved ? " disabled" : "";
+  const resolvedText = resolved
+    ? `<div class="chat-answer-selected">${escapeHtml(resolved)}</div>`
+    : "";
+  return `
+    <div class="chat-message-text">
+      <strong>${escapeHtml(kind.title || "")}</strong>
+      ${kind.subject ? `<span>${escapeHtml(kind.subject)}</span>` : ""}
+    </div>
+    <div class="chat-answer-options">
+      <button class="chat-answer-option" data-chat-answer="0"${disabled}>${escapeHtml(t("chat.permissionApprove"))}</button>
+      <button class="chat-answer-option" data-chat-answer="1"${disabled}>${escapeHtml(t("chat.permissionDeny"))}</button>
+    </div>
+    ${resolvedText}
   `;
 }
 
@@ -1901,6 +1963,10 @@ function handleRpcResult(method, result) {
   if (method === "mobile.chat.interrupt") {
     return;
   }
+  if (method === "mobile.chat.answer") {
+    showToast(t("chat.answerSent"));
+    return;
+  }
   if (method === "dogfood.feedback.submit") {
     elements.feedbackText.value = "";
     toggleFeedbackPanel(false);
@@ -2236,6 +2302,10 @@ elements.refreshChatSessions.addEventListener("click", refreshChatSessions);
 elements.chatSessionList.addEventListener("click", (event) => {
   const sessionId = eventTargetAttribute(event, "data-chat-session");
   if (sessionId) openChatSession(sessionId);
+});
+elements.chatMessages.addEventListener("click", (event) => {
+  const optionIndex = eventTargetAttribute(event, "data-chat-answer");
+  if (optionIndex !== null) answerChat(optionIndex);
 });
 elements.sendChat.addEventListener("click", sendChatMessage);
 elements.interruptChat.addEventListener("click", interruptChat);

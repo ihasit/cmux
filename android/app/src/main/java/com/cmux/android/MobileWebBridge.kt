@@ -261,6 +261,11 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     @JavascriptInterface
+    fun answerChat(sessionId: String, optionIndex: Int) {
+        session.request("mobile.chat.answer", MobileRpcParams.chatAnswer(sessionId, optionIndex))
+    }
+
+    @JavascriptInterface
     fun renameWorkspace(workspaceId: String, title: String) {
         session.request(
             "workspace.action",

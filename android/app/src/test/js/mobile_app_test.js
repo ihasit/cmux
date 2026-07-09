@@ -99,6 +99,7 @@ function loadApp() {
     loadChatHistory: (...args) => bridgeCalls.push(["loadChatHistory", ...args]),
     sendChatMessage: (...args) => bridgeCalls.push(["sendChatMessage", ...args]),
     interruptChat: (...args) => bridgeCalls.push(["interruptChat", ...args]),
+    answerChat: (...args) => bridgeCalls.push(["answerChat", ...args]),
     createTerminal: (...args) => bridgeCalls.push(["createTerminal", ...args]),
     renameWorkspace: (...args) => bridgeCalls.push(["renameWorkspace", ...args]),
     setWorkspacePinned: (...args) => bridgeCalls.push(["setWorkspacePinned", ...args]),
@@ -814,6 +815,71 @@ function testChatPushEventsUpdateSessionAndMessages() {
   assert(
     hooks.elements.chatSessionList.innerHTML.includes("New title"),
     `expected descriptor_changed to update session list, got ${hooks.elements.chatSessionList.innerHTML}`
+  );
+}
+
+function testChatQuestionAndPermissionActionsSendAnswers() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.chat.sessions", {
+    sessions: [{
+      session_id: "chat-1",
+      agent_kind: "codex",
+      title: "Agent chat",
+      state: { state: "needs_input" },
+    }],
+  });
+  hooks.state.activeChatSession = hooks.state.chatSessions[0];
+  hooks.handleRpcResult("mobile.chat.history", {
+    messages: [
+      {
+        id: "question-1",
+        seq: 1,
+        role: "agent",
+        kind: {
+          type: "question",
+          prompt: "Choose a path",
+          options: [
+            { label: "Fast", detail: "Quick check" },
+            { label: "Full", detail: "Run everything" },
+          ],
+        },
+      },
+      {
+        id: "permission-1",
+        seq: 2,
+        role: "agent",
+        kind: {
+          type: "permission_request",
+          title: "Run command?",
+          subject: "gradle connectedDebugAndroidTest",
+        },
+      },
+    ],
+    has_more: false,
+  });
+
+  assert(
+    hooks.elements.chatMessages.innerHTML.includes("Choose a path") &&
+      hooks.elements.chatMessages.innerHTML.includes("Quick check") &&
+      hooks.elements.chatMessages.innerHTML.includes("Run command?"),
+    `expected question and permission cards to render, got ${hooks.elements.chatMessages.innerHTML}`
+  );
+
+  hooks.elements.chatMessages.dispatchEvent("click", {
+    target: eventTarget({ "data-chat-answer": "1" }),
+  });
+  hooks.elements.chatMessages.dispatchEvent("click", {
+    target: eventTarget({ "data-chat-answer": "0" }),
+  });
+
+  assert(
+    bridgeCalls.some((call) => call[0] === "answerChat" && call[1] === "chat-1" && call[2] === 1),
+    `expected question answer call, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => call[0] === "answerChat" && call[1] === "chat-1" && call[2] === 0),
+    `expected permission answer call, got ${JSON.stringify(bridgeCalls)}`
   );
 }
 
@@ -2066,6 +2132,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testFeedbackSuccessClearsComposerAndClosesPanel();
   testChatSessionsRenderOpenHistoryAndSendMessage();
   testChatPushEventsUpdateSessionAndMessages();
+  testChatQuestionAndPermissionActionsSendAnswers();
   testLateHostCapabilitiesRefreshRenderedWorkspaceControls();
   testWorkspaceCardActionsRequireHostCapabilities();
   testWorkspaceGroupToggleRequiresHostCapability();

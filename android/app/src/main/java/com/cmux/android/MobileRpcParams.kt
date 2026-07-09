@@ -78,6 +78,13 @@ object MobileRpcParams {
             .put("hard", hard)
     }
 
+    fun chatAnswer(sessionId: String, optionIndex: Int): JSONObject {
+        return JSONObject()
+            .put("client_id", CLIENT_ID)
+            .put("session_id", cleanId(sessionId))
+            .put("option_index", optionIndex.coerceIn(0, 8))
+    }
+
     fun workspaceGroup(groupId: String): JSONObject {
         return JSONObject()
             .put("group_id", cleanId(groupId))
