@@ -19,6 +19,19 @@ class PairingIntentValueTest {
     }
 
     @Test
+    fun sendTextFallsBackToDataStringWhenSharedTextIsBlank() {
+        val value = PairingIntentValue.fromParts(
+            action = "android.intent.action.SEND",
+            type = "text/plain",
+            dataString = "cmux-ios://attach?v=2&r=100.64.0.5:58465",
+            extraText = "   ",
+            processText = null
+        )
+
+        assertEquals("cmux-ios://attach?v=2&r=100.64.0.5:58465", value)
+    }
+
+    @Test
     fun sendNonTextFallsBackToDataStringBeforeExtraText() {
         val value = PairingIntentValue.fromParts(
             action = "android.intent.action.SEND",
