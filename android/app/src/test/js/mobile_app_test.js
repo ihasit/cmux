@@ -698,6 +698,37 @@ function testWorkspaceSearchShowsMatchesInsideCollapsedGroups() {
   );
 }
 
+function testWorkspaceSearchFiltersTerminalRowsWithinMatchingWorkspace() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android App",
+      preview: "mobile work",
+      terminals: [
+        { id: "terminal-1", title: "Gradle Build", current_directory: "/repo/android" },
+        { id: "terminal-2", title: "Docs Shell", current_directory: "/repo/docs" },
+      ],
+    }],
+    groups: [],
+  });
+
+  hooks.elements.workspaceSearch.value = "gradle";
+  hooks.elements.workspaceSearch.dispatchEvent("input", {
+    target: hooks.elements.workspaceSearch,
+  });
+
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes("Gradle Build"),
+    `expected matching terminal to remain visible, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes("Docs Shell"),
+    `expected non-matching sibling terminal to be hidden during search, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+}
+
 function testWorkspaceWithTerminalsStillOffersCreateTerminal() {
   const { hooks } = loadApp();
   hooks.state.connected = true;
@@ -1365,6 +1396,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testWorkspaceGroupToggleRequiresHostCapability();
   testWorkspaceGroupToggleClickRequestsNativeBridge();
   testWorkspaceSearchShowsMatchesInsideCollapsedGroups();
+  testWorkspaceSearchFiltersTerminalRowsWithinMatchingWorkspace();
   testWorkspaceWithTerminalsStillOffersCreateTerminal();
   testCreateTerminalClickRequestsWorkspaceTerminal();
   testWorkspaceActionClicksRequestNativeBridgeCalls();
