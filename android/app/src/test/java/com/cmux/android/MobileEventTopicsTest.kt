@@ -51,6 +51,20 @@ class MobileEventTopicsTest {
     }
 
     @Test
+    fun capabilitiesAreTrimmedBeforeSelectingTerminalTopic() {
+        assertEquals(
+            listOf(
+                "workspace.updated",
+                "terminal.render_grid",
+                "terminal.set_font",
+                "notification.badge",
+                "notification.dismissed"
+            ),
+            MobileEventTopics.topicsForCapabilities(setOf(" terminal.render_grid.v1 "))
+        )
+    }
+
+    @Test
     fun hostStatusJsonMergesTopLevelAndNestedCapabilitiesForRenderGridTopic() {
         val status = JSONObject()
             .put("capabilities", JSONArray().put("workspace.create.v1"))
