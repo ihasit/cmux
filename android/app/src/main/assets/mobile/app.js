@@ -1541,10 +1541,13 @@ function handleRpcResult(method, result) {
     return;
   }
   if (method === "notification.dismiss") {
+    const dismissedIds = [...state.deliveredNotificationIds];
     state.deliveredNotificationIds = [];
     renderNotificationStatus();
     showToast(t("notification.dismissed"));
-    syncNotifications();
+    if (hasCapability("notification.reconcile.v1")) {
+      bridge().reconcileNotifications(JSON.stringify(dismissedIds));
+    }
     bridge().refreshWorkspaces();
     return;
   }
