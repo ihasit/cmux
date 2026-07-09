@@ -446,6 +446,84 @@ function testCreateWorkspaceButtonRequiresHostCapability() {
   );
 }
 
+function testWorkspaceCardActionsRequireHostCapabilities() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      has_unread: true,
+      terminals: [],
+    }],
+    groups: [],
+  });
+
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-create-terminal="workspace-1" disabled'),
+    `expected terminal create button disabled without terminal.create.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-rename-workspace="workspace-1" disabled'),
+    `expected rename button disabled without workspace.actions.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-pin-workspace="workspace-1" data-pinned="false" disabled'),
+    `expected pin button disabled without workspace.actions.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-read-workspace="workspace-1" data-unread="true" disabled'),
+    `expected read-state button disabled without workspace.read_state.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-close-workspace="workspace-1" disabled'),
+    `expected close button disabled without workspace.close.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [
+      "terminal.create.v1",
+      "workspace.actions.v1",
+      "workspace.read_state.v1",
+      "workspace.close.v1",
+    ],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      has_unread: true,
+      terminals: [],
+    }],
+    groups: [],
+  });
+
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-create-terminal="workspace-1" disabled'),
+    `expected terminal create button enabled with terminal.create.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-rename-workspace="workspace-1" disabled'),
+    `expected rename button enabled with workspace.actions.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-pin-workspace="workspace-1" data-pinned="false" disabled'),
+    `expected pin button enabled with workspace.actions.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-read-workspace="workspace-1" data-unread="true" disabled'),
+    `expected read-state button enabled with workspace.read_state.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-close-workspace="workspace-1" disabled'),
+    `expected close button enabled with workspace.close.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -578,6 +656,7 @@ testWorkspaceFilterIgnoresNonElementClickTarget();
 testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
 testNestedHostServiceCapabilitiesEnableWorkspaceControls();
 testCreateWorkspaceButtonRequiresHostCapability();
+testWorkspaceCardActionsRequireHostCapabilities();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
