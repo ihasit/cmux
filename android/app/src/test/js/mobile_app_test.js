@@ -1317,6 +1317,34 @@ async function testCopyTerminalOutputWritesTrimmedTextToClipboard() {
   );
 }
 
+function testPairedMacRouteKindIsCaseInsensitive() {
+  const { hooks, nativeEvent } = loadApp();
+
+  nativeEvent({
+    type: "pairedMacs",
+    payload: {
+      macs: [{
+        id: "mac-websocket",
+        routes: [{
+          id: "websocket",
+          kind: "WEBSOCKET",
+          priority: 1,
+          url: "wss://cmux.example.test/mobile",
+        }],
+      }],
+    },
+  });
+
+  assert(
+    hooks.elements.pairedList.innerHTML.includes("wss://cmux.example.test/mobile"),
+    `expected uppercase websocket route kind to render supported route URL, got ${hooks.elements.pairedList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.pairedList.innerHTML.includes("No supported route"),
+    `expected uppercase websocket route kind not to render no-route fallback, got ${hooks.elements.pairedList.innerHTML}`
+  );
+}
+
 function testPairingAuthAndConnectionControlsCallNativeBridge() {
   const { hooks, bridgeCalls, nativeEvent } = loadApp();
 
@@ -1731,6 +1759,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testPasteImageClearsInputAfterRejectedFile();
   testPasteImageRejectsEmptyEncodedPayload();
   await testCopyTerminalOutputWritesTrimmedTextToClipboard();
+  testPairedMacRouteKindIsCaseInsensitive();
   testPairingAuthAndConnectionControlsCallNativeBridge();
   testNativeToastFallsBackToMessageForUnknownKey();
   testNativeErrorPrefersKnownLocalizedMessageKey();
