@@ -65,6 +65,7 @@ function eventTarget(attributes = {}, closestTarget = null) {
 function loadApp() {
   const elements = new Map();
   let nextPromptValue = "Renamed Android";
+  let nextFileReaderResult = "";
   const document = {
     getElementById: (id) => {
       if (!elements.has(id)) elements.set(id, element(id));
@@ -112,6 +113,18 @@ function loadApp() {
     console,
     document,
     navigator: { language: "en-US" },
+    FileReader: class {
+      constructor() {
+        this.result = "";
+        this.onload = null;
+        this.onerror = null;
+      }
+
+      readAsDataURL() {
+        this.result = nextFileReaderResult;
+        if (typeof this.onload === "function") this.onload();
+      }
+    },
     window: {
       addEventListener: () => {},
       clearTimeout: () => {},
@@ -148,6 +161,7 @@ function loadApp() {
     bridgeCalls,
     nativeEvent: context.window.cmuxNativeEvent,
     setPromptValue: (value) => { nextPromptValue = value; },
+    setFileReaderResult: (value) => { nextFileReaderResult = value; },
   };
 }
 
@@ -846,6 +860,34 @@ function testTerminalClickRequestsPointerCell() {
   );
 }
 
+function testPasteImageRequestsActiveTerminalWithDecodedPayload() {
+  const { hooks, bridgeCalls, setFileReaderResult } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+  hooks.elements.imageInput.files = [{
+    name: "screenshot.jpeg",
+    type: "image/jpeg",
+    size: 128,
+  }];
+  setFileReaderResult("data:image/jpeg;base64,aGVsbG8=");
+
+  hooks.elements.imageInput.dispatchEvent("change", {
+    target: hooks.elements.imageInput,
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "pasteImage" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1" &&
+      call[3] === "aGVsbG8=" &&
+      call[4] === "jpg" &&
+      call[5] === 114 &&
+      call[6] === 25
+    )),
+    `expected pasteImage call with encoded payload and viewport, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testPairingAuthAndConnectionControlsCallNativeBridge() {
   const { hooks, bridgeCalls, nativeEvent } = loadApp();
 
@@ -1099,6 +1141,7 @@ testSendInputRequestsActiveTerminalWithViewport();
 testPasteInputRequestsActiveTerminalWithSubmitKey();
 testWheelRequestsTerminalScrollWithPointerAndViewport();
 testTerminalClickRequestsPointerCell();
+testPasteImageRequestsActiveTerminalWithDecodedPayload();
 testPairingAuthAndConnectionControlsCallNativeBridge();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
