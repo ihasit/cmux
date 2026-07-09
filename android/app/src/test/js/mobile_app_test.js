@@ -1497,6 +1497,29 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   );
 }
 
+function testNotificationDismissReconcilesDismissedIdsBeforeClearing() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.state.hostStatus = {
+    capabilities: ["notification.reconcile.v1", "notification.dismiss.v1"],
+  };
+  hooks.handlePushEvent("notification.badge", {
+    unread_count: 2,
+    notification_ids: ["n-1", "n-2"],
+  });
+  bridgeCalls.length = 0;
+
+  hooks.handleRpcResult("notification.dismiss", {});
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "reconcileNotifications" &&
+      call[1] === JSON.stringify(["n-1", "n-2"])
+    )),
+    `expected dismiss success to reconcile previously delivered ids, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 (async () => {
   testSubscribeAckGapTriggersTerminalReplay();
   testSubscribeAckDoesNotReplayWithoutActiveTerminal();
@@ -1538,6 +1561,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testNotificationBadgeZeroClearsDeliveredIds();
   testNotificationDismissedZeroClearsDeliveredIds();
   testNotificationReconcileZeroClearsDeliveredIds();
+  testNotificationDismissReconcilesDismissedIdsBeforeClearing();
   console.log("mobile app js tests passed");
 })().catch((error) => {
   console.error(error);
