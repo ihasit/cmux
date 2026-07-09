@@ -152,6 +152,7 @@ private fun stackOAuthErrorCode(body: String): String? {
     return runCatching {
         JSONObject(body).optStrictString("error")
             ?.trim()
+            ?.lowercase()
             ?.takeIf { it.isNotEmpty() }
     }.getOrNull()
 }
