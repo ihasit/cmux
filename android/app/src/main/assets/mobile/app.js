@@ -1378,8 +1378,12 @@ function styleKey(style) {
 
 function styleToCss(style, frame, isCursor) {
   const rules = [];
-  const foreground = safeCssColor(style?.foreground || (style?.inverse ? frame.terminalBackground : ""));
-  const background = safeCssColor(style?.background || (style?.inverse ? frame.terminalForeground : ""));
+  const foreground = safeCssColor(style?.inverse
+    ? style?.background || frame.terminalBackground
+    : style?.foreground || "");
+  const background = safeCssColor(style?.inverse
+    ? style?.foreground || frame.terminalForeground
+    : style?.background || "");
   if (foreground) rules.push(`color:${foreground}`);
   if (background) rules.push(`background-color:${background}`);
   if (style?.bold) rules.push("font-weight:700");
