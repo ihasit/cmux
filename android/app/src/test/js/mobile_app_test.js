@@ -595,6 +595,33 @@ function testWorkspaceWithTerminalsStillOffersCreateTerminal() {
   );
 }
 
+function testCreateTerminalClickRequestsWorkspaceTerminal() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["terminal.create.v1"],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      terminals: [{ id: "terminal-1", title: "Shell" }],
+    }],
+    groups: [],
+  });
+
+  const button = eventTarget({ "data-create-terminal": "workspace-1" });
+  hooks.elements.workspaceList.dispatchEvent("click", { target: button });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "createTerminal" &&
+      call[1] === "workspace-1"
+    )),
+    `expected createTerminal call for workspace-1, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -730,6 +757,7 @@ testCreateWorkspaceButtonRequiresHostCapability();
 testWorkspaceCardActionsRequireHostCapabilities();
 testWorkspaceGroupToggleRequiresHostCapability();
 testWorkspaceWithTerminalsStillOffersCreateTerminal();
+testCreateTerminalClickRequestsWorkspaceTerminal();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
