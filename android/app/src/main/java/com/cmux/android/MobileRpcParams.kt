@@ -33,13 +33,13 @@ object MobileRpcParams {
     fun reconcileNotifications(deliveredIds: JSONArray): JSONObject {
         return JSONObject()
             .put("client_id", CLIENT_ID)
-            .put("delivered_ids", deliveredIds)
+            .put("delivered_ids", sanitizedStringArray(deliveredIds))
     }
 
     fun dismissNotifications(notificationIds: JSONArray): JSONObject {
         return JSONObject()
             .put("client_id", CLIENT_ID)
-            .put("notification_ids", notificationIds)
+            .put("notification_ids", sanitizedStringArray(notificationIds))
     }
 
     fun workspaceGroup(groupId: String): JSONObject {
@@ -134,5 +134,16 @@ object MobileRpcParams {
             .put("terminal_id", terminalId)
             .put("surface_id", terminalId)
             .put("client_id", CLIENT_ID)
+    }
+
+    private fun sanitizedStringArray(values: JSONArray): JSONArray {
+        val sanitized = JSONArray()
+        for (index in 0 until values.length()) {
+            val value = (values.opt(index) as? String)?.trim().orEmpty()
+            if (value.isNotEmpty()) {
+                sanitized.put(value)
+            }
+        }
+        return sanitized
     }
 }
