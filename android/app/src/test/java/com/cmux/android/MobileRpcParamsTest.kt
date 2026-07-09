@@ -103,8 +103,15 @@ class MobileRpcParamsTest {
         val explicit = MobileRpcParams.terminalPasteImage("workspace-1", "terminal-1", "base64", " jpeg ", 80, 24)
         val blank = MobileRpcParams.terminalPasteImage("workspace-1", "terminal-1", "base64", "  ", 80, 24)
 
-        assertEquals("jpeg", explicit.getString("image_format"))
+        assertEquals("jpg", explicit.getString("image_format"))
         assertEquals("png", blank.getString("image_format"))
+    }
+
+    @Test
+    fun terminalPasteImageDefaultsUnsupportedFormat() {
+        val params = MobileRpcParams.terminalPasteImage("workspace-1", "terminal-1", "base64", "../../evil", 80, 24)
+
+        assertEquals("png", params.getString("image_format"))
     }
 
     @Test
