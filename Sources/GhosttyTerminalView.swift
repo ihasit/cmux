@@ -88,6 +88,14 @@ private enum GhosttyPasteboardHelper {
     }
 
     static func stringContents(from pasteboard: NSPasteboard) -> String? {
+        if let value = pasteboard.string(forType: .string) {
+            return value
+        }
+
+        if let value = pasteboard.string(forType: utf8PlainTextType) {
+            return value
+        }
+
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL],
            !urls.isEmpty {
             return urls
@@ -95,11 +103,7 @@ private enum GhosttyPasteboardHelper {
                 .joined(separator: " ")
         }
 
-        if let value = pasteboard.string(forType: .string) {
-            return value
-        }
-
-        return pasteboard.string(forType: utf8PlainTextType)
+        return nil
     }
 
     static func hasString(for location: ghostty_clipboard_e) -> Bool {

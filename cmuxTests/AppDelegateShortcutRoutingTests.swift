@@ -2163,6 +2163,28 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
 #endif
     }
 
+    func testTerminalPasteUsesFileURLWhenNoTextFlavorExists() throws {
+        let fileURL = try makeTemporaryFile(named: "moon launch.png")
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("cmux.terminal.fileurl.\(UUID().uuidString)"))
+        pasteboard.clearContents()
+        defer {
+            pasteboard.clearContents()
+            pasteboard.releaseGlobally()
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+
+        XCTAssertTrue(pasteboard.writeObjects([fileURL as NSURL]))
+
+#if DEBUG
+        XCTAssertEqual(
+            GhosttyPasteboardTestSupport.stringContents(from: pasteboard),
+            fileURL.path.replacingOccurrences(of: " ", with: "\\ ")
+        )
+#else
+        XCTFail("GhosttyPasteboardTestSupport is only available in DEBUG")
+#endif
+    }
+
     private func makeKeyDownEvent(
         key: String,
         modifiers: NSEvent.ModifierFlags,
