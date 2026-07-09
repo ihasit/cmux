@@ -598,7 +598,7 @@ function workspaceListItems(workspaces) {
 function renderWorkspaceGroup(group) {
   const label = group.name || t("group.defaultName");
   const actionKey = group.is_collapsed ? "group.expand" : "group.collapse";
-  const disabled = state.connected ? "" : " disabled";
+  const disabled = state.connected && hasCapability("workspace.groups.v1") ? "" : " disabled";
   return `
     <div class="workspace-group">
       <div>
