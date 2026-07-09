@@ -338,6 +338,30 @@ function testWorkspaceFilterIgnoresNonElementClickTarget() {
   );
 }
 
+function testWorkspaceGroupsRenderBeforeHostStatusCapabilities() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+
+  hooks.handleRpcResult("mobile.workspace.list", {
+    groups: [{ id: "group-1", name: "Builds", is_collapsed: false }],
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      group_id: "group-1",
+      terminals: [],
+    }],
+  });
+
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes("Builds"),
+    `expected group title from workspace payload to render before host status, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes("grouped-workspace"),
+    `expected grouped workspace styling before host status, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -466,6 +490,7 @@ testTerminalBytesGapRequestsReplay();
 testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
 testWorkspaceFilterIgnoresNonElementClickTarget();
+testWorkspaceGroupsRenderBeforeHostStatusCapabilities();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
