@@ -565,6 +565,36 @@ function testWorkspaceGroupToggleRequiresHostCapability() {
   );
 }
 
+function testWorkspaceWithTerminalsStillOffersCreateTerminal() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["terminal.create.v1"],
+  });
+
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      terminals: [{ id: "terminal-1", title: "Shell" }],
+    }],
+    groups: [],
+  });
+
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-open-terminal="workspace-1" data-terminal-id="terminal-1"'),
+    `expected existing terminal open button, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    hooks.elements.workspaceList.innerHTML.includes('data-create-terminal="workspace-1"'),
+    `expected create terminal button even when workspace has terminals, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-create-terminal="workspace-1" disabled'),
+    `expected create terminal button enabled with terminal.create.v1, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -699,6 +729,7 @@ testNestedHostServiceCapabilitiesEnableWorkspaceControls();
 testCreateWorkspaceButtonRequiresHostCapability();
 testWorkspaceCardActionsRequireHostCapabilities();
 testWorkspaceGroupToggleRequiresHostCapability();
+testWorkspaceWithTerminalsStillOffersCreateTerminal();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
