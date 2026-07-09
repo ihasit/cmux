@@ -244,6 +244,37 @@ function testRenderGridColumnResizeRebuildsRows() {
   );
 }
 
+function testRenderGridInverseStyleSwapsForegroundAndBackground() {
+  const { hooks } = loadApp();
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
+  hooks.showScreen("terminal");
+
+  hooks.handlePushEvent("terminal.render_grid", {
+    surface_id: "terminal-1",
+    rows: 1,
+    columns: 4,
+    styles: [{
+      id: 1,
+      foreground: "#112233",
+      background: "#445566",
+      inverse: true,
+    }],
+    row_spans: [
+      { row: 0, column: 0, text: "X", style_id: 1 },
+    ],
+  });
+
+  assert(
+    hooks.elements.terminalOutput.innerHTML.includes("color:#445566"),
+    `expected inverse foreground to use original background, got ${hooks.elements.terminalOutput.innerHTML}`
+  );
+  assert(
+    hooks.elements.terminalOutput.innerHTML.includes("background-color:#112233"),
+    `expected inverse background to use original foreground, got ${hooks.elements.terminalOutput.innerHTML}`
+  );
+}
+
 function testTerminalBytesGapRequestsReplay() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.activeWorkspace = { id: "workspace-1" };
@@ -486,6 +517,7 @@ testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
 testRenderGridReplayIgnoresPreviousStateSequence();
 testRenderGridColumnResizeRebuildsRows();
+testRenderGridInverseStyleSwapsForegroundAndBackground();
 testTerminalBytesGapRequestsReplay();
 testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
