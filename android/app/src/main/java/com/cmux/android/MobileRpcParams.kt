@@ -100,7 +100,7 @@ object MobileRpcParams {
     ): JSONObject {
         return terminalViewport(workspaceId, terminalId, columns, rows)
             .put("image_base64", imageBase64)
-            .put("image_format", imageFormat.trim().ifBlank { "png" })
+            .put("image_format", normalizedImageFormat(imageFormat))
     }
 
     fun terminalScroll(
@@ -158,6 +158,15 @@ object MobileRpcParams {
             is String -> value.trim()
             is Int, is Long, is Double, is Float -> value.toString().trim()
             else -> ""
+        }
+    }
+
+    private fun normalizedImageFormat(value: String): String {
+        val normalized = value.trim().lowercase()
+        return when (normalized) {
+            "jpg", "jpeg" -> "jpg"
+            "png", "gif", "webp" -> normalized
+            else -> "png"
         }
     }
 }
