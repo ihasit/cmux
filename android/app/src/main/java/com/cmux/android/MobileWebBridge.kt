@@ -241,6 +241,26 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     @JavascriptInterface
+    fun listChatSessions(workspaceId: String) {
+        session.request("mobile.chat.sessions", MobileRpcParams.chatSessions(workspaceId))
+    }
+
+    @JavascriptInterface
+    fun loadChatHistory(sessionId: String, limit: Int) {
+        session.request("mobile.chat.history", MobileRpcParams.chatHistory(sessionId, limit))
+    }
+
+    @JavascriptInterface
+    fun sendChatMessage(sessionId: String, text: String) {
+        session.request("mobile.chat.send", MobileRpcParams.chatSend(sessionId, text))
+    }
+
+    @JavascriptInterface
+    fun interruptChat(sessionId: String, hard: Boolean) {
+        session.request("mobile.chat.interrupt", MobileRpcParams.chatInterrupt(sessionId, hard))
+    }
+
+    @JavascriptInterface
     fun renameWorkspace(workspaceId: String, title: String) {
         session.request(
             "workspace.action",

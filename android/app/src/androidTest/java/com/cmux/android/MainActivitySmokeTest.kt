@@ -256,6 +256,32 @@ class MainActivitySmokeTest {
                 waitUntil("fake host receives dogfood feedback") {
                     observedMethods.contains("dogfood.feedback.submit")
                 }
+
+                scenario.evaluateScript("document.getElementById('showChat').click(); true;")
+                waitUntil("fake host chat session renders") {
+                    scenario.evaluateScript("document.getElementById('chatSessionList').textContent")
+                        .contains("Fake Agent Chat")
+                }
+                scenario.evaluateScript(
+                    """
+                    document.querySelector('[data-chat-session="chat-fake"]').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host chat history renders") {
+                    scenario.evaluateScript("document.getElementById('chatMessages').textContent")
+                        .contains("hello from fake chat")
+                }
+                scenario.evaluateScript(
+                    """
+                    document.getElementById('chatInput').value = 'reply from android chat';
+                    document.getElementById('sendChat').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives chat send") {
+                    observedMethods.contains("mobile.chat.send")
+                }
             }
 
             val methods = observedMethods.toList()
@@ -264,6 +290,9 @@ class MainActivitySmokeTest {
             check("mobile.workspace.list" in methods) { methods }
             check("mobile.terminal.replay" in methods) { methods }
             check("dogfood.feedback.submit" in methods) { methods }
+            check("mobile.chat.sessions" in methods) { methods }
+            check("mobile.chat.history" in methods) { methods }
+            check("mobile.chat.send" in methods) { methods }
         } finally {
             try {
                 server.shutdown()
@@ -2306,6 +2335,32 @@ class MainActivitySmokeTest {
                 .put("rows", 24)
             "dogfood.feedback.submit" -> JSONObject()
                 .put("accepted", true)
+            "mobile.chat.sessions" -> JSONObject()
+                .put("sessions", org.json.JSONArray().put(
+                    JSONObject()
+                        .put("session_id", "chat-fake")
+                        .put("agent_kind", "codex")
+                        .put("title", "Fake Agent Chat")
+                        .put("workspace_id", "workspace-fake")
+                        .put("terminal_id", "terminal-fake")
+                        .put("cwd", "/fake")
+                        .put("state", JSONObject().put("state", "idle"))
+                        .put("version", 1)
+                ))
+            "mobile.chat.history" -> JSONObject()
+                .put("messages", org.json.JSONArray().put(
+                    JSONObject()
+                        .put("id", "message-fake")
+                        .put("seq", 1)
+                        .put("role", "agent")
+                        .put("timestamp", "2026-07-10T00:00:00Z")
+                        .put("kind", JSONObject()
+                            .put("type", "prose")
+                            .put("text", "hello from fake chat"))
+                ))
+                .put("has_more", false)
+            "mobile.chat.send" -> JSONObject()
+                .put("submitted", true)
             "mobile.events.subscribe" -> JSONObject().put("already_subscribed", false)
             else -> JSONObject()
         }

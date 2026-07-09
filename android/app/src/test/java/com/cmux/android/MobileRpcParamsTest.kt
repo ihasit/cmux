@@ -287,4 +287,44 @@ class MobileRpcParamsTest {
         assertEquals(262_144, params.getString("terminal_text").length)
         assertEquals(512, params.getString("build_stamp").length)
     }
+
+    @Test
+    fun chatSessionsOmitsBlankWorkspaceFilter() {
+        val filtered = MobileRpcParams.chatSessions(" workspace-1 ")
+        val unfiltered = MobileRpcParams.chatSessions("  ")
+
+        assertEquals("workspace-1", filtered.getString("workspace_id"))
+        assertEquals(MobileRpcParams.CLIENT_ID, filtered.getString("client_id"))
+        assertEquals(false, unfiltered.has("workspace_id"))
+        assertEquals(MobileRpcParams.CLIENT_ID, unfiltered.getString("client_id"))
+    }
+
+    @Test
+    fun chatHistoryClampsLimitAndTrimsSessionId() {
+        val low = MobileRpcParams.chatHistory(" session-1 ", 0)
+        val high = MobileRpcParams.chatHistory(" session-1 ", 500)
+
+        assertEquals("session-1", low.getString("session_id"))
+        assertEquals(1, low.getInt("limit"))
+        assertEquals(200, high.getInt("limit"))
+        assertEquals(MobileRpcParams.CLIENT_ID, high.getString("client_id"))
+    }
+
+    @Test
+    fun chatSendTrimsAndCapsText() {
+        val params = MobileRpcParams.chatSend(" session-1 ", " ${"x".repeat(16_385)} ")
+
+        assertEquals("session-1", params.getString("session_id"))
+        assertEquals(16_384, params.getString("text").length)
+        assertEquals(MobileRpcParams.CLIENT_ID, params.getString("client_id"))
+    }
+
+    @Test
+    fun chatInterruptCarriesHardFlag() {
+        val params = MobileRpcParams.chatInterrupt(" session-1 ", true)
+
+        assertEquals("session-1", params.getString("session_id"))
+        assertEquals(true, params.getBoolean("hard"))
+        assertEquals(MobileRpcParams.CLIENT_ID, params.getString("client_id"))
+    }
 }

@@ -51,6 +51,33 @@ object MobileRpcParams {
             .put("diagnostic_blob_base64", "")
     }
 
+    fun chatSessions(workspaceId: String): JSONObject {
+        val params = JSONObject().put("client_id", CLIENT_ID)
+        cleanId(workspaceId).takeIf { it.isNotEmpty() }?.let { params.put("workspace_id", it) }
+        return params
+    }
+
+    fun chatHistory(sessionId: String, limit: Int): JSONObject {
+        return JSONObject()
+            .put("client_id", CLIENT_ID)
+            .put("session_id", cleanId(sessionId))
+            .put("limit", limit.coerceIn(1, 200))
+    }
+
+    fun chatSend(sessionId: String, text: String): JSONObject {
+        return JSONObject()
+            .put("client_id", CLIENT_ID)
+            .put("session_id", cleanId(sessionId))
+            .put("text", text.trim().take(16_384))
+    }
+
+    fun chatInterrupt(sessionId: String, hard: Boolean): JSONObject {
+        return JSONObject()
+            .put("client_id", CLIENT_ID)
+            .put("session_id", cleanId(sessionId))
+            .put("hard", hard)
+    }
+
     fun workspaceGroup(groupId: String): JSONObject {
         return JSONObject()
             .put("group_id", cleanId(groupId))

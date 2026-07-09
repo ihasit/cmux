@@ -13,6 +13,7 @@ class MobileEventTopicsTest {
                 "workspace.updated",
                 "terminal.render_grid",
                 "terminal.set_font",
+                "chat.message",
                 "notification.badge",
                 "notification.dismissed"
             ),
@@ -27,6 +28,7 @@ class MobileEventTopicsTest {
                 "workspace.updated",
                 "terminal.bytes",
                 "terminal.set_font",
+                "chat.message",
                 "notification.badge",
                 "notification.dismissed"
             ),
@@ -41,6 +43,7 @@ class MobileEventTopicsTest {
                 "workspace.updated",
                 "terminal.render_grid",
                 "terminal.set_font",
+                "chat.message",
                 "notification.badge",
                 "notification.dismissed"
             ),
@@ -57,6 +60,7 @@ class MobileEventTopicsTest {
                 "workspace.updated",
                 "terminal.render_grid",
                 "terminal.set_font",
+                "chat.message",
                 "notification.badge",
                 "notification.dismissed"
             ),
@@ -71,6 +75,7 @@ class MobileEventTopicsTest {
                 "workspace.updated",
                 "terminal.render_grid",
                 "terminal.set_font",
+                "chat.message",
                 "notification.badge",
                 "notification.dismissed"
             ),
@@ -85,6 +90,7 @@ class MobileEventTopicsTest {
                 "workspace.updated",
                 "terminal.render_grid",
                 "terminal.set_font",
+                "chat.message",
                 "notification.badge",
                 "notification.dismissed"
             ),
@@ -108,6 +114,7 @@ class MobileEventTopicsTest {
                 "workspace.updated",
                 "terminal.render_grid",
                 "terminal.set_font",
+                "chat.message",
                 "notification.badge",
                 "notification.dismissed"
             ),
@@ -129,6 +136,7 @@ class MobileEventTopicsTest {
                 "workspace.updated",
                 "terminal.render_grid",
                 "terminal.set_font",
+                "chat.message",
                 "notification.badge",
                 "notification.dismissed"
             ),

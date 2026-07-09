@@ -95,6 +95,10 @@ function loadApp() {
     closeConnection: () => bridgeCalls.push(["closeConnection"]),
     createWorkspace: () => bridgeCalls.push(["createWorkspace"]),
     submitDogfoodFeedback: (...args) => bridgeCalls.push(["submitDogfoodFeedback", ...args]),
+    listChatSessions: (...args) => bridgeCalls.push(["listChatSessions", ...args]),
+    loadChatHistory: (...args) => bridgeCalls.push(["loadChatHistory", ...args]),
+    sendChatMessage: (...args) => bridgeCalls.push(["sendChatMessage", ...args]),
+    interruptChat: (...args) => bridgeCalls.push(["interruptChat", ...args]),
     createTerminal: (...args) => bridgeCalls.push(["createTerminal", ...args]),
     renameWorkspace: (...args) => bridgeCalls.push(["renameWorkspace", ...args]),
     setWorkspacePinned: (...args) => bridgeCalls.push(["setWorkspacePinned", ...args]),
@@ -684,6 +688,132 @@ function testFeedbackSuccessClearsComposerAndClosesPanel() {
   assert(
     hooks.elements.feedbackPanel.classList.contains("hidden"),
     "expected feedback panel to close after success"
+  );
+}
+
+function testChatSessionsRenderOpenHistoryAndSendMessage() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+
+  hooks.elements.showChat.dispatchEvent("click", {
+    target: hooks.elements.showChat,
+  });
+  assert(
+    bridgeCalls.some((call) => call[0] === "listChatSessions" && call[1] === ""),
+    `expected showChat to request chat sessions, got ${JSON.stringify(bridgeCalls)}`
+  );
+
+  hooks.handleRpcResult("mobile.chat.sessions", {
+    sessions: [{
+      session_id: "chat-1",
+      agent_kind: "codex",
+      title: "Android agent",
+      cwd: "/repo/android",
+      state: { state: "idle" },
+      version: 1,
+    }],
+  });
+  assert(
+    hooks.elements.chatSessionList.innerHTML.includes("Android agent"),
+    `expected chat session to render, got ${hooks.elements.chatSessionList.innerHTML}`
+  );
+
+  hooks.elements.chatSessionList.dispatchEvent("click", {
+    target: eventTarget({ "data-chat-session": "chat-1" }),
+  });
+  assert(
+    bridgeCalls.some((call) => call[0] === "loadChatHistory" && call[1] === "chat-1" && call[2] === 100),
+    `expected opening chat to load history, got ${JSON.stringify(bridgeCalls)}`
+  );
+
+  hooks.handleRpcResult("mobile.chat.history", {
+    messages: [{
+      id: "m1",
+      seq: 1,
+      role: "agent",
+      kind: { type: "prose", text: "hello from agent" },
+    }],
+    has_more: false,
+  });
+  assert(
+    hooks.elements.chatMessages.innerHTML.includes("hello from agent"),
+    `expected chat history prose to render, got ${hooks.elements.chatMessages.innerHTML}`
+  );
+
+  hooks.elements.chatInput.value = "  reply from android  ";
+  hooks.elements.sendChat.dispatchEvent("click", {
+    target: hooks.elements.sendChat,
+  });
+  assert(
+    bridgeCalls.some((call) => call[0] === "sendChatMessage" && call[1] === "chat-1" && call[2] === "reply from android"),
+    `expected sendChatMessage call, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert.strictEqual(hooks.elements.chatInput.value, "", "expected chat input to clear after send");
+}
+
+function testChatPushEventsUpdateSessionAndMessages() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.chat.sessions", {
+    sessions: [{
+      session_id: "chat-1",
+      agent_kind: "claude",
+      title: "Old title",
+      state: { state: "idle" },
+      version: 1,
+    }],
+  });
+  hooks.state.activeChatSession = hooks.state.chatSessions[0];
+  hooks.handleRpcResult("mobile.chat.history", {
+    messages: [],
+    has_more: false,
+  });
+
+  hooks.handlePushEvent("chat.message", {
+    session_id: "chat-1",
+    event: {
+      event: "appended",
+      messages: [{
+        id: "m2",
+        seq: 2,
+        role: "user",
+        kind: { type: "prose", text: "live prompt" },
+      }],
+    },
+  });
+  assert(
+    hooks.elements.chatMessages.innerHTML.includes("live prompt"),
+    `expected appended chat message to render, got ${hooks.elements.chatMessages.innerHTML}`
+  );
+
+  hooks.handlePushEvent("chat.message", {
+    session_id: "chat-1",
+    event: {
+      event: "state_changed",
+      state: { state: "needs_input" },
+    },
+  });
+  assert(
+    hooks.elements.chatConversationMeta.textContent.includes("needs_input"),
+    `expected state_changed to update active chat metadata, got ${hooks.elements.chatConversationMeta.textContent}`
+  );
+
+  hooks.handlePushEvent("chat.message", {
+    session_id: "chat-1",
+    event: {
+      event: "descriptor_changed",
+      descriptor: {
+        session_id: "chat-1",
+        agent_kind: "claude",
+        title: "New title",
+        state: { state: "working" },
+        version: 3,
+      },
+    },
+  });
+  assert(
+    hooks.elements.chatSessionList.innerHTML.includes("New title"),
+    `expected descriptor_changed to update session list, got ${hooks.elements.chatSessionList.innerHTML}`
   );
 }
 
@@ -1934,6 +2064,8 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testFeedbackButtonRequiresDogfoodCapability();
   testFeedbackSubmitSendsNoteTerminalTextAndBuildStamp();
   testFeedbackSuccessClearsComposerAndClosesPanel();
+  testChatSessionsRenderOpenHistoryAndSendMessage();
+  testChatPushEventsUpdateSessionAndMessages();
   testLateHostCapabilitiesRefreshRenderedWorkspaceControls();
   testWorkspaceCardActionsRequireHostCapabilities();
   testWorkspaceGroupToggleRequiresHostCapability();

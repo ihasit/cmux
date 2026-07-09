@@ -21,6 +21,7 @@ object MobileEventTopics {
             "workspace.updated",
             terminalTopic,
             "terminal.set_font",
+            "chat.message",
             "notification.badge",
             "notification.dismissed"
         )

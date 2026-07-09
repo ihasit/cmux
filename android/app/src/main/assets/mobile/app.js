@@ -25,6 +25,10 @@ const state = {
   stackAccessTokenConfigured: false,
   stackRefreshTokenConfigured: false,
   feedbackPanelOpen: false,
+  chatSessions: [],
+  activeChatSession: null,
+  chatMessages: [],
+  chatRefreshPending: false,
   workspaceFilter: "all",
   workspaceSearch: "",
   workspaceRefreshPending: false,
@@ -106,6 +110,20 @@ const messages = {
     "feedback.empty": "Feedback is empty.",
     "feedback.unsupported": "This Mac does not support feedback submission yet.",
     "feedback.sent": "Feedback sent to the Mac.",
+    "chat.open": "Chat",
+    "chat.title": "Agent chat",
+    "chat.statusEmpty": "No chat sessions reported yet.",
+    "chat.statusReady": "{count} chat session",
+    "chat.statusReadyPlural": "{count} chat sessions",
+    "chat.defaultTitle": "Agent session",
+    "chat.openSession": "Open chat",
+    "chat.loading": "Loading chat...",
+    "chat.empty": "No messages yet.",
+    "chat.inputPlaceholder": "Send a prompt to the agent",
+    "chat.interrupt": "Interrupt",
+    "chat.sent": "Message sent.",
+    "chat.unsupported": "Agent chat is unavailable.",
+    "chat.error": "Could not load chat.",
     "notification.none": "No unread notifications.",
     "notification.unread": "{count} unread notification",
     "notification.unreadPlural": "{count} unread notifications",
@@ -246,6 +264,20 @@ const messages = {
     "feedback.empty": "フィードバックが空です。",
     "feedback.unsupported": "この Mac はまだフィードバック送信に対応していません。",
     "feedback.sent": "フィードバックを Mac に送信しました。",
+    "chat.open": "チャット",
+    "chat.title": "エージェントチャット",
+    "chat.statusEmpty": "チャットセッションはまだ報告されていません。",
+    "chat.statusReady": "チャットセッション {count} 件",
+    "chat.statusReadyPlural": "チャットセッション {count} 件",
+    "chat.defaultTitle": "エージェントセッション",
+    "chat.openSession": "チャットを開く",
+    "chat.loading": "チャットを読み込み中...",
+    "chat.empty": "メッセージはまだありません。",
+    "chat.inputPlaceholder": "エージェントへプロンプトを送信",
+    "chat.interrupt": "中断",
+    "chat.sent": "メッセージを送信しました。",
+    "chat.unsupported": "エージェントチャットを利用できません。",
+    "chat.error": "チャットを読み込めませんでした。",
     "notification.none": "未読通知はありません。",
     "notification.unread": "未読通知 {count} 件",
     "notification.unreadPlural": "未読通知 {count} 件",
@@ -345,6 +377,7 @@ const elements = {
   refreshWorkspaces: document.getElementById("refreshWorkspaces"),
   createWorkspace: document.getElementById("createWorkspace"),
   showPairedMacs: document.getElementById("showPairedMacs"),
+  showChat: document.getElementById("showChat"),
   sendFeedback: document.getElementById("sendFeedback"),
   enableNotifications: document.getElementById("enableNotifications"),
   syncNotifications: document.getElementById("syncNotifications"),
@@ -356,6 +389,18 @@ const elements = {
   feedbackText: document.getElementById("feedbackText"),
   cancelFeedback: document.getElementById("cancelFeedback"),
   submitFeedback: document.getElementById("submitFeedback"),
+  chatView: document.getElementById("chatView"),
+  chatStatusText: document.getElementById("chatStatusText"),
+  backToWorkspacesFromChat: document.getElementById("backToWorkspacesFromChat"),
+  refreshChatSessions: document.getElementById("refreshChatSessions"),
+  chatSessionList: document.getElementById("chatSessionList"),
+  chatConversation: document.getElementById("chatConversation"),
+  chatConversationTitle: document.getElementById("chatConversationTitle"),
+  chatConversationMeta: document.getElementById("chatConversationMeta"),
+  chatMessages: document.getElementById("chatMessages"),
+  chatInput: document.getElementById("chatInput"),
+  interruptChat: document.getElementById("interruptChat"),
+  sendChat: document.getElementById("sendChat"),
   terminalView: document.getElementById("terminalView"),
   backToWorkspaces: document.getElementById("backToWorkspaces"),
   terminalTitle: document.getElementById("terminalTitle"),
@@ -389,6 +434,7 @@ function localizeStaticText() {
   renderConnectionControls();
   renderNotificationStatus();
   renderAuthStatus();
+  renderChatStatus();
   elements.hostText.textContent = t("host.connected");
   elements.terminalTitle.textContent = t("terminal.defaultTitle");
 }
@@ -417,6 +463,7 @@ function showToast(message) {
 function showScreen(name) {
   elements.pairingView.classList.toggle("hidden", name !== "pairing");
   elements.workspaceView.classList.toggle("hidden", name !== "workspaces");
+  elements.chatView.classList.toggle("hidden", name !== "chat");
   elements.terminalView.classList.toggle("hidden", name !== "terminal");
   elements.backToWorkspacesFromPairing.classList.toggle("hidden", name !== "pairing" || !state.connected);
 }
@@ -484,7 +531,9 @@ function renderConnectionControls() {
   setDisabled(elements.closeConnection, disconnected);
   setDisabled(elements.refreshWorkspaces, disconnected);
   setDisabled(elements.createWorkspace, disconnected || !hasCapability("workspace.create.v1"));
+  setDisabled(elements.showChat, disconnected);
   setDisabled(elements.sendFeedback, disconnected || !hasCapability("dogfood.v1"));
+  setDisabled(elements.refreshChatSessions, disconnected);
   setDisabled(elements.syncNotifications, disconnected || !hasCapability("notification.reconcile.v1"));
   setDisabled(
     elements.dismissNotifications,
@@ -507,6 +556,9 @@ function renderConnectionControls() {
   setDisabled(elements.sendInput, disconnected);
   setDisabled(elements.feedbackText, disconnected || !hasCapability("dogfood.v1"));
   setDisabled(elements.submitFeedback, disconnected || !hasCapability("dogfood.v1"));
+  setDisabled(elements.chatInput, disconnected || !state.activeChatSession || state.activeChatSession.state?.state === "ended");
+  setDisabled(elements.sendChat, disconnected || !state.activeChatSession || state.activeChatSession.state?.state === "ended");
+  setDisabled(elements.interruptChat, disconnected || !state.activeChatSession || state.activeChatSession.state?.state === "ended");
 }
 
 function renderWorkspaces() {
@@ -723,6 +775,169 @@ function createWorkspace() {
     return;
   }
   bridge().createWorkspace();
+}
+
+function refreshChatSessions() {
+  if (!state.connected) return;
+  state.chatRefreshPending = true;
+  renderChatStatus();
+  bridge().listChatSessions(state.activeWorkspace?.id || "");
+}
+
+function openChatView() {
+  showScreen("chat");
+  if (state.chatSessions.length === 0 && !state.chatRefreshPending) {
+    refreshChatSessions();
+  } else {
+    renderChatSessions();
+  }
+}
+
+function openChatSession(sessionId) {
+  const session = state.chatSessions.find((item) => item.session_id === sessionId);
+  if (!session) {
+    showToast(t("chat.error"));
+    return;
+  }
+  state.activeChatSession = session;
+  state.chatMessages = [];
+  renderChatConversation();
+  bridge().loadChatHistory(sessionId, 100);
+}
+
+function sendChatMessage() {
+  if (!state.connected || !state.activeChatSession) return;
+  const text = elements.chatInput.value.trim();
+  if (!text) return;
+  bridge().sendChatMessage(state.activeChatSession.session_id, text);
+  elements.chatInput.value = "";
+}
+
+function interruptChat() {
+  if (!state.connected || !state.activeChatSession) return;
+  bridge().interruptChat(state.activeChatSession.session_id, false);
+}
+
+function renderChatStatus() {
+  if (!elements.chatStatusText) return;
+  if (state.chatRefreshPending) {
+    elements.chatStatusText.textContent = t("chat.loading");
+    return;
+  }
+  const count = state.chatSessions.length;
+  if (count === 0) {
+    elements.chatStatusText.textContent = t("chat.statusEmpty");
+    return;
+  }
+  const key = count === 1 ? "chat.statusReady" : "chat.statusReadyPlural";
+  elements.chatStatusText.textContent = t(key).replace("{count}", String(count));
+}
+
+function renderChatSessions() {
+  renderChatStatus();
+  if (state.chatSessions.length === 0) {
+    elements.chatSessionList.innerHTML = `<article class="card"><div class="card-subtitle">${escapeHtml(t("chat.statusEmpty"))}</div></article>`;
+    return;
+  }
+  elements.chatSessionList.innerHTML = state.chatSessions.map((session) => {
+    const title = session.title || t("chat.defaultTitle");
+    const subtitle = [
+      agentDisplayName(session.agent_kind),
+      chatStateLabel(session.state),
+      session.cwd || "",
+    ].filter(Boolean).join(" · ");
+    const disabled = state.connected ? "" : " disabled";
+    return `
+      <article class="card">
+        <div>
+          <div class="card-title">${escapeHtml(title)}</div>
+          <div class="card-subtitle">${escapeHtml(subtitle)}</div>
+        </div>
+        <div class="card-actions">
+          <button class="primary" data-chat-session="${escapeHtml(session.session_id)}"${disabled}>${escapeHtml(t("chat.openSession"))}</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+  renderConnectionControls();
+}
+
+function renderChatConversation() {
+  const session = state.activeChatSession;
+  elements.chatConversation.classList.toggle("hidden", !session);
+  if (!session) {
+    elements.chatMessages.innerHTML = "";
+    return;
+  }
+  elements.chatConversationTitle.textContent = session.title || t("chat.defaultTitle");
+  elements.chatConversationMeta.textContent = [
+    agentDisplayName(session.agent_kind),
+    chatStateLabel(session.state),
+  ].filter(Boolean).join(" · ");
+  elements.chatMessages.innerHTML = state.chatMessages.length === 0
+    ? `<article class="card"><div class="card-subtitle">${escapeHtml(t("chat.empty"))}</div></article>`
+    : state.chatMessages.map(renderChatMessage).join("");
+  renderConnectionControls();
+}
+
+function renderChatMessage(message) {
+  return `
+    <article class="chat-message" data-chat-message="${escapeHtml(message.id || "")}">
+      <div class="chat-message-role">${escapeHtml(chatRoleLabel(message.role))}</div>
+      <div class="chat-message-text">${escapeHtml(chatMessageText(message))}</div>
+    </article>
+  `;
+}
+
+function chatMessageText(message) {
+  const kind = message.kind || {};
+  if (kind.text) return kind.text;
+  if (kind.type === "prose" && kind.text) return kind.text;
+  if (kind.type === "status" && kind.text) return kind.text;
+  if (kind.raw_type) return kind.raw_type;
+  return JSON.stringify(kind);
+}
+
+function chatRoleLabel(role) {
+  const value = String(role || "").trim();
+  return value || "agent";
+}
+
+function agentDisplayName(kind) {
+  const value = String(kind || "").trim();
+  if (!value) return "";
+  if (value === "claude") return "Claude";
+  if (value === "codex") return "Codex";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function chatStateLabel(state) {
+  if (typeof state === "string") return state;
+  return state?.state || "";
+}
+
+function upsertChatMessages(messages) {
+  const byId = new Map(state.chatMessages.map((message) => [message.id, message]));
+  for (const message of messages || []) {
+    if (message?.id) byId.set(message.id, message);
+  }
+  state.chatMessages = Array.from(byId.values()).sort((left, right) => (left.seq || 0) - (right.seq || 0));
+  renderChatConversation();
+}
+
+function upsertChatSession(session) {
+  if (!session?.session_id) return;
+  const existingIndex = state.chatSessions.findIndex((item) => item.session_id === session.session_id);
+  if (existingIndex >= 0) {
+    state.chatSessions[existingIndex] = session;
+  } else {
+    state.chatSessions.unshift(session);
+  }
+  if (state.activeChatSession?.session_id === session.session_id) {
+    state.activeChatSession = session;
+  }
+  renderChatSessions();
+  renderChatConversation();
 }
 
 function toggleFeedbackPanel(open = !state.feedbackPanelOpen) {
@@ -1665,6 +1880,27 @@ function handleRpcResult(method, result) {
     bridge().refreshWorkspaces();
     return;
   }
+  if (method === "mobile.chat.sessions") {
+    state.chatRefreshPending = false;
+    state.chatSessions = result.sessions || [];
+    renderChatSessions();
+    return;
+  }
+  if (method === "mobile.chat.history") {
+    state.chatMessages = (result.messages || []).slice().sort((left, right) => (left.seq || 0) - (right.seq || 0));
+    renderChatConversation();
+    return;
+  }
+  if (method === "mobile.chat.send") {
+    showToast(t("chat.sent"));
+    if (state.activeChatSession) {
+      bridge().loadChatHistory(state.activeChatSession.session_id, 100);
+    }
+    return;
+  }
+  if (method === "mobile.chat.interrupt") {
+    return;
+  }
   if (method === "dogfood.feedback.submit") {
     elements.feedbackText.value = "";
     toggleFeedbackPanel(false);
@@ -1779,6 +2015,40 @@ function handlePushEvent(type, payload) {
     }
     renderNotificationStatus();
     bridge().refreshWorkspaces();
+    return;
+  }
+  if (type === "chat.message") {
+    handleChatPushEvent(payload);
+  }
+}
+
+function handleChatPushEvent(frame) {
+  const sessionId = frame.session_id || "";
+  const event = frame.event || {};
+  if (event.event === "descriptor_changed" && event.descriptor) {
+    upsertChatSession(event.descriptor);
+    return;
+  }
+  if (event.event === "state_changed") {
+    const session = state.chatSessions.find((item) => item.session_id === sessionId);
+    if (session) {
+      upsertChatSession({ ...session, state: event.state });
+    }
+    return;
+  }
+  if (!state.activeChatSession || state.activeChatSession.session_id !== sessionId) return;
+  if (event.event === "appended" || event.event === "updated") {
+    upsertChatMessages(event.messages || []);
+    return;
+  }
+  if (event.event === "streaming_prose") {
+    if (event.message) {
+      upsertChatMessages([event.message]);
+    }
+    return;
+  }
+  if (event.event === "reset") {
+    bridge().loadChatHistory(sessionId, 100);
   }
 }
 
@@ -1853,11 +2123,17 @@ window.cmuxNativeEvent = (event) => {
       state.inferredUnreadNotificationCount = 0;
       state.authoritativeUnreadNotificationCount = null;
       state.deliveredNotificationIds = [];
+      state.chatRefreshPending = false;
+      state.chatSessions = [];
+      state.activeChatSession = null;
+      state.chatMessages = [];
       clearActiveTerminalState();
       if (nextState === "closed") {
         showScreen("workspaces");
       }
       renderNotificationStatus();
+      renderChatSessions();
+      renderChatConversation();
     }
     renderConnectionControls();
     renderWorkspaces();
@@ -1950,10 +2226,24 @@ elements.workspaceList.addEventListener("click", (event) => {
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
 elements.createWorkspace.addEventListener("click", createWorkspace);
 elements.showPairedMacs.addEventListener("click", () => showScreen("pairing"));
+elements.showChat.addEventListener("click", openChatView);
 elements.sendFeedback.addEventListener("click", () => toggleFeedbackPanel());
 elements.cancelFeedback.addEventListener("click", () => toggleFeedbackPanel(false));
 elements.submitFeedback.addEventListener("click", submitFeedback);
 elements.backToWorkspacesFromPairing.addEventListener("click", () => showScreen("workspaces"));
+elements.backToWorkspacesFromChat.addEventListener("click", () => showScreen("workspaces"));
+elements.refreshChatSessions.addEventListener("click", refreshChatSessions);
+elements.chatSessionList.addEventListener("click", (event) => {
+  const sessionId = eventTargetAttribute(event, "data-chat-session");
+  if (sessionId) openChatSession(sessionId);
+});
+elements.sendChat.addEventListener("click", sendChatMessage);
+elements.interruptChat.addEventListener("click", interruptChat);
+elements.chatInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || !event.ctrlKey) return;
+  event.preventDefault();
+  sendChatMessage();
+});
 elements.workspaceFilters.addEventListener("click", (event) => {
   const button = eventTargetWithAttribute(event, "data-workspace-filter");
   const nextFilter = button?.getAttribute("data-workspace-filter");

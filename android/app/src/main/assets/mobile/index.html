@@ -60,6 +60,7 @@
           <div class="section-actions">
             <button id="createWorkspace" data-i18n="workspace.new"></button>
             <button id="showPairedMacs" data-i18n="paired.manage"></button>
+            <button id="showChat" data-i18n="chat.open"></button>
             <button id="sendFeedback" data-i18n="feedback.send"></button>
             <button id="enableNotifications" class="hidden" data-i18n="notification.enable"></button>
             <button id="syncNotifications" data-i18n="notification.sync"></button>
@@ -83,6 +84,34 @@
           <div class="feedback-actions">
             <button id="cancelFeedback" data-i18n="feedback.cancel"></button>
             <button id="submitFeedback" class="primary" data-i18n="feedback.submit"></button>
+          </div>
+        </section>
+      </section>
+
+      <section id="chatView" class="screen hidden">
+        <div class="section-header row">
+          <div>
+            <h2 data-i18n="chat.title"></h2>
+            <p id="chatStatusText"></p>
+          </div>
+          <div class="section-actions">
+            <button id="backToWorkspacesFromChat" data-i18n="workspaces.title"></button>
+            <button id="refreshChatSessions" data-i18n="refresh"></button>
+          </div>
+        </div>
+        <div id="chatSessionList" class="workspace-list"></div>
+        <section id="chatConversation" class="chat-conversation hidden" aria-labelledby="chatConversationTitle">
+          <div class="section-header">
+            <h3 id="chatConversationTitle"></h3>
+            <p id="chatConversationMeta"></p>
+          </div>
+          <div id="chatMessages" class="chat-messages"></div>
+          <div class="composer">
+            <textarea id="chatInput" rows="3" data-i18n-placeholder="chat.inputPlaceholder"></textarea>
+            <div class="composer-actions">
+              <button id="interruptChat" data-i18n="chat.interrupt"></button>
+              <button id="sendChat" class="primary" data-i18n="send"></button>
+            </div>
           </div>
         </section>
       </section>
