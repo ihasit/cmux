@@ -813,6 +813,7 @@ function reportActiveViewport() {
 }
 
 function scheduleViewportReport() {
+  if (!state.connected) return;
   if (!state.activeWorkspace || !state.activeTerminal || elements.terminalView.classList.contains("hidden")) return;
   window.clearTimeout(state.viewportReportTimer);
   state.viewportReportTimer = window.setTimeout(() => {
@@ -861,6 +862,7 @@ function clearActiveTerminalState() {
 }
 
 function queueTerminalScroll(deltaLines, options = {}) {
+  if (!state.connected) return;
   if (!state.activeWorkspace || !state.activeTerminal) return;
   if (!Number.isFinite(deltaLines) || deltaLines === 0) return;
   state.pendingScrollLines += deltaLines;
@@ -869,6 +871,7 @@ function queueTerminalScroll(deltaLines, options = {}) {
 }
 
 function flushTerminalScroll(options = {}) {
+  if (!state.connected) return;
   if (!state.activeWorkspace || !state.activeTerminal) return;
   const deltaLines = state.pendingScrollLines;
   state.pendingScrollLines = 0;
@@ -926,6 +929,7 @@ function handleTerminalTouchStart(event) {
 }
 
 function handleTerminalTouchMove(event) {
+  if (!state.connected) return;
   if (!state.activeWorkspace || !state.activeTerminal) return;
   const touch = event.touches?.[0];
   if (!touch || state.lastTouchY == null) return;
@@ -940,6 +944,10 @@ function handleTerminalTouchMove(event) {
 }
 
 function handleTerminalTouchEnd() {
+  if (!state.connected) {
+    cancelTerminalTouch();
+    return;
+  }
   if (state.touchStart && !state.touchStart.moved) {
     clickTerminalAt(state.touchStart.clientX, state.touchStart.clientY);
     state.suppressClickUntil = Date.now() + 500;
@@ -953,6 +961,7 @@ function cancelTerminalTouch() {
 }
 
 function handleTerminalClick(event) {
+  if (!state.connected) return;
   if (Date.now() < state.suppressClickUntil) return;
   clickTerminalAt(event.clientX, event.clientY);
 }
@@ -969,6 +978,7 @@ function clickTerminalAt(clientX, clientY) {
 }
 
 function sendTerminalInput(mode) {
+  if (!state.connected) return;
   if (!state.activeWorkspace || !state.activeTerminal) return;
   const text = elements.terminalInput.value;
   if (!text) return;
@@ -1034,7 +1044,7 @@ function sendTerminalKey(key) {
     "page-up": "\u001b[5~",
     "page-down": "\u001b[6~",
   }[key];
-  if (!text || !state.activeWorkspace || !state.activeTerminal) return;
+  if (!text || !state.connected || !state.activeWorkspace || !state.activeTerminal) return;
   bridge().sendInput(
     state.activeWorkspace.id,
     state.activeTerminal.id,
@@ -1080,12 +1090,14 @@ async function writeClipboardText(text) {
 }
 
 function chooseImageForPaste() {
+  if (!state.connected) return;
   if (!state.activeWorkspace || !state.activeTerminal) return;
   elements.imageInput.value = "";
   elements.imageInput.click();
 }
 
 function pasteSelectedImage() {
+  if (!state.connected) return;
   if (!state.activeWorkspace || !state.activeTerminal) return;
   const file = elements.imageInput.files?.[0];
   if (!file) {
