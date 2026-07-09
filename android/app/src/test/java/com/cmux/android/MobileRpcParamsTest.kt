@@ -226,4 +226,30 @@ class MobileRpcParamsTest {
             }
         )
     }
+
+    @Test
+    fun notificationParamsNormalizeNumericIds() {
+        val ids = org.json.JSONArray()
+            .put(" n-1 ")
+            .put(42)
+            .put(42.5)
+            .put(true)
+            .put(org.json.JSONObject().put("id", "n-2"))
+
+        val reconcile = MobileRpcParams.reconcileNotifications(ids)
+        val dismiss = MobileRpcParams.dismissNotifications(ids)
+
+        assertEquals(
+            listOf("n-1", "42", "42.5"),
+            (0 until reconcile.getJSONArray("delivered_ids").length()).map { index ->
+                reconcile.getJSONArray("delivered_ids").getString(index)
+            }
+        )
+        assertEquals(
+            listOf("n-1", "42", "42.5"),
+            (0 until dismiss.getJSONArray("notification_ids").length()).map { index ->
+                dismiss.getJSONArray("notification_ids").getString(index)
+            }
+        )
+    }
 }
