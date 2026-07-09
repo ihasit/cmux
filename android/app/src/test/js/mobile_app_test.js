@@ -86,6 +86,7 @@ function loadApp() {
     refreshWorkspaces: () => bridgeCalls.push(["refreshWorkspaces"]),
     clearViewport: (...args) => bridgeCalls.push(["clearViewport", ...args]),
     dismissNotifications: (...args) => bridgeCalls.push(["dismissNotifications", ...args]),
+    reconcileNotifications: (...args) => bridgeCalls.push(["reconcileNotifications", ...args]),
   };
   const context = {
     console,
@@ -414,6 +415,34 @@ function testNotificationDismissedZeroClearsDeliveredIds() {
   );
 }
 
+function testNotificationReconcileZeroClearsDeliveredIds() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.state.hostStatus = {
+    capabilities: ["notification.reconcile.v1", "notification.dismiss.v1"],
+  };
+
+  hooks.handlePushEvent("notification.badge", {
+    unread_count: 3,
+    notification_ids: ["n-1", "n-2", "n-3"],
+  });
+  hooks.handleRpcResult("notification.reconcile", {
+    handled_ids: ["n-1"],
+    unread_count: 0,
+  });
+
+  assert.deepStrictEqual(
+    Array.from(hooks.state.deliveredNotificationIds),
+    [],
+    `expected reconcile zero unread to clear delivered ids, got ${JSON.stringify(hooks.state.deliveredNotificationIds)}`
+  );
+  assert.strictEqual(
+    hooks.elements.dismissNotifications.disabled,
+    true,
+    "expected dismiss button to be disabled after reconcile returns unread zero"
+  );
+}
+
 testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
@@ -425,4 +454,5 @@ testNestedTerminalOpenClickUsesClosestButton();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
+testNotificationReconcileZeroClearsDeliveredIds();
 console.log("mobile app js tests passed");
