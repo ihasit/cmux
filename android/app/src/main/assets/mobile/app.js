@@ -932,6 +932,10 @@ function handleTerminalTouchEnd() {
     clickTerminalAt(state.touchStart.clientX, state.touchStart.clientY);
     state.suppressClickUntil = Date.now() + 500;
   }
+  cancelTerminalTouch();
+}
+
+function cancelTerminalTouch() {
   state.lastTouchY = null;
   state.touchStart = null;
 }
@@ -1858,7 +1862,7 @@ elements.terminalOutput.addEventListener("click", handleTerminalClick);
 elements.terminalOutput.addEventListener("touchstart", handleTerminalTouchStart, { passive: true });
 elements.terminalOutput.addEventListener("touchmove", handleTerminalTouchMove, { passive: false });
 elements.terminalOutput.addEventListener("touchend", handleTerminalTouchEnd);
-elements.terminalOutput.addEventListener("touchcancel", handleTerminalTouchEnd);
+elements.terminalOutput.addEventListener("touchcancel", cancelTerminalTouch);
 
 function escapeHtml(value) {
   return String(value ?? "")
