@@ -64,6 +64,7 @@ function eventTarget(attributes = {}, closestTarget = null) {
 
 function loadApp() {
   const elements = new Map();
+  const clipboardWrites = [];
   let nextPromptValue = "Renamed Android";
   let nextFileReaderResult = "";
   const document = {
@@ -114,7 +115,14 @@ function loadApp() {
   const context = {
     console,
     document,
-    navigator: { language: "en-US" },
+    navigator: {
+      language: "en-US",
+      clipboard: {
+        writeText: async (text) => {
+          clipboardWrites.push(text);
+        },
+      },
+    },
     FileReader: class {
       constructor() {
         this.result = "";
@@ -161,6 +169,7 @@ function loadApp() {
   return {
     hooks: context.__cmuxMobileTestHooks,
     bridgeCalls,
+    clipboardWrites,
     nativeEvent: context.window.cmuxNativeEvent,
     setPromptValue: (value) => { nextPromptValue = value; },
     setFileReaderResult: (value) => { nextFileReaderResult = value; },
