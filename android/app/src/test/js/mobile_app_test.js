@@ -1320,6 +1320,24 @@ function testNativeToastFallsBackToMessageForUnknownKey() {
   );
 }
 
+function testNativeErrorPrefersKnownLocalizedMessageKey() {
+  const { hooks, nativeEvent } = loadApp();
+
+  nativeEvent({
+    type: "error",
+    payload: {
+      message_key: "pair.error.empty",
+      message: "backend raw message",
+    },
+  });
+
+  assert.strictEqual(
+    hooks.elements.toast.textContent,
+    "Pairing code is empty.",
+    `expected known error key to use localized text, got ${JSON.stringify(hooks.elements.toast.textContent)}`
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -1474,6 +1492,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   await testCopyTerminalOutputWritesTrimmedTextToClipboard();
   testPairingAuthAndConnectionControlsCallNativeBridge();
   testNativeToastFallsBackToMessageForUnknownKey();
+  testNativeErrorPrefersKnownLocalizedMessageKey();
   testNotificationBadgeRecordsDeliveredIdsForDismissal();
   testNotificationBadgeZeroClearsDeliveredIds();
   testNotificationDismissedZeroClearsDeliveredIds();
