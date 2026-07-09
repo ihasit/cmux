@@ -612,16 +612,17 @@ function renderWorkspaceGroup(group) {
 function renderWorkspaceCard(workspace, group) {
   const terminals = workspace.terminals || [];
   const workspaceActions = renderWorkspaceActions(workspace);
-  const disabled = state.connected ? "" : " disabled";
+  const terminalCreateDisabled = state.connected && hasCapability("terminal.create.v1") ? "" : " disabled";
+  const terminalOpenDisabled = state.connected ? "" : " disabled";
   const terminalRows = terminals.length === 0
-    ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span><button data-create-terminal="${escapeHtml(workspace.id)}"${disabled}>${escapeHtml(t("terminal.new"))}</button></div>`
+    ? `<div class="terminal-row"><span class="card-subtitle">${escapeHtml(t("terminal.noTerminals"))}</span><button data-create-terminal="${escapeHtml(workspace.id)}"${terminalCreateDisabled}>${escapeHtml(t("terminal.new"))}</button></div>`
     : terminals.map((terminal) => `
         <div class="terminal-row">
           <div>
             <div class="card-title">${escapeHtml(terminal.title || t("terminal.defaultTitle"))}</div>
             <div class="card-subtitle">${escapeHtml(terminal.current_directory || "")}</div>
           </div>
-          <button class="primary" data-open-terminal="${escapeHtml(workspace.id)}" data-terminal-id="${escapeHtml(terminal.id)}"${disabled}>${escapeHtml(t("terminal.open"))}</button>
+          <button class="primary" data-open-terminal="${escapeHtml(workspace.id)}" data-terminal-id="${escapeHtml(terminal.id)}"${terminalOpenDisabled}>${escapeHtml(t("terminal.open"))}</button>
         </div>
       `).join("");
   return `
@@ -637,13 +638,15 @@ function renderWorkspaceCard(workspace, group) {
 }
 
 function renderWorkspaceActions(workspace) {
-  const disabled = state.connected ? "" : " disabled";
+  const actionDisabled = state.connected && hasCapability("workspace.actions.v1") ? "" : " disabled";
+  const readStateDisabled = state.connected && hasCapability("workspace.read_state.v1") ? "" : " disabled";
+  const closeDisabled = state.connected && hasCapability("workspace.close.v1") ? "" : " disabled";
   return `
     <div class="workspace-actions">
-      <button data-rename-workspace="${escapeHtml(workspace.id)}"${disabled}>${escapeHtml(t("workspace.rename"))}</button>
-      <button data-pin-workspace="${escapeHtml(workspace.id)}" data-pinned="${workspace.is_pinned ? "true" : "false"}"${disabled}>${escapeHtml(workspace.is_pinned ? t("workspace.unpin") : t("workspace.pin"))}</button>
-      <button data-read-workspace="${escapeHtml(workspace.id)}" data-unread="${workspace.has_unread ? "true" : "false"}"${disabled}>${escapeHtml(workspace.has_unread ? t("workspace.markRead") : t("workspace.markUnread"))}</button>
-      <button data-close-workspace="${escapeHtml(workspace.id)}"${disabled}>${escapeHtml(t("workspace.close"))}</button>
+      <button data-rename-workspace="${escapeHtml(workspace.id)}"${actionDisabled}>${escapeHtml(t("workspace.rename"))}</button>
+      <button data-pin-workspace="${escapeHtml(workspace.id)}" data-pinned="${workspace.is_pinned ? "true" : "false"}"${actionDisabled}>${escapeHtml(workspace.is_pinned ? t("workspace.unpin") : t("workspace.pin"))}</button>
+      <button data-read-workspace="${escapeHtml(workspace.id)}" data-unread="${workspace.has_unread ? "true" : "false"}"${readStateDisabled}>${escapeHtml(workspace.has_unread ? t("workspace.markRead") : t("workspace.markUnread"))}</button>
+      <button data-close-workspace="${escapeHtml(workspace.id)}"${closeDisabled}>${escapeHtml(t("workspace.close"))}</button>
     </div>
   `;
 }
