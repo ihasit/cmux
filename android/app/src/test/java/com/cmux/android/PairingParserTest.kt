@@ -489,6 +489,22 @@ class PairingParserTest {
     }
 
     @Test
+    fun pairedMacJsonFallsBackToWebSocketUrlWhenIdIsMissing() {
+        val decoded = PairedMac.fromJson(
+            JSONObject()
+                .put("routes", JSONArray()
+                    .put(JSONObject()
+                        .put("id", "websocket")
+                        .put("kind", "websocket")
+                        .put("priority", 1)
+                        .put("url", "wss://cmux.example.test/mobile")))
+        )
+
+        assertEquals("wss://cmux.example.test/mobile", decoded.id)
+        assertEquals("wss://cmux.example.test/mobile", decoded.primaryRoute?.url)
+    }
+
+    @Test
     fun pairedMacJsonDropsHostPortRoutesWithoutValidHostPortEvenWhenUrlIsPresent() {
         val decoded = PairedMac.fromJson(
             JSONObject()
