@@ -27,9 +27,18 @@ class AuthCallbackParser {
         val query = queryParameters(uri.rawQuery)
         val callbackState = query["cmux_auth_state"]?.trim()
         if (expectedState != null && callbackState != expectedState) return null
-        val refreshToken = query["stack_refresh"]?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val accessCookie = query["stack_access"]?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        val accessToken = decodeAccessToken(accessCookie)?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val cookieTokens = decodeAccessCookie(accessCookie)
+        val refreshToken = query["stack_refresh"]
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: cookieTokens?.refreshToken
+            ?: return null
+        val accessToken = cookieTokens?.accessToken
+            ?: accessCookie.takeUnless { it.startsWith("[") }
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+            ?: return null
         return StackAuthTokens(refreshToken = refreshToken, accessToken = accessToken)
     }
 
@@ -58,10 +67,17 @@ class AuthCallbackParser {
         return result
     }
 
-    private fun decodeAccessToken(accessCookie: String): String? {
-        if (!accessCookie.startsWith("[")) return accessCookie
+    private data class AccessCookieTokens(
+        val refreshToken: String?,
+        val accessToken: String?
+    )
+
+    private fun decodeAccessCookie(accessCookie: String): AccessCookieTokens? {
+        if (!accessCookie.startsWith("[")) return null
         val array = runCatching { JSONArray(accessCookie) }.getOrNull() ?: return null
-        return (array.opt(1) as? String)?.takeIf { it.isNotBlank() }
+        val refreshToken = (array.opt(0) as? String)?.trim()?.takeIf { it.isNotEmpty() }
+        val accessToken = (array.opt(1) as? String)?.trim()?.takeIf { it.isNotEmpty() }
+        return AccessCookieTokens(refreshToken = refreshToken, accessToken = accessToken)
     }
 
     private fun urlDecode(value: String): String {
