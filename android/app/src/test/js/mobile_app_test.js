@@ -1039,6 +1039,35 @@ function testPasteImageRequestsActiveTerminalWithDecodedPayload() {
   );
 }
 
+function testPasteImageRejectsInvalidOrOversizedFiles() {
+  const { hooks, bridgeCalls, setFileReaderResult } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+  setFileReaderResult("data:image/png;base64,ZmFrZQ==");
+
+  hooks.elements.imageInput.files = [{
+    name: "notes.txt",
+    type: "text/plain",
+    size: 16,
+  }];
+  hooks.elements.imageInput.dispatchEvent("change", {
+    target: hooks.elements.imageInput,
+  });
+
+  hooks.elements.imageInput.files = [{
+    name: "huge.png",
+    type: "image/png",
+    size: 8 * 1024 * 1024 + 1,
+  }];
+  hooks.elements.imageInput.dispatchEvent("change", {
+    target: hooks.elements.imageInput,
+  });
+
+  assert(
+    !bridgeCalls.some((call) => call[0] === "pasteImage"),
+    `expected invalid and oversized image files not to call pasteImage, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 async function testCopyTerminalOutputWritesTrimmedTextToClipboard() {
   const { hooks, clipboardWrites } = loadApp();
   openTestTerminal(hooks, []);
@@ -1315,6 +1344,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testWheelRequestsTerminalScrollWithPointerAndViewport();
   testTerminalClickRequestsPointerCell();
   testPasteImageRequestsActiveTerminalWithDecodedPayload();
+  testPasteImageRejectsInvalidOrOversizedFiles();
   await testCopyTerminalOutputWritesTrimmedTextToClipboard();
   testPairingAuthAndConnectionControlsCallNativeBridge();
   testNotificationBadgeRecordsDeliveredIdsForDismissal();
