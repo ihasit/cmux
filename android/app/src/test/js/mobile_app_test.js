@@ -912,6 +912,54 @@ function testTerminalKeybarAndKeyboardShortcutsSendInput() {
   );
 }
 
+function testTerminalInputErrorRestoresPendingText() {
+  const { hooks, nativeEvent } = loadApp();
+  openTestTerminal(hooks, []);
+  hooks.elements.terminalInput.value = "echo retry";
+
+  hooks.elements.sendInput.dispatchEvent("click", {
+    target: hooks.elements.sendInput,
+  });
+  nativeEvent({
+    type: "rpcError",
+    payload: {
+      method: "mobile.terminal.input",
+      code: "host_error",
+      message: "input failed",
+    },
+  });
+
+  assert.strictEqual(
+    hooks.elements.terminalInput.value,
+    "echo retry",
+    `expected failed input text to be restored, got ${JSON.stringify(hooks.elements.terminalInput.value)}`
+  );
+}
+
+function testTerminalPasteErrorRestoresPendingText() {
+  const { hooks, nativeEvent } = loadApp();
+  openTestTerminal(hooks, []);
+  hooks.elements.terminalInput.value = "multi\nline";
+
+  hooks.elements.pasteInput.dispatchEvent("click", {
+    target: hooks.elements.pasteInput,
+  });
+  nativeEvent({
+    type: "rpcError",
+    payload: {
+      method: "mobile.terminal.paste",
+      code: "host_error",
+      message: "paste failed",
+    },
+  });
+
+  assert.strictEqual(
+    hooks.elements.terminalInput.value,
+    "multi\nline",
+    `expected failed paste text to be restored, got ${JSON.stringify(hooks.elements.terminalInput.value)}`
+  );
+}
+
 function testWheelRequestsTerminalScrollWithPointerAndViewport() {
   const { hooks, bridgeCalls } = loadApp();
   openTestTerminal(hooks, bridgeCalls);
@@ -1262,6 +1310,8 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testSendInputRequestsActiveTerminalWithViewport();
   testPasteInputRequestsActiveTerminalWithSubmitKey();
   testTerminalKeybarAndKeyboardShortcutsSendInput();
+  testTerminalInputErrorRestoresPendingText();
+  testTerminalPasteErrorRestoresPendingText();
   testWheelRequestsTerminalScrollWithPointerAndViewport();
   testTerminalClickRequestsPointerCell();
   testPasteImageRequestsActiveTerminalWithDecodedPayload();
