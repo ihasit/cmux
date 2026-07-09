@@ -1486,6 +1486,8 @@ function handleRpcResult(method, result) {
     state.hostStatus = result;
     const name = result.mac_display_name || result.host_service?.display_name || t("host.defaultName");
     elements.hostText.textContent = name;
+    renderConnectionControls();
+    renderWorkspaces();
     return;
   }
   if (method === "mobile.workspace.list" || method === "mobile.terminal.create" || method === "workspace.create") {
