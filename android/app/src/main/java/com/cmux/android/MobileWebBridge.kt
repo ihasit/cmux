@@ -233,6 +233,14 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     @JavascriptInterface
+    fun submitDogfoodFeedback(text: String, terminalText: String, buildStamp: String) {
+        session.request(
+            "dogfood.feedback.submit",
+            MobileRpcParams.dogfoodFeedback(text, terminalText, buildStamp)
+        )
+    }
+
+    @JavascriptInterface
     fun renameWorkspace(workspaceId: String, title: String) {
         session.request(
             "workspace.action",

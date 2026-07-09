@@ -24,6 +24,7 @@ const state = {
   nativeNotificationsCanRequest: false,
   stackAccessTokenConfigured: false,
   stackRefreshTokenConfigured: false,
+  feedbackPanelOpen: false,
   workspaceFilter: "all",
   workspaceSearch: "",
   workspaceRefreshPending: false,
@@ -96,6 +97,15 @@ const messages = {
     "workspace.createUnsupported": "This Mac does not support creating workspaces yet.",
     "workspace.actionsUnsupported": "This Mac does not support workspace actions yet.",
     "workspace.closeUnsupported": "This Mac does not support closing workspaces yet.",
+    "feedback.send": "Feedback",
+    "feedback.title": "Send feedback",
+    "feedback.subtitle": "Send a note, visible terminal text, and Android build details to the paired Mac.",
+    "feedback.placeholder": "What happened?",
+    "feedback.cancel": "Cancel",
+    "feedback.submit": "Send",
+    "feedback.empty": "Feedback is empty.",
+    "feedback.unsupported": "This Mac does not support feedback submission yet.",
+    "feedback.sent": "Feedback sent to the Mac.",
     "notification.none": "No unread notifications.",
     "notification.unread": "{count} unread notification",
     "notification.unreadPlural": "{count} unread notifications",
@@ -227,6 +237,15 @@ const messages = {
     "workspace.createUnsupported": "この Mac はまだワークスペースの作成に対応していません。",
     "workspace.actionsUnsupported": "この Mac はまだワークスペース操作に対応していません。",
     "workspace.closeUnsupported": "この Mac はまだワークスペースの終了に対応していません。",
+    "feedback.send": "フィードバック",
+    "feedback.title": "フィードバックを送信",
+    "feedback.subtitle": "メモ、表示中のターミナルテキスト、Android ビルド情報をペアリング済み Mac に送信します。",
+    "feedback.placeholder": "何が起きましたか？",
+    "feedback.cancel": "キャンセル",
+    "feedback.submit": "送信",
+    "feedback.empty": "フィードバックが空です。",
+    "feedback.unsupported": "この Mac はまだフィードバック送信に対応していません。",
+    "feedback.sent": "フィードバックを Mac に送信しました。",
     "notification.none": "未読通知はありません。",
     "notification.unread": "未読通知 {count} 件",
     "notification.unreadPlural": "未読通知 {count} 件",
@@ -326,12 +345,17 @@ const elements = {
   refreshWorkspaces: document.getElementById("refreshWorkspaces"),
   createWorkspace: document.getElementById("createWorkspace"),
   showPairedMacs: document.getElementById("showPairedMacs"),
+  sendFeedback: document.getElementById("sendFeedback"),
   enableNotifications: document.getElementById("enableNotifications"),
   syncNotifications: document.getElementById("syncNotifications"),
   dismissNotifications: document.getElementById("dismissNotifications"),
   workspaceSearch: document.getElementById("workspaceSearch"),
   workspaceFilters: document.getElementById("workspaceFilters"),
   workspaceList: document.getElementById("workspaceList"),
+  feedbackPanel: document.getElementById("feedbackPanel"),
+  feedbackText: document.getElementById("feedbackText"),
+  cancelFeedback: document.getElementById("cancelFeedback"),
+  submitFeedback: document.getElementById("submitFeedback"),
   terminalView: document.getElementById("terminalView"),
   backToWorkspaces: document.getElementById("backToWorkspaces"),
   terminalTitle: document.getElementById("terminalTitle"),
@@ -460,6 +484,7 @@ function renderConnectionControls() {
   setDisabled(elements.closeConnection, disconnected);
   setDisabled(elements.refreshWorkspaces, disconnected);
   setDisabled(elements.createWorkspace, disconnected || !hasCapability("workspace.create.v1"));
+  setDisabled(elements.sendFeedback, disconnected || !hasCapability("dogfood.v1"));
   setDisabled(elements.syncNotifications, disconnected || !hasCapability("notification.reconcile.v1"));
   setDisabled(
     elements.dismissNotifications,
@@ -480,6 +505,8 @@ function renderConnectionControls() {
   setDisabled(elements.pasteImage, disconnected || !hasCapability("terminal.paste_image.v1"));
   setDisabled(elements.clearTerminalInput, disconnected);
   setDisabled(elements.sendInput, disconnected);
+  setDisabled(elements.feedbackText, disconnected || !hasCapability("dogfood.v1"));
+  setDisabled(elements.submitFeedback, disconnected || !hasCapability("dogfood.v1"));
 }
 
 function renderWorkspaces() {
@@ -696,6 +723,42 @@ function createWorkspace() {
     return;
   }
   bridge().createWorkspace();
+}
+
+function toggleFeedbackPanel(open = !state.feedbackPanelOpen) {
+  state.feedbackPanelOpen = open;
+  elements.feedbackPanel.classList.toggle("hidden", !open);
+  if (open) {
+    elements.feedbackText.focus();
+  }
+}
+
+function submitFeedback() {
+  if (!state.connected) return;
+  if (!hasCapability("dogfood.v1")) {
+    showToast(t("feedback.unsupported"));
+    return;
+  }
+  const text = elements.feedbackText.value.trim();
+  if (!text) {
+    showToast(t("feedback.empty"));
+    return;
+  }
+  bridge().submitDogfoodFeedback(
+    text,
+    visibleTerminalText(),
+    androidBuildStamp(),
+  );
+}
+
+function visibleTerminalText() {
+  if (!state.activeWorkspace || !state.activeTerminal) return "";
+  return elements.terminalOutput.textContent.trimEnd();
+}
+
+function androidBuildStamp() {
+  const userAgent = navigator.userAgent || "";
+  return `android-webview · ${userAgent}`.slice(0, 512);
 }
 
 function createTerminal(workspaceId) {
@@ -1602,6 +1665,12 @@ function handleRpcResult(method, result) {
     bridge().refreshWorkspaces();
     return;
   }
+  if (method === "dogfood.feedback.submit") {
+    elements.feedbackText.value = "";
+    toggleFeedbackPanel(false);
+    showToast(t("feedback.sent"));
+    return;
+  }
   if (method === "mobile.terminal.replay") {
     renderTerminalReplay(result);
     return;
@@ -1881,6 +1950,9 @@ elements.workspaceList.addEventListener("click", (event) => {
 elements.refreshWorkspaces.addEventListener("click", () => bridge().refreshWorkspaces());
 elements.createWorkspace.addEventListener("click", createWorkspace);
 elements.showPairedMacs.addEventListener("click", () => showScreen("pairing"));
+elements.sendFeedback.addEventListener("click", () => toggleFeedbackPanel());
+elements.cancelFeedback.addEventListener("click", () => toggleFeedbackPanel(false));
+elements.submitFeedback.addEventListener("click", submitFeedback);
 elements.backToWorkspacesFromPairing.addEventListener("click", () => showScreen("workspaces"));
 elements.workspaceFilters.addEventListener("click", (event) => {
   const button = eventTargetWithAttribute(event, "data-workspace-filter");

@@ -259,4 +259,32 @@ class MobileRpcParamsTest {
             }
         )
     }
+
+    @Test
+    fun dogfoodFeedbackCarriesMacSinkFieldsAndAndroidClientId() {
+        val params = MobileRpcParams.dogfoodFeedback(
+            text = "  Android feedback  ",
+            terminalText = "visible terminal",
+            buildStamp = "  android-webview test  "
+        )
+
+        assertEquals("Android feedback", params.getString("text"))
+        assertEquals("visible terminal", params.getString("terminal_text"))
+        assertEquals("android-webview test", params.getString("build_stamp"))
+        assertEquals("", params.getString("diagnostic_blob_base64"))
+        assertEquals(MobileRpcParams.CLIENT_ID, params.getString("client_id"))
+    }
+
+    @Test
+    fun dogfoodFeedbackCapsLargeFieldsBeforeRpc() {
+        val params = MobileRpcParams.dogfoodFeedback(
+            text = "x".repeat(16_385),
+            terminalText = "y".repeat(262_145),
+            buildStamp = "z".repeat(513)
+        )
+
+        assertEquals(16_384, params.getString("text").length)
+        assertEquals(262_144, params.getString("terminal_text").length)
+        assertEquals(512, params.getString("build_stamp").length)
+    }
 }

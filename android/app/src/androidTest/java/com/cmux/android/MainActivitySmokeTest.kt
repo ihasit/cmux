@@ -244,6 +244,18 @@ class MainActivitySmokeTest {
                 waitUntil("fake host receives terminal input") {
                     observedMethods.contains("mobile.terminal.input")
                 }
+
+                scenario.evaluateScript(
+                    """
+                    document.getElementById('sendFeedback').click();
+                    document.getElementById('feedbackText').value = 'android fake host feedback';
+                    document.getElementById('submitFeedback').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives dogfood feedback") {
+                    observedMethods.contains("dogfood.feedback.submit")
+                }
             }
 
             val methods = observedMethods.toList()
@@ -251,6 +263,7 @@ class MainActivitySmokeTest {
             check("mobile.host.status" in methods) { methods }
             check("mobile.workspace.list" in methods) { methods }
             check("mobile.terminal.replay" in methods) { methods }
+            check("dogfood.feedback.submit" in methods) { methods }
         } finally {
             try {
                 server.shutdown()
@@ -2255,6 +2268,7 @@ class MainActivitySmokeTest {
                     .put("workspace.actions.v1")
                     .put("workspace.read_state.v1")
                     .put("workspace.close.v1")
+                    .put("dogfood.v1")
                     .put("workspace.groups.v1"))
             "mobile.workspace.list" -> JSONObject()
                 .put("workspaces", org.json.JSONArray().put(
@@ -2290,6 +2304,8 @@ class MainActivitySmokeTest {
                 .put("surface_id", "terminal-fake")
                 .put("columns", 80)
                 .put("rows", 24)
+            "dogfood.feedback.submit" -> JSONObject()
+                .put("accepted", true)
             "mobile.events.subscribe" -> JSONObject().put("already_subscribed", false)
             else -> JSONObject()
         }

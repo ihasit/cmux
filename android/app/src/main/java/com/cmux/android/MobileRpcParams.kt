@@ -42,6 +42,15 @@ object MobileRpcParams {
             .put("notification_ids", sanitizedStringArray(notificationIds))
     }
 
+    fun dogfoodFeedback(text: String, terminalText: String, buildStamp: String): JSONObject {
+        return JSONObject()
+            .put("client_id", CLIENT_ID)
+            .put("text", text.trim().take(16_384))
+            .put("terminal_text", terminalText.take(262_144))
+            .put("build_stamp", buildStamp.trim().take(512))
+            .put("diagnostic_blob_base64", "")
+    }
+
     fun workspaceGroup(groupId: String): JSONObject {
         return JSONObject()
             .put("group_id", cleanId(groupId))

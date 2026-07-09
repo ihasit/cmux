@@ -94,6 +94,7 @@ function loadApp() {
     requestNotificationPermission: () => bridgeCalls.push(["requestNotificationPermission"]),
     closeConnection: () => bridgeCalls.push(["closeConnection"]),
     createWorkspace: () => bridgeCalls.push(["createWorkspace"]),
+    submitDogfoodFeedback: (...args) => bridgeCalls.push(["submitDogfoodFeedback", ...args]),
     createTerminal: (...args) => bridgeCalls.push(["createTerminal", ...args]),
     renameWorkspace: (...args) => bridgeCalls.push(["renameWorkspace", ...args]),
     setWorkspacePinned: (...args) => bridgeCalls.push(["setWorkspacePinned", ...args]),
@@ -608,6 +609,81 @@ function testDisconnectedTopLevelActionsDoNotCallNativeBridge() {
       "dismissNotifications",
     ].includes(call[0])),
     `expected disconnected top-level actions not to call native bridge, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
+function testFeedbackButtonRequiresDogfoodCapability() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [],
+  });
+
+  assert.strictEqual(
+    hooks.elements.sendFeedback.disabled,
+    true,
+    "expected feedback button disabled without dogfood.v1"
+  );
+  hooks.elements.feedbackText.value = "send this";
+  hooks.elements.submitFeedback.dispatchEvent("click", {
+    target: hooks.elements.submitFeedback,
+  });
+
+  assert(
+    !bridgeCalls.some((call) => call[0] === "submitDogfoodFeedback"),
+    `expected feedback submit not to call native bridge without dogfood.v1, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
+function testFeedbackSubmitSendsNoteTerminalTextAndBuildStamp() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["dogfood.v1"],
+  });
+  openTestTerminal(hooks, bridgeCalls);
+  hooks.elements.terminalOutput.textContent = "visible terminal\n\n";
+  hooks.elements.sendFeedback.dispatchEvent("click", {
+    target: hooks.elements.sendFeedback,
+  });
+  hooks.elements.feedbackText.value = "  Android feedback  ";
+
+  hooks.elements.submitFeedback.dispatchEvent("click", {
+    target: hooks.elements.submitFeedback,
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "submitDogfoodFeedback" &&
+      call[1] === "Android feedback" &&
+      call[2] === "visible terminal" &&
+      call[3].startsWith("android-webview")
+    )),
+    `expected submitDogfoodFeedback with note, terminal text, and stamp, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
+function testFeedbackSuccessClearsComposerAndClosesPanel() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["dogfood.v1"],
+  });
+  hooks.elements.sendFeedback.dispatchEvent("click", {
+    target: hooks.elements.sendFeedback,
+  });
+  hooks.elements.feedbackText.value = "sent";
+
+  hooks.handleRpcResult("dogfood.feedback.submit", { accepted: true });
+
+  assert.strictEqual(
+    hooks.elements.feedbackText.value,
+    "",
+    `expected feedback text cleared after success, got ${JSON.stringify(hooks.elements.feedbackText.value)}`
+  );
+  assert(
+    hooks.elements.feedbackPanel.classList.contains("hidden"),
+    "expected feedback panel to close after success"
   );
 }
 
@@ -1855,6 +1931,9 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testHostCapabilitiesAreCaseInsensitiveForWorkspaceControls();
   testCreateWorkspaceButtonRequiresHostCapability();
   testDisconnectedTopLevelActionsDoNotCallNativeBridge();
+  testFeedbackButtonRequiresDogfoodCapability();
+  testFeedbackSubmitSendsNoteTerminalTextAndBuildStamp();
+  testFeedbackSuccessClearsComposerAndClosesPanel();
   testLateHostCapabilitiesRefreshRenderedWorkspaceControls();
   testWorkspaceCardActionsRequireHostCapabilities();
   testWorkspaceGroupToggleRequiresHostCapability();

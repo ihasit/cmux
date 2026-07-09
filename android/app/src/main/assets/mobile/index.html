@@ -60,6 +60,7 @@
           <div class="section-actions">
             <button id="createWorkspace" data-i18n="workspace.new"></button>
             <button id="showPairedMacs" data-i18n="paired.manage"></button>
+            <button id="sendFeedback" data-i18n="feedback.send"></button>
             <button id="enableNotifications" class="hidden" data-i18n="notification.enable"></button>
             <button id="syncNotifications" data-i18n="notification.sync"></button>
             <button id="dismissNotifications" data-i18n="notification.dismissAll"></button>
@@ -73,6 +74,17 @@
           <button data-workspace-filter="pinned" data-i18n="workspace.filterPinned"></button>
         </div>
         <div id="workspaceList" class="workspace-list"></div>
+        <section id="feedbackPanel" class="feedback-panel hidden" aria-labelledby="feedbackTitle">
+          <div class="section-header">
+            <h3 id="feedbackTitle" data-i18n="feedback.title"></h3>
+            <p data-i18n="feedback.subtitle"></p>
+          </div>
+          <textarea id="feedbackText" rows="4" autocomplete="off" data-i18n-placeholder="feedback.placeholder"></textarea>
+          <div class="feedback-actions">
+            <button id="cancelFeedback" data-i18n="feedback.cancel"></button>
+            <button id="submitFeedback" class="primary" data-i18n="feedback.submit"></button>
+          </div>
+        </section>
       </section>
 
       <section id="terminalView" class="screen hidden">
