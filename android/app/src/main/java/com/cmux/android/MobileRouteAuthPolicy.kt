@@ -15,7 +15,10 @@ object MobileRouteAuthPolicy {
     private fun isSecureWebSocketUrl(rawUrl: String): Boolean {
         val uri = runCatching { URI(rawUrl) }.getOrNull() ?: return false
         val host = uri.host?.trim().orEmpty()
-        return uri.scheme?.lowercase() == "wss" && host.isNotEmpty() && !isLoopbackHost(host)
+        return uri.scheme?.lowercase() == "wss" &&
+            host.isNotEmpty() &&
+            uri.userInfo.isNullOrEmpty() &&
+            !isLoopbackHost(host)
     }
 
     private fun isLoopbackHost(host: String): Boolean {
