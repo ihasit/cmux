@@ -853,6 +853,65 @@ function testPasteInputRequestsActiveTerminalWithSubmitKey() {
   );
 }
 
+function testTerminalKeybarAndKeyboardShortcutsSendInput() {
+  const { hooks, bridgeCalls } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+
+  hooks.elements.terminalKeybar.dispatchEvent("click", {
+    target: eventTarget({ "data-terminal-key": "escape" }),
+  });
+  hooks.elements.terminalInput.value = "echo keyboard";
+  hooks.elements.terminalInput.dispatchEvent("keydown", {
+    target: hooks.elements.terminalInput,
+    key: "Enter",
+    ctrlKey: true,
+    shiftKey: false,
+    preventDefault: () => {},
+  });
+  hooks.elements.terminalInput.value = "multi\nline";
+  hooks.elements.terminalInput.dispatchEvent("keydown", {
+    target: hooks.elements.terminalInput,
+    key: "Enter",
+    ctrlKey: true,
+    shiftKey: true,
+    preventDefault: () => {},
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "sendInput" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1" &&
+      call[3] === "\u001b"
+    )),
+    `expected keybar escape to send terminal escape sequence, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "sendInput" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1" &&
+      call[3] === "echo keyboard"
+    )),
+    `expected Ctrl+Enter to send input text, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "pasteText" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1" &&
+      call[3] === "multi\nline" &&
+      call[4] === "return"
+    )),
+    `expected Ctrl+Shift+Enter to paste input text, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert.strictEqual(
+    hooks.elements.terminalInput.value,
+    "",
+    "expected keyboard shortcut submit to clear terminal input"
+  );
+}
+
 function testWheelRequestsTerminalScrollWithPointerAndViewport() {
   const { hooks, bridgeCalls } = loadApp();
   openTestTerminal(hooks, bridgeCalls);
@@ -1202,6 +1261,7 @@ function testNotificationReconcileZeroClearsDeliveredIds() {
   testWorkspaceActionClicksRequestNativeBridgeCalls();
   testSendInputRequestsActiveTerminalWithViewport();
   testPasteInputRequestsActiveTerminalWithSubmitKey();
+  testTerminalKeybarAndKeyboardShortcutsSendInput();
   testWheelRequestsTerminalScrollWithPointerAndViewport();
   testTerminalClickRequestsPointerCell();
   testPasteImageRequestsActiveTerminalWithDecodedPayload();
