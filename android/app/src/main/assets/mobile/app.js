@@ -1594,8 +1594,9 @@ function handlePushEvent(type, payload) {
   if (type === "notification.badge") {
     if (Number.isInteger(payload.unread_count)) {
       state.authoritativeUnreadNotificationCount = payload.unread_count;
-      renderNotificationStatus();
     }
+    mergeDeliveredNotificationIds(notificationIdsFromPayload(payload));
+    renderNotificationStatus();
     return;
   }
   if (type === "notification.dismissed") {
@@ -1617,6 +1618,18 @@ function notificationIdsFromPayload(payload) {
     if (Array.isArray(payload[key])) return payload[key];
   }
   return [];
+}
+
+function mergeDeliveredNotificationIds(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return;
+  const seen = new Set(state.deliveredNotificationIds);
+  for (const id of ids) {
+    const value = String(id || "").trim();
+    if (value && !seen.has(value)) {
+      seen.add(value);
+      state.deliveredNotificationIds.push(value);
+    }
+  }
 }
 
 function refreshWorkspacesOnce() {

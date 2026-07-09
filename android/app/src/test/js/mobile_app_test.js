@@ -336,7 +336,7 @@ function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   });
 
   assert.deepStrictEqual(
-    hooks.state.deliveredNotificationIds,
+    Array.from(hooks.state.deliveredNotificationIds),
     ["n-1", "n-2"],
     `expected badge notification ids to be tracked, got ${JSON.stringify(hooks.state.deliveredNotificationIds)}`
   );
