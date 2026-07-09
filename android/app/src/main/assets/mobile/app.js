@@ -679,7 +679,9 @@ function hostCapabilities() {
     ...(Array.isArray(state.hostStatus?.capabilities) ? state.hostStatus.capabilities : []),
     ...(Array.isArray(state.hostStatus?.host_service?.capabilities) ? state.hostStatus.host_service.capabilities : []),
   ];
-  return Array.from(new Set(capabilities));
+  return Array.from(new Set(capabilities.map((capability) => (
+    String(capability || "").trim().toLowerCase()
+  )).filter(Boolean)));
 }
 
 function hasCapability(capability) {
