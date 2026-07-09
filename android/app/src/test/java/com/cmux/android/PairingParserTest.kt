@@ -510,6 +510,30 @@ class PairingParserTest {
     }
 
     @Test
+    fun pairedMacJsonDropsStoredWebSocketRoutesWithUserInfo() {
+        val decoded = PairedMac.fromJson(
+            JSONObject()
+                .put("id", "mac-stored-userinfo-websocket")
+                .put("routes", JSONArray()
+                    .put(JSONObject()
+                        .put("id", "bad-websocket")
+                        .put("kind", "websocket")
+                        .put("priority", 1)
+                        .put("url", "wss://user:pass@cmux.example.test/mobile"))
+                    .put(JSONObject()
+                        .put("id", "tailscale")
+                        .put("kind", "tailscale")
+                        .put("host", "100.64.0.9")
+                        .put("port", 58465)
+                        .put("priority", 10)))
+        )
+
+        assertEquals(1, decoded.routes.size)
+        assertEquals("tailscale", decoded.routes.single().id)
+        assertEquals(decoded.routes.single(), decoded.primaryRoute)
+    }
+
+    @Test
     fun pairedMacJsonFallsBackToWebSocketUrlWhenIdIsMissing() {
         val decoded = PairedMac.fromJson(
             JSONObject()
