@@ -1276,6 +1276,9 @@ function testTerminalTouchCancelDoesNotClickTerminal() {
 function testPasteImageRequestsActiveTerminalWithDecodedPayload() {
   const { hooks, bridgeCalls, setFileReaderResult } = loadApp();
   openTestTerminal(hooks, bridgeCalls);
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["terminal.paste_image.v1"],
+  });
   hooks.elements.imageInput.files = [{
     name: "screenshot.jpeg",
     type: "image/jpeg",
@@ -1301,9 +1304,40 @@ function testPasteImageRequestsActiveTerminalWithDecodedPayload() {
   );
 }
 
+function testPasteImageButtonRequiresHostCapability() {
+  const { hooks, bridgeCalls } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+
+  assert.strictEqual(
+    hooks.elements.pasteImage.disabled,
+    true,
+    "expected paste image button disabled before terminal.paste_image.v1 capability"
+  );
+  hooks.elements.pasteImage.dispatchEvent("click", {
+    target: hooks.elements.pasteImage,
+  });
+  assert(
+    !bridgeCalls.some((call) => call[0] === "pasteImage"),
+    `expected disabled paste image button not to call native bridge, got ${JSON.stringify(bridgeCalls)}`
+  );
+
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["terminal.paste_image.v1"],
+  });
+
+  assert.strictEqual(
+    hooks.elements.pasteImage.disabled,
+    false,
+    "expected paste image button enabled with terminal.paste_image.v1 capability"
+  );
+}
+
 function testPasteImageRejectsInvalidOrOversizedFiles() {
   const { hooks, bridgeCalls, setFileReaderResult } = loadApp();
   openTestTerminal(hooks, bridgeCalls);
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["terminal.paste_image.v1"],
+  });
   setFileReaderResult("data:image/png;base64,ZmFrZQ==");
 
   hooks.elements.imageInput.files = [{
@@ -1333,6 +1367,9 @@ function testPasteImageRejectsInvalidOrOversizedFiles() {
 function testPasteImageClearsInputAfterRejectedFile() {
   const { hooks } = loadApp();
   openTestTerminal(hooks, []);
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["terminal.paste_image.v1"],
+  });
 
   hooks.elements.imageInput.value = "huge.png";
   hooks.elements.imageInput.files = [{
@@ -1354,6 +1391,9 @@ function testPasteImageClearsInputAfterRejectedFile() {
 function testPasteImageRejectsEmptyEncodedPayload() {
   const { hooks, bridgeCalls, setFileReaderResult } = loadApp();
   openTestTerminal(hooks, bridgeCalls);
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: ["terminal.paste_image.v1"],
+  });
   hooks.elements.imageInput.value = "empty.png";
   hooks.elements.imageInput.files = [{
     name: "empty.png",
@@ -1834,6 +1874,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testTerminalClickRequestsPointerCell();
   testTerminalTouchCancelDoesNotClickTerminal();
   testPasteImageRequestsActiveTerminalWithDecodedPayload();
+  testPasteImageButtonRequiresHostCapability();
   testPasteImageRejectsInvalidOrOversizedFiles();
   testPasteImageClearsInputAfterRejectedFile();
   testPasteImageRejectsEmptyEncodedPayload();

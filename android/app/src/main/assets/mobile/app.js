@@ -477,7 +477,7 @@ function renderConnectionControls() {
   setDisabled(elements.terminalInput, disconnected);
   setDisabled(elements.imageInput, disconnected);
   setDisabled(elements.pasteInput, disconnected);
-  setDisabled(elements.pasteImage, disconnected);
+  setDisabled(elements.pasteImage, disconnected || !hasCapability("terminal.paste_image.v1"));
   setDisabled(elements.clearTerminalInput, disconnected);
   setDisabled(elements.sendInput, disconnected);
 }
@@ -1099,6 +1099,7 @@ function chooseImageForPaste() {
 function pasteSelectedImage() {
   if (!state.connected) return;
   if (!state.activeWorkspace || !state.activeTerminal) return;
+  if (!hasCapability("terminal.paste_image.v1")) return;
   const file = elements.imageInput.files?.[0];
   if (!file) {
     clearImageInput();

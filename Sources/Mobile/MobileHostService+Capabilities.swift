@@ -21,6 +21,7 @@ extension MobileHostService {
             "notification.reconcile.v1",
             "terminal.bytes.v1",
             "terminal.create.v1",
+            "terminal.paste_image.v1",
             "terminal.render_grid.v1",
             "terminal.replay.v1",
             "terminal.viewport.v1",
