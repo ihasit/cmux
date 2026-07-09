@@ -13,7 +13,7 @@ object MobileRouteAuthPolicy {
     }
 
     private fun isSecureWebSocketUrl(rawUrl: String): Boolean {
-        val uri = runCatching { URI(rawUrl) }.getOrNull() ?: return false
+        val uri = runCatching { URI(rawUrl.trim()) }.getOrNull() ?: return false
         val host = uri.host?.trim().orEmpty()
         return uri.scheme?.lowercase() == "wss" &&
             host.isNotEmpty() &&
