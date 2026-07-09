@@ -1228,7 +1228,7 @@ function normalizeRenderGrid(rawFrame) {
 }
 
 function applyRenderGridFrame(previous, frame) {
-  const rows = previous?.rows?.length === frame.rows
+  const rows = previous?.rows?.length === frame.rows && previous.columns === frame.columns
     ? previous.rows.map((row) => row.map((cell) => ({ ...cell })))
     : emptyTerminalRows(frame.rows, frame.columns);
   const touchedRows = new Set(frame.clearedRows.filter((row) => row >= 0 && row < frame.rows));
