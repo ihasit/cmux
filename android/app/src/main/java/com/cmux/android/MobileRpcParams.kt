@@ -56,7 +56,7 @@ object MobileRpcParams {
             }
         }
         return JSONObject()
-            .put("stream_id", streamId)
+            .put("stream_id", cleanId(streamId))
             .put("topics", topicsJson)
             .put("client_id", CLIENT_ID)
     }
