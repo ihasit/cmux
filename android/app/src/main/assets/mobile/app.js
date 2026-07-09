@@ -1208,10 +1208,11 @@ function appendTerminalBytes(payload) {
       replayActiveTerminal();
       return;
     }
-    if (Number.isInteger(deliveredEndSeq) && deliveredEndSeq > sequence) {
+    if (Number.isInteger(deliveredEndSeq) && deliveredEndSeq >= sequence) {
       data = data.slice(deliveredEndSeq - sequence);
+      if (!data) return;
     }
-    state.terminalByteEndSeqBySurface.set(seqKey, nextEndSeq);
+    state.terminalByteEndSeqBySurface.set(seqKey, sequence + data.length);
   }
   const current = elements.terminalOutput.textContent;
   if (current === t("terminal.loading") || current === t("terminal.empty")) {

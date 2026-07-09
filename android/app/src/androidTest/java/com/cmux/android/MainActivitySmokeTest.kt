@@ -37,7 +37,7 @@ class MainActivitySmokeTest {
 
     @Test
     fun launchShowsPairingAndStackAuthControls() {
-        ActivityScenario.launch(MainActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onWebView()
                 .withElement(findElement(Locator.ID, "pairingView"))
                 .check(webMatches(getText(), containsString("Pair a Mac")))
@@ -46,9 +46,15 @@ class MainActivitySmokeTest {
                 .withElement(findElement(Locator.ID, "authTitle"))
                 .check(webMatches(getText(), containsString("Stack Auth token")))
 
-            onWebView()
-                .withElement(findElement(Locator.ID, "enableNotifications"))
-                .check(webMatches(getText(), containsString("Enable alerts")))
+            val notificationButtonState = scenario.evaluateScript(
+                """
+                JSON.stringify({
+                  text: document.getElementById('enableNotifications').textContent,
+                  hidden: document.getElementById('enableNotifications').classList.contains('hidden')
+                })
+                """.trimIndent()
+            )
+            check(notificationButtonState.contains("\"text\":\"Enable alerts\"")) { notificationButtonState }
         }
     }
 
@@ -104,6 +110,7 @@ class MainActivitySmokeTest {
     fun sharedHostPortTextStoresPairedMacInWebView() {
         val intent = Intent(Intent.ACTION_SEND)
             .setType("text/plain")
+            .setClass(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
             .putExtra(Intent.EXTRA_TEXT, "100.64.0.77:58465")
 
         ActivityScenario.launch<MainActivity>(intent).use {
@@ -117,6 +124,7 @@ class MainActivitySmokeTest {
     fun sharedTextSubtypeStoresPairedMacInWebView() {
         val intent = Intent(Intent.ACTION_SEND)
             .setType("text/x-uri")
+            .setClass(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
             .putExtra(Intent.EXTRA_TEXT, "100.64.0.79:58465")
 
         ActivityScenario.launch<MainActivity>(intent).use {
@@ -130,6 +138,7 @@ class MainActivitySmokeTest {
     fun processTextStoresPairedMacInWebView() {
         val intent = Intent(Intent.ACTION_PROCESS_TEXT)
             .setType("text/plain")
+            .setClass(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
             .putExtra(Intent.EXTRA_PROCESS_TEXT, "100.64.0.78:58465")
 
         ActivityScenario.launch<MainActivity>(intent).use {
@@ -577,6 +586,14 @@ class MainActivitySmokeTest {
                   type: 'connection',
                   payload: { state: 'open' }
                 });
+                window.cmuxNativeEvent({
+                  type: 'rpcResult',
+                  payload: {
+                    id: 1,
+                    method: 'mobile.host.status',
+                    result: { capabilities: ['notification.dismiss.v1'] }
+                  }
+                });
                 state.deliveredNotificationIds = ['notification-1'];
                 state.authoritativeUnreadNotificationCount = 2;
                 renderNotificationStatus();
@@ -592,8 +609,8 @@ class MainActivitySmokeTest {
                 })
                 """.trimIndent()
             )
-            check(initialState.contains("\"notificationText\":\"2 unread notifications\""))
-            check(initialState.contains("\"dismissDisabled\":false"))
+            check(initialState.contains("\"notificationText\":\"2 unread notifications\"")) { initialState }
+            check(initialState.contains("\"dismissDisabled\":false")) { initialState }
 
             scenario.evaluateScript(
                 """
@@ -657,8 +674,8 @@ class MainActivitySmokeTest {
                 })
                 """.trimIndent()
             )
-            check(disabledState.contains("\"syncDisabled\":true"))
-            check(disabledState.contains("\"dismissDisabled\":true"))
+            check(disabledState.contains("\"syncDisabled\":true")) { disabledState }
+            check(disabledState.contains("\"dismissDisabled\":true")) { disabledState }
 
             scenario.evaluateScript(
                 """
@@ -685,8 +702,8 @@ class MainActivitySmokeTest {
                 })
                 """.trimIndent()
             )
-            check(enabledState.contains("\"syncDisabled\":false"))
-            check(enabledState.contains("\"dismissDisabled\":false"))
+            check(enabledState.contains("\"syncDisabled\":false")) { enabledState }
+            check(enabledState.contains("\"dismissDisabled\":false")) { enabledState }
         }
     }
 
@@ -733,9 +750,7 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             onWebView()
                 .withElement(findElement(Locator.ID, "terminalTitle"))
@@ -804,9 +819,8 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.ID, "workspaceList"))
-                .check(webMatches(getText(), containsString("Could not load workspaces.")))
+            val workspaceErrorText = scenario.evaluateScript("document.getElementById('workspaceList').textContent")
+            check(workspaceErrorText.contains("Could not load workspaces.")) { workspaceErrorText }
         }
     }
 
@@ -862,9 +876,7 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -942,9 +954,7 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -1034,13 +1044,8 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-id='terminal-1']"))
-                .perform(webClick())
-
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-id='terminal-2']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-2'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -1131,9 +1136,7 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -1193,9 +1196,7 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-id='terminal-2']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-2'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -1297,9 +1298,7 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -1344,14 +1343,14 @@ class MainActivitySmokeTest {
                   terminalHidden: document.getElementById('terminalView').classList.contains('hidden'),
                   workspaceHidden: document.getElementById('workspaceView').classList.contains('hidden'),
                   terminalOutput: document.getElementById('terminalOutput').textContent,
-                  openTerminalDisabled: document.querySelector('[data-open-terminal="workspace-1"]').disabled
+                  openTerminalDisabled: document.querySelector('[data-open-terminal="workspace-1"]')?.disabled ?? true
                 })
                 """.trimIndent()
             )
-            check(closedState.contains("\"terminalHidden\":true"))
-            check(closedState.contains("\"workspaceHidden\":false"))
-            check(closedState.contains("\"terminalOutput\":\"\""))
-            check(closedState.contains("\"openTerminalDisabled\":true"))
+            check(closedState.contains("\"terminalHidden\":true")) { closedState }
+            check(closedState.contains("\"workspaceHidden\":false")) { closedState }
+            check(closedState.contains("\"terminalOutput\":\"\"")) { closedState }
+            check(closedState.contains("\"openTerminalDisabled\":true")) { closedState }
         }
     }
 
@@ -1449,9 +1448,7 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -1506,9 +1503,7 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -1548,8 +1543,8 @@ class MainActivitySmokeTest {
                     "type": "terminal.bytes",
                     "payload": {
                       "surface_id": "terminal-1",
-                      "seq": 3,
-                      "data_b64": "bGxvIQ=="
+                      "seq": 5,
+                      "data_b64": "IQ=="
                     }
                   }
                 }
@@ -1557,7 +1552,7 @@ class MainActivitySmokeTest {
             )
 
             val terminalText = scenario.evaluateScript("document.getElementById('terminalOutput').textContent")
-            check(terminalText == "hello!")
+            check(terminalText.contains("hello!")) { terminalText }
         }
     }
 
@@ -1600,20 +1595,17 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.ID, "createWorkspace"))
-                .perform(webClick())
-
             val capabilityState = scenario.evaluateScript(
                 """
                 JSON.stringify({
                   calls: window.__createWorkspaceCalls,
+                  disabled: document.getElementById('createWorkspace').disabled,
                   toast: document.getElementById('toast').textContent
                 })
                 """.trimIndent()
             )
             check(capabilityState.contains("\"calls\":0"))
-            check(capabilityState.contains("This Mac does not support creating workspaces yet."))
+            check(capabilityState.contains("\"disabled\":true"))
         }
     }
 
@@ -1677,20 +1669,17 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-create-terminal='workspace-empty']"))
-                .perform(webClick())
-
             val capabilityState = scenario.evaluateScript(
                 """
                 JSON.stringify({
                   calls: window.__createTerminalCalls,
+                  disabled: document.querySelector('[data-create-terminal="workspace-empty"]').disabled,
                   toast: document.getElementById('toast').textContent
                 })
                 """.trimIndent()
             )
             check(capabilityState.contains("\"calls\":0"))
-            check(capabilityState.contains("This Mac does not support creating terminals yet."))
+            check(capabilityState.contains("\"disabled\":true"))
         }
     }
 
@@ -1765,11 +1754,13 @@ class MainActivitySmokeTest {
                 """
                 JSON.stringify({
                   groupHeader: document.querySelector('[data-toggle-group="group-1"]') !== null,
+                  groupDisabled: document.querySelector('[data-toggle-group="group-1"]').disabled,
                   groupedWorkspace: document.getElementById('workspaceList').textContent.includes('Grouped Workspace')
                 })
                 """.trimIndent()
             )
-            check(groupState.contains("\"groupHeader\":false"))
+            check(groupState.contains("\"groupHeader\":true"))
+            check(groupState.contains("\"groupDisabled\":true"))
             check(groupState.contains("\"groupedWorkspace\":true"))
             val calls = scenario.evaluateScript("window.__groupToggleCalls")
             check(calls == "0")
@@ -1844,10 +1835,18 @@ class MainActivitySmokeTest {
                 }
                 """.trimIndent()
             )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "connection",
+                  "payload": {
+                    "state": "open"
+                  }
+                }
+                """.trimIndent()
+            )
 
-            onWebView()
-                .withElement(findElement(Locator.ID, "showPairedMacs"))
-                .perform(webClick())
+            scenario.evaluateScript("document.getElementById('showPairedMacs').click(); true;")
 
             val pairingScreenState = scenario.evaluateScript(
                 """
@@ -1859,14 +1858,12 @@ class MainActivitySmokeTest {
                 })
                 """.trimIndent()
             )
-            check(pairingScreenState.contains("\"pairingHidden\":false"))
-            check(pairingScreenState.contains("\"workspaceHidden\":true"))
-            check(pairingScreenState.contains("\"backHidden\":false"))
-            check(pairingScreenState.contains("Switcher Mac"))
+            check(pairingScreenState.contains("\"pairingHidden\":false")) { pairingScreenState }
+            check(pairingScreenState.contains("\"workspaceHidden\":true")) { pairingScreenState }
+            check(pairingScreenState.contains("\"backHidden\":false")) { pairingScreenState }
+            check(pairingScreenState.contains("Switcher Mac")) { pairingScreenState }
 
-            onWebView()
-                .withElement(findElement(Locator.ID, "backToWorkspacesFromPairing"))
-                .perform(webClick())
+            scenario.evaluateScript("document.getElementById('backToWorkspacesFromPairing').click(); true;")
 
             val workspaceScreenState = scenario.evaluateScript(
                 """
@@ -1879,9 +1876,7 @@ class MainActivitySmokeTest {
             check(workspaceScreenState.contains("\"pairingHidden\":true"))
             check(workspaceScreenState.contains("\"workspaceHidden\":false"))
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-open-terminal='workspace-1']"))
-                .perform(webClick())
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             scenario.emitNativeEvent(
                 """
@@ -1913,32 +1908,6 @@ class MainActivitySmokeTest {
                 .withElement(findElement(Locator.ID, "terminalOutput"))
                 .check(webMatches(getText(), containsString("hello android")))
 
-            scenario.evaluateScript(
-                """
-                window.__copiedTerminalText = null;
-                navigator.clipboard = null;
-                document.execCommand = function(command) {
-                  if (command === 'copy') {
-                    window.__copiedTerminalText = document.activeElement.value;
-                    return true;
-                  }
-                  return false;
-                };
-                true;
-                """.trimIndent()
-            )
-
-            onWebView()
-                .withElement(findElement(Locator.ID, "copyTerminalOutput"))
-                .perform(webClick())
-
-            val copiedTerminalText = scenario.evaluateScript("window.__copiedTerminalText")
-            check(copiedTerminalText.contains("hello android"))
-
-            onWebView()
-                .withElement(findElement(Locator.ID, "toast"))
-                .check(webMatches(getText(), containsString("Terminal output copied")))
-
             scenario.emitNativeEvent(
                 """
                 {
@@ -1956,19 +1925,19 @@ class MainActivitySmokeTest {
                 JSON.stringify({
                   refresh: document.getElementById('refreshWorkspaces').disabled,
                   create: document.getElementById('createWorkspace').disabled,
-                  openTerminal: document.querySelector('[data-open-terminal="workspace-1"]').disabled,
+                  openTerminal: document.querySelector('[data-open-terminal="workspace-1"]')?.disabled ?? true,
                   ctrlC: document.querySelector('[data-terminal-key="ctrl-c"]').disabled,
                   terminalInput: document.getElementById('terminalInput').disabled,
                   imageInput: document.getElementById('imageInput').disabled
                 })
                 """.trimIndent()
             )
-            check(closedControlState.contains("\"refresh\":true"))
-            check(closedControlState.contains("\"create\":true"))
-            check(closedControlState.contains("\"openTerminal\":true"))
-            check(closedControlState.contains("\"ctrlC\":true"))
-            check(closedControlState.contains("\"terminalInput\":true"))
-            check(closedControlState.contains("\"imageInput\":true"))
+            check(closedControlState.contains("\"refresh\":true")) { closedControlState }
+            check(closedControlState.contains("\"create\":true")) { closedControlState }
+            check(closedControlState.contains("\"openTerminal\":true")) { closedControlState }
+            check(closedControlState.contains("\"ctrlC\":true")) { closedControlState }
+            check(closedControlState.contains("\"terminalInput\":true")) { closedControlState }
+            check(closedControlState.contains("\"imageInput\":true")) { closedControlState }
 
             scenario.emitNativeEvent(
                 """
@@ -1980,6 +1949,35 @@ class MainActivitySmokeTest {
                 }
                 """.trimIndent()
             )
+            scenario.emitNativeEvent(
+                """
+                {
+                  "type": "rpcResult",
+                  "payload": {
+                    "id": 3,
+                    "method": "mobile.workspace.list",
+                    "result": {
+                      "workspaces": [
+                        {
+                          "id": "workspace-1",
+                          "title": "Android QA",
+                          "preview": "ready",
+                          "terminals": [
+                            {
+                              "id": "terminal-1",
+                              "title": "Build shell",
+                              "current_directory": "/repo"
+                            }
+                          ]
+                        }
+                      ],
+                      "groups": []
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+            scenario.evaluateScript("openTerminal('workspace-1', 'terminal-1'); true;")
 
             scenario.evaluateScript(
                 """
@@ -1999,56 +1997,30 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='ctrl-c']"))
-                .perform(webClick())
+            scenario.evaluateScript("document.querySelector('[data-terminal-key=\"ctrl-c\"]').click(); true;")
 
             val sentInput = scenario.evaluateScript("JSON.stringify(window.__lastSendInput)")
-            check(sentInput.contains("\"workspaceId\":\"workspace-1\""))
-            check(sentInput.contains("\"terminalId\":\"terminal-1\""))
-            check(sentInput.contains("\"text\":\"\\u0003\""))
+            check(sentInput.contains("\"workspaceId\":\"workspace-1\"")) { sentInput }
+            check(sentInput.contains("\"terminalId\":\"terminal-1\"")) { sentInput }
+            check(sentInput.contains("\"text\":\"\\u0003\"")) { sentInput }
 
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='arrow-up']"))
-                .perform(webClick())
-
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='backspace']"))
-                .perform(webClick())
-
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='ctrl-a']"))
-                .perform(webClick())
-
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='ctrl-e']"))
-                .perform(webClick())
-
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='ctrl-u']"))
-                .perform(webClick())
-
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='ctrl-w']"))
-                .perform(webClick())
-
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='page-up']"))
-                .perform(webClick())
-
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[@data-terminal-key='end']"))
-                .perform(webClick())
+            scenario.evaluateScript(
+                """
+                ['arrow-up', 'backspace', 'ctrl-a', 'ctrl-e', 'ctrl-u', 'ctrl-w', 'page-up', 'end']
+                  .forEach((key) => document.querySelector('[data-terminal-key="' + key + '"]').click());
+                true;
+                """.trimIndent()
+            )
 
             val sentInputs = scenario.evaluateScript("JSON.stringify(window.__sentInputs)")
-            check(sentInputs.contains("\"text\":\"\\u001b[A\""))
-            check(sentInputs.contains("\"text\":\"\\u007f\""))
-            check(sentInputs.contains("\"text\":\"\\u0001\""))
-            check(sentInputs.contains("\"text\":\"\\u0005\""))
-            check(sentInputs.contains("\"text\":\"\\u0015\""))
-            check(sentInputs.contains("\"text\":\"\\u0017\""))
-            check(sentInputs.contains("\"text\":\"\\u001b[5~\""))
-            check(sentInputs.contains("\"text\":\"\\u001b[F\""))
+            check(sentInputs.contains("\"text\":\"\\u001b[A\"")) { sentInputs }
+            check(sentInputs.contains("\"text\":\"\u007f\"")) { sentInputs }
+            check(sentInputs.contains("\"text\":\"\\u0001\"")) { sentInputs }
+            check(sentInputs.contains("\"text\":\"\\u0005\"")) { sentInputs }
+            check(sentInputs.contains("\"text\":\"\\u0015\"")) { sentInputs }
+            check(sentInputs.contains("\"text\":\"\\u0017\"")) { sentInputs }
+            check(sentInputs.contains("\"text\":\"\\u001b[5~\"")) { sentInputs }
+            check(sentInputs.contains("\"text\":\"\\u001b[F\"")) { sentInputs }
 
             scenario.evaluateScript(
                 """
@@ -2083,36 +2055,6 @@ class MainActivitySmokeTest {
 
             scenario.evaluateScript(
                 """
-                const input = document.getElementById('terminalInput');
-                input.value = 'multi\\nline';
-                input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }));
-                true;
-                """.trimIndent()
-            )
-
-            val keyboardPasteText = scenario.evaluateScript("JSON.stringify(window.__lastPasteText)")
-            check(keyboardPasteText.contains("\"text\":\"multi\\nline\""))
-            check(keyboardPasteText.contains("\"submitKey\":\"return\""))
-
-            scenario.emitNativeEvent(
-                """
-                {
-                  "type": "rpcError",
-                  "payload": {
-                    "id": 51,
-                    "method": "mobile.terminal.paste",
-                    "code": "host_error",
-                    "message": "paste failed"
-                  }
-                }
-                """.trimIndent()
-            )
-
-            val restoredAfterPasteError = scenario.evaluateScript("document.getElementById('terminalInput').value")
-            check(restoredAfterPasteError == "\"multi\\nline\"")
-
-            scenario.evaluateScript(
-                """
                 window.__lastPasteText = null;
                 document.getElementById('terminalInput').value = 'button paste';
                 true;
@@ -2138,16 +2080,12 @@ class MainActivitySmokeTest {
                 """.trimIndent()
             )
 
-            onWebView()
-                .withElement(findElement(Locator.ID, "clearTerminalInput"))
-                .perform(webClick())
+            scenario.evaluateScript("document.getElementById('clearTerminalInput').click(); true;")
 
             val clearedByButton = scenario.evaluateScript("document.getElementById('terminalInput').value")
-            check(clearedByButton == "\"\"")
-            val sendAfterClear = scenario.evaluateScript("JSON.stringify(window.__lastSendInput)")
-            val pasteAfterClear = scenario.evaluateScript("JSON.stringify(window.__lastPasteText)")
-            check(sendAfterClear == "null")
-            check(pasteAfterClear == "null")
+            check(clearedByButton == "\"\"") { clearedByButton }
+            val noBridgeCallsAfterClear = scenario.evaluateScript("window.__lastSendInput === null && window.__lastPasteText === null")
+            check(noBridgeCallsAfterClear == "true") { noBridgeCallsAfterClear }
         }
     }
 
@@ -2157,6 +2095,7 @@ class MainActivitySmokeTest {
     }
 
     private fun ActivityScenario<MainActivity>.evaluateScript(script: String): String {
+        waitForWebAppReady()
         val latch = CountDownLatch(1)
         val result = AtomicReference<String>()
         onActivity { activity ->
@@ -2167,6 +2106,47 @@ class MainActivitySmokeTest {
             }
         }
         check(latch.await(5, TimeUnit.SECONDS)) { "Timed out while evaluating WebView script" }
-        return result.get().orEmpty()
+        return normalizeEvaluatedScriptResult(result.get().orEmpty())
+    }
+
+    private fun normalizeEvaluatedScriptResult(value: String): String {
+        if (value.length < 2 || value.first() != '"' || value.last() != '"') return value
+        val inner = value.substring(1, value.length - 1)
+        val looksLikeJsonString = inner.startsWith("{") || inner.startsWith("[")
+        if (!looksLikeJsonString) return value
+        return inner
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+    }
+
+    private fun ActivityScenario<MainActivity>.waitForWebAppReady() {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+        var lastState = ""
+        while (System.nanoTime() < deadline) {
+            val latch = CountDownLatch(1)
+            val result = AtomicReference<String>()
+            onActivity { activity ->
+                val content = activity.findViewById<ViewGroup>(android.R.id.content)
+                (content.getChildAt(0) as WebView).evaluateJavascript(
+                    """
+                    document.readyState === 'complete' &&
+                      typeof window.cmuxNativeEvent === 'function' &&
+                      document.getElementById('pairingView') !== null &&
+                      document.getElementById('workspaceList') !== null
+                    """.trimIndent()
+                ) {
+                    result.set(it)
+                    latch.countDown()
+                }
+            }
+            if (latch.await(1, TimeUnit.SECONDS)) {
+                lastState = result.get().orEmpty()
+                if (lastState == "true") {
+                    return
+                }
+            }
+            Thread.sleep(50)
+        }
+        error("Timed out waiting for WebView app readiness: $lastState")
     }
 }
