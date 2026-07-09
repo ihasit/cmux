@@ -205,6 +205,43 @@ function testRenderGridReplayIgnoresPreviousStateSequence() {
   );
 }
 
+function testRenderGridColumnResizeRebuildsRows() {
+  const { hooks } = loadApp();
+  hooks.state.activeWorkspace = { id: "workspace-1" };
+  hooks.state.activeTerminal = { id: "terminal-1" };
+  hooks.showScreen("terminal");
+
+  hooks.handlePushEvent("terminal.render_grid", {
+    surface_id: "terminal-1",
+    state_seq: 1,
+    rows: 5,
+    columns: 30,
+    row_spans: [
+      { row: 0, column: 0, text: "wide" },
+    ],
+  });
+  hooks.handlePushEvent("terminal.render_grid", {
+    surface_id: "terminal-1",
+    state_seq: 2,
+    rows: 5,
+    columns: 20,
+    full: false,
+    row_spans: [],
+  });
+
+  assert.strictEqual(
+    hooks.elements.terminalOutput.dataset.columns,
+    "20",
+    `expected terminal columns metadata to shrink, got ${hooks.elements.terminalOutput.dataset.columns}`
+  );
+  const firstLineText = hooks.elements.terminalOutput.innerHTML.match(/<span class="terminal-cell">([^<]*)<\/span>/)?.[1] || "";
+  assert.strictEqual(
+    firstLineText.length,
+    20,
+    `expected rendered row to shrink to 20 cells, got ${firstLineText.length}: ${JSON.stringify(firstLineText)}`
+  );
+}
+
 function testTerminalBytesGapRequestsReplay() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.activeWorkspace = { id: "workspace-1" };
@@ -289,6 +326,7 @@ testSubscribeAckGapTriggersTerminalReplay();
 testSubscribeAckDoesNotReplayWithoutActiveTerminal();
 testRenderGridPushWithoutSurfaceTargetsActiveTerminal();
 testRenderGridReplayIgnoresPreviousStateSequence();
+testRenderGridColumnResizeRebuildsRows();
 testTerminalBytesGapRequestsReplay();
 testTerminalReplayResetsByteDeduplication();
 testNestedTerminalOpenClickUsesClosestButton();
