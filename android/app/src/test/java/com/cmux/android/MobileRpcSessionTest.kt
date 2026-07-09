@@ -408,6 +408,23 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun sendFrameExceptionReportsTransportErrorWithoutEscaping() {
+        val callback = RecordingCallback()
+        val session = MobileRpcSession(
+            callback = callback,
+            clientFactory = { _, _ -> ThrowingSendFrameClient("write failed") }
+        )
+        session.connect(tcpRoute())
+
+        val requestId = session.request("mobile.workspace.list")
+
+        assertEquals(
+            listOf(RecordedError(requestId, "mobile.workspace.list", "transport_error", "write failed")),
+            callback.errors
+        )
+    }
+
+    @Test
     fun remoteCloseClearsActiveClientBeforeLaterRequests() {
         val client = RecordingFrameClient()
         val callback = RecordingCallback()
@@ -1001,6 +1018,20 @@ class MobileRpcSessionTest {
             shutdownCalls += 1
             callback?.onClose("activity destroyed")
         }
+    }
+
+    private class ThrowingSendFrameClient(
+        private val message: String
+    ) : MobileFrameClient {
+        override fun connect(route: CmuxRoute) = Unit
+
+        override fun sendFrame(payload: String) {
+            throw IllegalStateException(message)
+        }
+
+        override fun close(reason: String) = Unit
+
+        override fun shutdown() = Unit
     }
 
     private class FakeStackAccessTokenProvider(
