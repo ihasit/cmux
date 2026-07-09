@@ -649,7 +649,11 @@ function renderWorkspaceActions(workspace) {
 }
 
 function hostCapabilities() {
-  return state.hostStatus?.capabilities || state.hostStatus?.host_service?.capabilities || [];
+  const capabilities = [
+    ...(Array.isArray(state.hostStatus?.capabilities) ? state.hostStatus.capabilities : []),
+    ...(Array.isArray(state.hostStatus?.host_service?.capabilities) ? state.hostStatus.host_service.capabilities : []),
+  ];
+  return Array.from(new Set(capabilities));
 }
 
 function hasCapability(capability) {
