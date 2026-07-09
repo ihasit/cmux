@@ -441,7 +441,7 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
         if (type == "notification.badge") {
             notificationBridge.applyUnreadCount(payload.optNullableInt("unread_count"))
         } else if (type == "notification.dismissed") {
-            notificationBridge.cancelDismissed(payload.optFirstStringArray("ids", "handled_ids", "notification_ids"))
+            notificationBridge.cancelDismissed(payload.optFirstNotificationIdArray("ids", "handled_ids", "notification_ids"))
             notificationBridge.applyUnreadCount(payload.optNullableInt("unread_count"))
         }
         emit("push", JSONObject().put("type", type).put("payload", payload))
@@ -533,16 +533,20 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 }
 
-private fun JSONObject.optStringArray(name: String): List<String> {
+internal fun JSONObject.optNotificationIdArray(name: String): List<String> {
     val array = optJSONArray(name) ?: return emptyList()
     return (0 until array.length()).mapNotNull { index ->
-        array.optString(index).trim().takeIf { it.isNotEmpty() }
+        when (val value = array.opt(index)) {
+            is String -> value.trim()
+            is Int, is Long, is Double, is Float -> value.toString().trim()
+            else -> ""
+        }.takeIf { it.isNotEmpty() }
     }
 }
 
-private fun JSONObject.optFirstStringArray(vararg names: String): List<String> {
+internal fun JSONObject.optFirstNotificationIdArray(vararg names: String): List<String> {
     for (name in names) {
-        val values = optStringArray(name)
+        val values = optNotificationIdArray(name)
         if (values.isNotEmpty()) return values
     }
     return emptyList()
