@@ -1520,6 +1520,46 @@ function testNotificationDismissReconcilesDismissedIdsBeforeClearing() {
   );
 }
 
+function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
+  const { hooks, nativeEvent } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [
+      "terminal.create.v1",
+      "workspace.actions.v1",
+      "workspace.read_state.v1",
+      "workspace.close.v1",
+    ],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Old Android",
+      has_unread: true,
+      terminals: [{ id: "terminal-1", title: "Old Shell" }],
+    }],
+    groups: [],
+  });
+
+  nativeEvent({
+    type: "connection",
+    payload: { state: "closed", detail: "network lost" },
+  });
+  nativeEvent({
+    type: "connection",
+    payload: { state: "open" },
+  });
+
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes("Old Android"),
+    `expected stale workspaces to stay hidden while reconnect refresh is pending, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+  assert(
+    !hooks.elements.workspaceList.innerHTML.includes('data-create-terminal="workspace-1"'),
+    `expected stale terminal create action not to reenable before refresh, got ${hooks.elements.workspaceList.innerHTML}`
+  );
+}
+
 (async () => {
   testSubscribeAckGapTriggersTerminalReplay();
   testSubscribeAckDoesNotReplayWithoutActiveTerminal();
@@ -1562,6 +1602,7 @@ function testNotificationDismissReconcilesDismissedIdsBeforeClearing() {
   testNotificationDismissedZeroClearsDeliveredIds();
   testNotificationReconcileZeroClearsDeliveredIds();
   testNotificationDismissReconcilesDismissedIdsBeforeClearing();
+  testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh();
   console.log("mobile app js tests passed");
 })().catch((error) => {
   console.error(error);
