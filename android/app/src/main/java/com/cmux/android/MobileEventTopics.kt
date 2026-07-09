@@ -36,18 +36,12 @@ object MobileEventTopics {
 }
 
 internal fun JSONObject.hostStatusCapabilities(): MobileEventTopics.HostStatusCapabilities {
-    val topLevel = optFirstStringArray("capabilities")
-    val capabilities = if (topLevel.isNotEmpty()) {
-        topLevel.toSet()
-    } else {
-        optJSONObject("host_service")
-            ?.optFirstStringArray("capabilities")
-            ?.toSet()
-            ?: emptySet()
-    }
+    val hostService = optJSONObject("host_service")
+    val capabilities = (optStringArray("capabilities") + (hostService?.optStringArray("capabilities") ?: emptyList())).toSet()
     return MobileEventTopics.HostStatusCapabilities(
         capabilities = capabilities,
         terminalFidelity = optString("terminal_fidelity").takeIf { it.isNotBlank() }
+            ?: hostService?.optString("terminal_fidelity")?.takeIf { it.isNotBlank() }
     )
 }
 
@@ -56,12 +50,4 @@ private fun JSONObject.optStringArray(name: String): List<String> {
     return (0 until array.length()).mapNotNull { index ->
         array.optString(index).trim().takeIf { it.isNotEmpty() }
     }
-}
-
-private fun JSONObject.optFirstStringArray(vararg names: String): List<String> {
-    for (name in names) {
-        val values = optStringArray(name)
-        if (values.isNotEmpty()) return values
-    }
-    return emptyList()
 }
