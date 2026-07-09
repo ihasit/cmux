@@ -46,6 +46,7 @@ class MobileRpcSession(
     private var closedNotified: Boolean = false
     private var connectionGeneration: Int = 0
     private var activeSubscription: ActiveSubscription? = null
+    private val pendingSubscriptions = ConcurrentHashMap<Int, ActiveSubscription>()
 
     fun connect(route: CmuxRoute) {
         connect(listOf(route))
@@ -72,7 +73,7 @@ class MobileRpcSession(
             pending.remove(requestId)
             callback.onRpcError(requestId, method, "transport_error", "not connected")
         } else if (sendRequestFrame(activeClient, requestId, method, request)) {
-            trackSubscriptionRequest(method, params)
+            trackSubscriptionRequest(requestId, method, params)
         }
         return requestId
     }
@@ -128,19 +129,23 @@ class MobileRpcSession(
         val method = pendingCall?.method ?: return
         val ok = strictBooleanOrNull(json, "ok")
         if (ok == null) {
+            discardSubscriptionRequest(id)
             callback.onRpcError(id, method, "parse_error", "Invalid response status from host")
             return
         }
         if (ok) {
             val result = json.optJSONObject("result")
             if (result == null && json.has("result") && !json.isNull("result")) {
+                discardSubscriptionRequest(id)
                 callback.onRpcError(id, method, "parse_error", "Invalid response result from host")
                 return
             }
+            confirmSubscriptionRequest(id)
             callback.onRpcResult(id, method, result ?: JSONObject())
         } else {
             val error = json.optJSONObject("error")
             if (error == null && json.has("error") && !json.isNull("error")) {
+                discardSubscriptionRequest(id)
                 callback.onRpcError(id, method, "parse_error", "Invalid response error from host")
                 return
             }
@@ -150,6 +155,7 @@ class MobileRpcSession(
                 retryWithFreshStackToken(id, pendingCall)
                 return
             }
+            discardSubscriptionRequest(id)
             callback.onRpcError(
                 id,
                 method,
@@ -255,6 +261,7 @@ class MobileRpcSession(
         routeCandidates = emptyList()
         routeCandidateIndex = -1
         activeSubscription = null
+        pendingSubscriptions.clear()
     }
 
     private inner class GenerationCallback(
@@ -304,11 +311,14 @@ class MobileRpcSession(
         return request
     }
 
-    private fun trackSubscriptionRequest(method: String, params: JSONObject) {
+    private fun trackSubscriptionRequest(requestId: Int, method: String, params: JSONObject) {
         if (method == "mobile.events.subscribe") {
             val streamId = params.optString("stream_id").trim()
-            activeSubscription = streamId.takeIf { it.isNotEmpty() }
+            val subscription = streamId.takeIf { it.isNotEmpty() }
                 ?.let { ActiveSubscription(it, JSONObject(params.toString())) }
+            if (subscription != null) {
+                pendingSubscriptions[requestId] = subscription
+            }
         } else if (method == "mobile.events.unsubscribe") {
             val streamId = params.optString("stream_id").trim()
             if (streamId.isNotEmpty() && streamId == activeSubscription?.streamId) {
@@ -317,8 +327,20 @@ class MobileRpcSession(
         }
     }
 
+    private fun confirmSubscriptionRequest(requestId: Int) {
+        val subscription = pendingSubscriptions.remove(requestId) ?: return
+        activeSubscription = subscription
+    }
+
+    private fun discardSubscriptionRequest(requestId: Int) {
+        pendingSubscriptions.remove(requestId)
+    }
+
     private fun unsubscribeActiveStream() {
-        val streamId = activeSubscription?.streamId?.takeIf { it.isNotBlank() } ?: return
+        val subscription = activeSubscription
+            ?: pendingSubscriptions.entries.maxByOrNull { it.key }?.value
+            ?: return
+        val streamId = subscription.streamId.takeIf { it.isNotBlank() } ?: return
         val activeClient = client ?: return
         val requestId = nextId.getAndIncrement()
         val request = requestEnvelope(
@@ -328,6 +350,7 @@ class MobileRpcSession(
         )
         sendRequestFrame(activeClient, requestId, "mobile.events.unsubscribe", request)
         activeSubscription = null
+        pendingSubscriptions.clear()
     }
 
     private fun resubscribeActiveStream() {
@@ -377,9 +400,11 @@ class MobileRpcSession(
         val activeClient = client
         if (activeClient == null) {
             pending.remove(requestId)
+            discardSubscriptionRequest(requestId)
             callback.onRpcError(requestId, pendingCall.method, "transport_error", "not connected")
         } else if (!sendRequestFrame(activeClient, requestId, pendingCall.method, retry)) {
             pending.remove(requestId)
+            discardSubscriptionRequest(requestId)
         }
     }
 
@@ -396,6 +421,7 @@ class MobileRpcSession(
             onSuccess = { true },
             onFailure = { error ->
                 pending.remove(requestId)
+                discardSubscriptionRequest(requestId)
                 callback.onRpcError(
                     requestId,
                     method,
@@ -410,6 +436,7 @@ class MobileRpcSession(
     private fun failPending(code: String, message: String) {
         val calls = pending.entries.map { it.key to it.value }
         pending.clear()
+        pendingSubscriptions.clear()
         for ((requestId, call) in calls) {
             callback.onRpcError(requestId, call.method, code, message)
         }
