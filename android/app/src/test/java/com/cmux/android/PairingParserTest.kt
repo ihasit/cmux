@@ -331,6 +331,26 @@ class PairingParserTest {
     }
 
     @Test
+    fun parseCompactTicketDropsWebSocketRouteWithoutUrlEndpoint() {
+        val payload = JSONObject()
+            .put("v", 1)
+            .put("d", "mac-websocket-hostport")
+            .put("r", JSONArray().put(
+                JSONObject()
+                    .put("i", "ws-hostport")
+                    .put("k", "websocket")
+                    .put("p", 1)
+                    .put("e", JSONObject().put("h", "100.64.0.10").put("p", 58465))
+            ))
+
+        val error = assertThrows(PairingException::class.java) {
+            parser.parse("cmux-ios://attach?payload=${base64Url(payload)}")
+        }
+
+        assertEquals("pair.error.noRoutes", error.messageKey)
+    }
+
+    @Test
     fun parseFullTicketRejectsLoopbackWebSocketUrlRoute() {
         val payload = JSONObject()
             .put("macDeviceID", "mac-loopback-websocket")
