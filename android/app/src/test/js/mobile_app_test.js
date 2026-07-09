@@ -623,6 +623,48 @@ function testCreateTerminalClickRequestsWorkspaceTerminal() {
   );
 }
 
+function testSendInputRequestsActiveTerminalWithViewport() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      terminals: [{ id: "terminal-1", title: "Shell" }],
+    }],
+    groups: [],
+  });
+  hooks.elements.workspaceList.dispatchEvent("click", {
+    target: eventTarget({
+      "data-open-terminal": "workspace-1",
+      "data-terminal-id": "terminal-1",
+    }),
+  });
+  bridgeCalls.length = 0;
+  hooks.elements.terminalInput.value = "echo hello";
+
+  hooks.elements.sendInput.dispatchEvent("click", {
+    target: hooks.elements.sendInput,
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "sendInput" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1" &&
+      call[3] === "echo hello" &&
+      call[4] === 114 &&
+      call[5] === 25
+    )),
+    `expected sendInput call for active terminal with viewport, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert.strictEqual(
+    hooks.elements.terminalInput.value,
+    "",
+    "expected terminal input to clear after sending"
+  );
+}
+
 function testNotificationBadgeRecordsDeliveredIdsForDismissal() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.connected = true;
@@ -759,6 +801,7 @@ testWorkspaceCardActionsRequireHostCapabilities();
 testWorkspaceGroupToggleRequiresHostCapability();
 testWorkspaceWithTerminalsStillOffersCreateTerminal();
 testCreateTerminalClickRequestsWorkspaceTerminal();
+testSendInputRequestsActiveTerminalWithViewport();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
