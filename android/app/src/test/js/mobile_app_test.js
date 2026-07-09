@@ -128,6 +128,25 @@ function loadApp() {
   return { hooks: context.__cmuxMobileTestHooks, bridgeCalls, nativeEvent: context.window.cmuxNativeEvent };
 }
 
+function openTestTerminal(hooks, bridgeCalls) {
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      terminals: [{ id: "terminal-1", title: "Shell" }],
+    }],
+    groups: [],
+  });
+  hooks.elements.workspaceList.dispatchEvent("click", {
+    target: eventTarget({
+      "data-open-terminal": "workspace-1",
+      "data-terminal-id": "terminal-1",
+    }),
+  });
+  bridgeCalls.length = 0;
+}
+
 function testSubscribeAckGapTriggersTerminalReplay() {
   const { hooks, bridgeCalls } = loadApp();
   hooks.state.activeWorkspace = { id: "workspace-1" };
@@ -626,22 +645,7 @@ function testCreateTerminalClickRequestsWorkspaceTerminal() {
 
 function testSendInputRequestsActiveTerminalWithViewport() {
   const { hooks, bridgeCalls } = loadApp();
-  hooks.state.connected = true;
-  hooks.handleRpcResult("mobile.workspace.list", {
-    workspaces: [{
-      id: "workspace-1",
-      title: "Android",
-      terminals: [{ id: "terminal-1", title: "Shell" }],
-    }],
-    groups: [],
-  });
-  hooks.elements.workspaceList.dispatchEvent("click", {
-    target: eventTarget({
-      "data-open-terminal": "workspace-1",
-      "data-terminal-id": "terminal-1",
-    }),
-  });
-  bridgeCalls.length = 0;
+  openTestTerminal(hooks, bridgeCalls);
   hooks.elements.terminalInput.value = "echo hello";
 
   hooks.elements.sendInput.dispatchEvent("click", {
@@ -663,6 +667,85 @@ function testSendInputRequestsActiveTerminalWithViewport() {
     hooks.elements.terminalInput.value,
     "",
     "expected terminal input to clear after sending"
+  );
+}
+
+function testPasteInputRequestsActiveTerminalWithSubmitKey() {
+  const { hooks, bridgeCalls } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+  hooks.elements.terminalInput.value = "printf hello";
+
+  hooks.elements.pasteInput.dispatchEvent("click", {
+    target: hooks.elements.pasteInput,
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "pasteText" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1" &&
+      call[3] === "printf hello" &&
+      call[4] === "return" &&
+      call[5] === 114 &&
+      call[6] === 25
+    )),
+    `expected pasteText call for active terminal with submit key and viewport, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert.strictEqual(
+    hooks.elements.terminalInput.value,
+    "",
+    "expected terminal input to clear after paste"
+  );
+}
+
+function testWheelRequestsTerminalScrollWithPointerAndViewport() {
+  const { hooks, bridgeCalls } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+
+  hooks.elements.terminalOutput.dispatchEvent("wheel", {
+    target: hooks.elements.terminalOutput,
+    deltaY: 32,
+    deltaMode: 0,
+    clientX: 400,
+    clientY: 160,
+    preventDefault: () => {},
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "scrollTerminal" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1" &&
+      call[3] === 2 &&
+      call[4] === 57 &&
+      call[5] === 10 &&
+      call[6] === 0 &&
+      call[7] === 114 &&
+      call[8] === 25
+    )),
+    `expected scrollTerminal call with pointer cell and viewport, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
+function testTerminalClickRequestsPointerCell() {
+  const { hooks, bridgeCalls } = loadApp();
+  openTestTerminal(hooks, bridgeCalls);
+
+  hooks.elements.terminalOutput.dispatchEvent("click", {
+    target: hooks.elements.terminalOutput,
+    clientX: 400,
+    clientY: 160,
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "clickTerminal" &&
+      call[1] === "workspace-1" &&
+      call[2] === "terminal-1" &&
+      call[3] === 57 &&
+      call[4] === 10
+    )),
+    `expected clickTerminal call with pointer cell, got ${JSON.stringify(bridgeCalls)}`
   );
 }
 
@@ -803,6 +886,9 @@ testWorkspaceGroupToggleRequiresHostCapability();
 testWorkspaceWithTerminalsStillOffersCreateTerminal();
 testCreateTerminalClickRequestsWorkspaceTerminal();
 testSendInputRequestsActiveTerminalWithViewport();
+testPasteInputRequestsActiveTerminalWithSubmitKey();
+testWheelRequestsTerminalScrollWithPointerAndViewport();
+testTerminalClickRequestsPointerCell();
 testNotificationBadgeRecordsDeliveredIdsForDismissal();
 testNotificationBadgeZeroClearsDeliveredIds();
 testNotificationDismissedZeroClearsDeliveredIds();
