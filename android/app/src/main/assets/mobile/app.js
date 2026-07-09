@@ -577,10 +577,7 @@ function refreshActiveTerminalFromWorkspaces() {
   const workspace = state.workspaces.find((item) => item.id === state.activeWorkspace.id);
   const terminal = workspace?.terminals?.find((item) => item.id === state.activeTerminal.id);
   if (!workspace || !terminal) {
-    state.activeWorkspace = null;
-    state.activeTerminal = null;
-    state.effectiveViewport = null;
-    state.lastViewportReport = "";
+    clearActiveTerminalState();
     return false;
   }
   state.activeWorkspace = workspace;
