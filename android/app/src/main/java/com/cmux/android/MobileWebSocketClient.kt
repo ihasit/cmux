@@ -34,8 +34,12 @@ class MobileWebSocketClient(
             callback.onClose("invalid websocket route")
             return
         }
+        val request = runCatching { Request.Builder().url(url).build() }.getOrElse {
+            callback.onError("invalid websocket route")
+            callback.onClose("invalid websocket route")
+            return
+        }
         closed.set(false)
-        val request = Request.Builder().url(url).build()
         webSocket = client.newWebSocket(request, listener())
     }
 
