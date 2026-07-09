@@ -518,14 +518,23 @@ function filteredWorkspaceList() {
 
 function workspaceMatchesQuery(workspace, query) {
   if (!query) return true;
+  return workspaceOwnFieldsMatch(workspace, query) ||
+    (workspace.terminals || []).some((terminal) => terminalMatchesQuery(terminal, query));
+}
+
+function workspaceOwnFieldsMatch(workspace, query) {
   const fields = [
     workspace.title,
     workspace.preview,
     workspace.current_directory,
-    ...(workspace.terminals || []).flatMap((terminal) => [
-      terminal.title,
-      terminal.current_directory,
-    ]),
+  ];
+  return fields.some((field) => String(field || "").toLowerCase().includes(query));
+}
+
+function terminalMatchesQuery(terminal, query) {
+  const fields = [
+    terminal.title,
+    terminal.current_directory,
   ];
   return fields.some((field) => String(field || "").toLowerCase().includes(query));
 }
@@ -611,7 +620,8 @@ function renderWorkspaceGroup(group) {
 }
 
 function renderWorkspaceCard(workspace, group) {
-  const terminals = workspace.terminals || [];
+  const query = state.workspaceSearch.trim().toLowerCase();
+  const terminals = visibleTerminalsForWorkspace(workspace, query);
   const workspaceActions = renderWorkspaceActions(workspace);
   const terminalCreateDisabled = state.connected && hasCapability("terminal.create.v1") ? "" : " disabled";
   const terminalOpenDisabled = state.connected ? "" : " disabled";
@@ -637,6 +647,14 @@ function renderWorkspaceCard(workspace, group) {
       ${terminalRows}
     </article>
   `;
+}
+
+function visibleTerminalsForWorkspace(workspace, query) {
+  const terminals = workspace.terminals || [];
+  if (!query) return terminals;
+  const matchingTerminals = terminals.filter((terminal) => terminalMatchesQuery(terminal, query));
+  if (matchingTerminals.length > 0) return matchingTerminals;
+  return workspaceOwnFieldsMatch(workspace, query) ? terminals : [];
 }
 
 function renderWorkspaceActions(workspace) {
