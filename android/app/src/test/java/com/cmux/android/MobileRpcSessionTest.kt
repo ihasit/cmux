@@ -610,6 +610,33 @@ class MobileRpcSessionTest {
     }
 
     @Test
+    fun synchronousConnectCloseBeforeOpenKeepsFailedOverClientActive() {
+        val secondClient = RecordingFrameClient()
+        val connectedRoutes = mutableListOf<CmuxRoute>()
+        val session = MobileRpcSession(
+            callback = NoopCallback,
+            clientFactory = { callback, route ->
+                connectedRoutes.add(route)
+                if (connectedRoutes.size == 1) {
+                    SynchronousConnectCloseFrameClient(callback)
+                } else {
+                    secondClient
+                }
+            }
+        )
+
+        session.connect(listOf(
+            tcpRoute().copy(id = "first", priority = 1, host = "100.64.0.10"),
+            tcpRoute().copy(id = "second", priority = 2, host = "100.64.0.11")
+        ))
+        session.request("mobile.workspace.list")
+
+        assertEquals(listOf("first", "second"), connectedRoutes.map { it.id })
+        assertEquals(1, secondClient.sentFrames.size)
+        assertEquals("mobile.workspace.list", JSONObject(secondClient.sentFrames.single()).getString("method"))
+    }
+
+    @Test
     fun errorThenCloseBeforeOpenFailsOverToNextRoute() {
         val connectedRoutes = mutableListOf<CmuxRoute>()
         val callback = RecordingCallback()
@@ -1058,6 +1085,20 @@ class MobileRpcSessionTest {
             shutdownCalls += 1
             callback?.onClose("activity destroyed")
         }
+    }
+
+    private class SynchronousConnectCloseFrameClient(
+        private val callback: MobileFrameClient.Callback
+    ) : MobileFrameClient {
+        override fun connect(route: CmuxRoute) {
+            callback.onClose("connect refused")
+        }
+
+        override fun sendFrame(payload: String) = Unit
+
+        override fun close(reason: String) = Unit
+
+        override fun shutdown() = Unit
     }
 
     private class ThrowingSendFrameClient(
