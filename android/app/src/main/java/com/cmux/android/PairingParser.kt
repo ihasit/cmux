@@ -141,7 +141,7 @@ class PairingParser {
 
     private fun parseAttachPayload(uri: PairingUri): PairedMac {
         val payload = uri.getQueryParameter("payload") ?: throw PairingException("pair.error.missingPayload")
-        val json = JSONObject(String(base64UrlDecode(payload), StandardCharsets.UTF_8))
+        val json = decodePayloadJson(payload)
         return if (json.has("v")) {
             parseCompactTicket(json)
         } else {
@@ -151,7 +151,7 @@ class PairingParser {
 
     private fun parseLegacyPairPayload(uri: PairingUri): PairedMac {
         val payload = uri.getQueryParameter("payload") ?: throw PairingException("pair.error.missingPayload")
-        val json = JSONObject(String(base64UrlDecode(payload), StandardCharsets.UTF_8))
+        val json = decodePayloadJson(payload)
         val host = json.optString("host").trim()
         val port = json.optInt("port", -1)
         checkPairing(host.isNotEmpty() && port in 1..65535, "pair.error.invalidRoute")
@@ -291,6 +291,12 @@ class PairingParser {
             route.url?.let { "${route.kind}:$it" } ?: "${route.kind}:${route.host}:${route.port}"
         }
         return UUID.nameUUIDFromBytes(routeKey.toByteArray(StandardCharsets.UTF_8)).toString()
+    }
+
+    private fun decodePayloadJson(payload: String): JSONObject {
+        return runCatching {
+            JSONObject(String(base64UrlDecode(payload), StandardCharsets.UTF_8))
+        }.getOrElse { throw PairingException("pair.error.invalidRoute") }
     }
 
     private fun base64UrlDecode(value: String): ByteArray {
