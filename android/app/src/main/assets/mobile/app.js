@@ -1683,7 +1683,7 @@ function handlePushEvent(type, payload) {
 
 function notificationIdsFromPayload(payload) {
   for (const key of ["ids", "handled_ids", "notification_ids"]) {
-    if (Array.isArray(payload[key])) return payload[key];
+    if (Array.isArray(payload[key])) return normalizedNotificationIds(payload[key]);
   }
   return [];
 }
@@ -1698,6 +1698,20 @@ function mergeDeliveredNotificationIds(ids) {
       state.deliveredNotificationIds.push(value);
     }
   }
+}
+
+function normalizedNotificationIds(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+  const normalized = [];
+  const seen = new Set();
+  for (const id of ids) {
+    const value = String(id || "").trim();
+    if (value && !seen.has(value)) {
+      seen.add(value);
+      normalized.push(value);
+    }
+  }
+  return normalized;
 }
 
 function refreshWorkspacesOnce() {
