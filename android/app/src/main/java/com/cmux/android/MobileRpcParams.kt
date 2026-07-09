@@ -87,7 +87,7 @@ object MobileRpcParams {
     ): JSONObject {
         return terminalViewport(workspaceId, terminalId, columns, rows)
             .put("text", text)
-            .put("submit_key", submitKey.ifBlank { "return" })
+            .put("submit_key", submitKey.trim().ifBlank { "return" })
     }
 
     fun terminalPasteImage(
@@ -100,7 +100,7 @@ object MobileRpcParams {
     ): JSONObject {
         return terminalViewport(workspaceId, terminalId, columns, rows)
             .put("image_base64", imageBase64)
-            .put("image_format", imageFormat.ifBlank { "png" })
+            .put("image_format", imageFormat.trim().ifBlank { "png" })
     }
 
     fun terminalScroll(
