@@ -1549,7 +1549,7 @@ function handleRpcResult(method, result) {
         state.deliveredNotificationIds = [];
       }
     }
-    const handledIds = Array.isArray(result.handled_ids) ? result.handled_ids : [];
+    const handledIds = normalizedNotificationIds(result.handled_ids);
     if (handledIds.length > 0) {
       const handled = new Set(handledIds);
       state.deliveredNotificationIds = state.deliveredNotificationIds.filter((id) => !handled.has(id));
