@@ -1713,11 +1713,14 @@ window.cmuxNativeEvent = (event) => {
     state.connected = nextState === "open";
     if (!state.connected) {
       state.workspaceRefreshPending = false;
+      state.hostStatus = null;
+      state.workspaces = [];
+      state.groups = [];
       state.inferredUnreadNotificationCount = 0;
       state.authoritativeUnreadNotificationCount = null;
       state.deliveredNotificationIds = [];
+      clearActiveTerminalState();
       if (nextState === "closed") {
-        clearActiveTerminalState();
         showScreen("workspaces");
       }
       renderNotificationStatus();
