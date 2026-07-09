@@ -64,6 +64,7 @@ function eventTarget(attributes = {}, closestTarget = null) {
 
 function loadApp() {
   const elements = new Map();
+  let nextPromptValue = "Renamed Android";
   const document = {
     getElementById: (id) => {
       if (!elements.has(id)) elements.set(id, element(id));
@@ -101,6 +102,7 @@ function loadApp() {
     window: {
       addEventListener: () => {},
       clearTimeout: () => {},
+      prompt: () => nextPromptValue,
       setTimeout: (callback) => {
         if (typeof callback === "function") callback();
         return 1;
@@ -128,7 +130,12 @@ function loadApp() {
 
   const appPath = path.resolve(__dirname, "../../main/assets/mobile/app.js");
   vm.runInNewContext(fs.readFileSync(appPath, "utf8"), context, { filename: appPath });
-  return { hooks: context.__cmuxMobileTestHooks, bridgeCalls, nativeEvent: context.window.cmuxNativeEvent };
+  return {
+    hooks: context.__cmuxMobileTestHooks,
+    bridgeCalls,
+    nativeEvent: context.window.cmuxNativeEvent,
+    setPromptValue: (value) => { nextPromptValue = value; },
+  };
 }
 
 function openTestTerminal(hooks, bridgeCalls) {
@@ -646,6 +653,80 @@ function testCreateTerminalClickRequestsWorkspaceTerminal() {
   );
 }
 
+function testWorkspaceActionClicksRequestNativeBridgeCalls() {
+  const { hooks, bridgeCalls, setPromptValue } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.host.status", {
+    capabilities: [
+      "workspace.actions.v1",
+      "workspace.read_state.v1",
+      "workspace.close.v1",
+    ],
+  });
+  hooks.handleRpcResult("mobile.workspace.list", {
+    workspaces: [{
+      id: "workspace-1",
+      title: "Android",
+      pinned: false,
+      has_unread: true,
+      terminals: [],
+    }],
+    groups: [],
+  });
+  setPromptValue("  Renamed Android  ");
+
+  hooks.elements.workspaceList.dispatchEvent("click", {
+    target: eventTarget({ "data-rename-workspace": "workspace-1" }),
+  });
+  hooks.elements.workspaceList.dispatchEvent("click", {
+    target: eventTarget({
+      "data-pin-workspace": "workspace-1",
+      "data-pinned": "false",
+    }),
+  });
+  hooks.elements.workspaceList.dispatchEvent("click", {
+    target: eventTarget({
+      "data-read-workspace": "workspace-1",
+      "data-unread": "true",
+    }),
+  });
+  hooks.elements.workspaceList.dispatchEvent("click", {
+    target: eventTarget({ "data-close-workspace": "workspace-1" }),
+  });
+
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "renameWorkspace" &&
+      call[1] === "workspace-1" &&
+      call[2] === "Renamed Android"
+    )),
+    `expected renameWorkspace call with trimmed title, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "setWorkspacePinned" &&
+      call[1] === "workspace-1" &&
+      call[2] === true
+    )),
+    `expected setWorkspacePinned call to pin workspace, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "setWorkspaceUnread" &&
+      call[1] === "workspace-1" &&
+      call[2] === false
+    )),
+    `expected setWorkspaceUnread call to mark workspace read, got ${JSON.stringify(bridgeCalls)}`
+  );
+  assert(
+    bridgeCalls.some((call) => (
+      call[0] === "closeWorkspace" &&
+      call[1] === "workspace-1"
+    )),
+    `expected closeWorkspace call, got ${JSON.stringify(bridgeCalls)}`
+  );
+}
+
 function testSendInputRequestsActiveTerminalWithViewport() {
   const { hooks, bridgeCalls } = loadApp();
   openTestTerminal(hooks, bridgeCalls);
@@ -888,6 +969,7 @@ testWorkspaceCardActionsRequireHostCapabilities();
 testWorkspaceGroupToggleRequiresHostCapability();
 testWorkspaceWithTerminalsStillOffersCreateTerminal();
 testCreateTerminalClickRequestsWorkspaceTerminal();
+testWorkspaceActionClicksRequestNativeBridgeCalls();
 testSendInputRequestsActiveTerminalWithViewport();
 testPasteInputRequestsActiveTerminalWithSubmitKey();
 testWheelRequestsTerminalScrollWithPointerAndViewport();
