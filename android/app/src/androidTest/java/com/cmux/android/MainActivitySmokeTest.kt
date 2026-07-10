@@ -354,6 +354,15 @@ class MainActivitySmokeTest {
                 waitUntil("fake host receives chat send") {
                     observedMethods.contains("mobile.chat.send")
                 }
+                scenario.evaluateScript(
+                    """
+                    document.getElementById('interruptChat').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives chat interrupt") {
+                    observedMethods.contains("mobile.chat.interrupt")
+                }
             }
 
             val methods = observedMethods.toList()
@@ -367,6 +376,7 @@ class MainActivitySmokeTest {
             check("mobile.chat.history" in methods) { methods }
             check("mobile.chat.answer" in methods) { methods }
             check("mobile.chat.send" in methods) { methods }
+            check("mobile.chat.interrupt" in methods) { methods }
         } finally {
             try {
                 server.shutdown()
@@ -2453,6 +2463,8 @@ class MainActivitySmokeTest {
                 .put("has_more", beforeSeq == 0)
             "mobile.chat.send" -> JSONObject()
                 .put("submitted", true)
+            "mobile.chat.interrupt" -> JSONObject()
+                .put("interrupted", true)
             "mobile.chat.answer" -> JSONObject()
                 .put("answered", true)
             "mobile.events.subscribe" -> JSONObject().put("already_subscribed", false)

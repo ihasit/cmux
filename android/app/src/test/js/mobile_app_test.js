@@ -751,6 +751,14 @@ function testChatSessionsRenderOpenHistoryAndSendMessage() {
     `expected sendChatMessage call, got ${JSON.stringify(bridgeCalls)}`
   );
   assert.strictEqual(hooks.elements.chatInput.value, "", "expected chat input to clear after send");
+
+  hooks.elements.interruptChat.dispatchEvent("click", {
+    target: hooks.elements.interruptChat,
+  });
+  assert(
+    bridgeCalls.some((call) => call[0] === "interruptChat" && call[1] === "chat-1" && call[2] === false),
+    `expected interruptChat call, got ${JSON.stringify(bridgeCalls)}`
+  );
 }
 
 function testChatHistoryCanLoadEarlierPage() {
