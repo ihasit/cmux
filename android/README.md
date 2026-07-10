@@ -89,9 +89,13 @@ Implemented:
 - Provide Android instrumentation coverage for the launched WebView shell, Stack token save/clear bridge, attach deep links, workspace list rendering, workspace actions, terminal render-grid/byte updates, terminal input/paste/image-paste round trips, dogfood feedback, notifications, and agent chat flows.
 - Provide English and Japanese WebView strings.
 
-Not verified yet:
+Verified:
 
-- Full end-to-end validation against a live Mac cmux mobile host.
+- Full end-to-end validation against a live tagged Mac cmux mobile host from an
+  Android emulator. The `cmux_android_36` AVD paired with
+  `cmux-ios://attach?v=2&r=10.0.2.2:58465` against the `android-live` tagged
+  macOS Debug app, and `mobile.host.status` reported
+  `active_connection_count: 1`.
 
 ## Protocol target
 
