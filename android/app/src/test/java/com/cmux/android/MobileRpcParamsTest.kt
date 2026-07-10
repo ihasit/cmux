@@ -311,6 +311,14 @@ class MobileRpcParamsTest {
     }
 
     @Test
+    fun chatSessionTrimsSessionId() {
+        val params = MobileRpcParams.chatSession(" session-1 ")
+
+        assertEquals("session-1", params.getString("session_id"))
+        assertEquals(MobileRpcParams.CLIENT_ID, params.getString("client_id"))
+    }
+
+    @Test
     fun chatSendTrimsAndCapsText() {
         val params = MobileRpcParams.chatSend(" session-1 ", " ${"x".repeat(16_385)} ")
 

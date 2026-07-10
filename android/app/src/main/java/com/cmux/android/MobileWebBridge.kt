@@ -246,6 +246,11 @@ class MobileWebBridge(private val context: Context, private val webView: WebView
     }
 
     @JavascriptInterface
+    fun loadChatSession(sessionId: String) {
+        session.request("mobile.chat.session", MobileRpcParams.chatSession(sessionId))
+    }
+
+    @JavascriptInterface
     fun loadChatHistory(sessionId: String, limit: Int) {
         session.request("mobile.chat.history", MobileRpcParams.chatHistory(sessionId, limit))
     }

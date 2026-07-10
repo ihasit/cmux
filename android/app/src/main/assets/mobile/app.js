@@ -29,6 +29,7 @@ const state = {
   activeChatSession: null,
   chatMessages: [],
   chatRefreshPending: false,
+  chatSessionFetches: new Set(),
   workspaceFilter: "all",
   workspaceSearch: "",
   workspaceRefreshPending: false,
@@ -1055,6 +1056,7 @@ function upsertChatMessages(messages) {
 
 function upsertChatSession(session) {
   if (!session?.session_id) return;
+  state.chatSessionFetches.delete(session.session_id);
   const existingIndex = state.chatSessions.findIndex((item) => item.session_id === session.session_id);
   if (existingIndex >= 0) {
     state.chatSessions[existingIndex] = session;
@@ -1066,6 +1068,14 @@ function upsertChatSession(session) {
   }
   renderChatSessions();
   renderChatConversation();
+}
+
+function ensureChatSession(sessionId) {
+  if (!state.connected || !sessionId) return;
+  if (state.chatSessions.some((item) => item.session_id === sessionId)) return;
+  if (state.chatSessionFetches.has(sessionId)) return;
+  state.chatSessionFetches.add(sessionId);
+  bridge().loadChatSession(sessionId);
 }
 
 function toggleFeedbackPanel(open = !state.feedbackPanelOpen) {
@@ -2011,7 +2021,14 @@ function handleRpcResult(method, result) {
   if (method === "mobile.chat.sessions") {
     state.chatRefreshPending = false;
     state.chatSessions = result.sessions || [];
+    for (const session of state.chatSessions) {
+      if (session?.session_id) state.chatSessionFetches.delete(session.session_id);
+    }
     renderChatSessions();
+    return;
+  }
+  if (method === "mobile.chat.session") {
+    if (result.session) upsertChatSession(result.session);
     return;
   }
   if (method === "mobile.chat.history") {
@@ -2157,6 +2174,7 @@ function handlePushEvent(type, payload) {
 function handleChatPushEvent(frame) {
   const sessionId = frame.session_id || "";
   const event = frame.event || {};
+  ensureChatSession(sessionId);
   if (event.event === "descriptor_changed" && event.descriptor) {
     upsertChatSession(event.descriptor);
     return;

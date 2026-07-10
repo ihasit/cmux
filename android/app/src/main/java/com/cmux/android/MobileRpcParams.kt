@@ -57,6 +57,12 @@ object MobileRpcParams {
         return params
     }
 
+    fun chatSession(sessionId: String): JSONObject {
+        return JSONObject()
+            .put("client_id", CLIENT_ID)
+            .put("session_id", cleanId(sessionId))
+    }
+
     fun chatHistory(sessionId: String, limit: Int): JSONObject {
         return JSONObject()
             .put("client_id", CLIENT_ID)

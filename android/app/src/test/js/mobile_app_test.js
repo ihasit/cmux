@@ -96,6 +96,7 @@ function loadApp() {
     createWorkspace: () => bridgeCalls.push(["createWorkspace"]),
     submitDogfoodFeedback: (...args) => bridgeCalls.push(["submitDogfoodFeedback", ...args]),
     listChatSessions: (...args) => bridgeCalls.push(["listChatSessions", ...args]),
+    loadChatSession: (...args) => bridgeCalls.push(["loadChatSession", ...args]),
     loadChatHistory: (...args) => bridgeCalls.push(["loadChatHistory", ...args]),
     sendChatMessage: (...args) => bridgeCalls.push(["sendChatMessage", ...args]),
     interruptChat: (...args) => bridgeCalls.push(["interruptChat", ...args]),
@@ -815,6 +816,49 @@ function testChatPushEventsUpdateSessionAndMessages() {
   assert(
     hooks.elements.chatSessionList.innerHTML.includes("New title"),
     `expected descriptor_changed to update session list, got ${hooks.elements.chatSessionList.innerHTML}`
+  );
+}
+
+function testUnknownChatPushFetchesSessionSnapshotOnce() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+
+  hooks.handlePushEvent("chat.message", {
+    session_id: "chat-new",
+    event: {
+      event: "state_changed",
+      state: { state: "working" },
+    },
+  });
+  hooks.handlePushEvent("chat.message", {
+    session_id: "chat-new",
+    event: {
+      event: "appended",
+      messages: [{
+        id: "m1",
+        seq: 1,
+        role: "agent",
+        kind: { type: "prose", text: "unopened update" },
+      }],
+    },
+  });
+
+  const fetchCalls = bridgeCalls.filter((call) => call[0] === "loadChatSession" && call[1] === "chat-new");
+  assert.strictEqual(fetchCalls.length, 1, `expected one chat session snapshot fetch, got ${JSON.stringify(bridgeCalls)}`);
+
+  hooks.handleRpcResult("mobile.chat.session", {
+    session: {
+      session_id: "chat-new",
+      agent_kind: "codex",
+      title: "New pushed session",
+      state: { state: "working" },
+      version: 2,
+    },
+  });
+
+  assert(
+    hooks.elements.chatSessionList.innerHTML.includes("New pushed session"),
+    `expected session snapshot to render, got ${hooks.elements.chatSessionList.innerHTML}`
   );
 }
 
@@ -2218,6 +2262,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testFeedbackSuccessClearsComposerAndClosesPanel();
   testChatSessionsRenderOpenHistoryAndSendMessage();
   testChatPushEventsUpdateSessionAndMessages();
+  testUnknownChatPushFetchesSessionSnapshotOnce();
   testChatQuestionAndPermissionActionsSendAnswers();
   testChatRichTranscriptKindsRenderReadableCards();
   testLateHostCapabilitiesRefreshRenderedWorkspaceControls();

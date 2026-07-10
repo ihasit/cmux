@@ -180,8 +180,13 @@ class MainActivitySmokeTest {
     fun websocketPairingConnectsToFakeHostAndRendersWorkspaceList() {
         val server = MockWebServer()
         val observedMethods = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val fakeSocket = AtomicReference<WebSocket?>()
         server.enqueue(
             MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    fakeSocket.set(webSocket)
+                }
+
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                     val request = JSONObject(readSingleFrame(bytes.toByteArray()))
                     val method = request.getString("method")
@@ -262,6 +267,21 @@ class MainActivitySmokeTest {
                     scenario.evaluateScript("document.getElementById('chatSessionList').textContent")
                         .contains("Fake Agent Chat")
                 }
+                fakeSocket.get()?.send(ByteString.of(*pushFrame(
+                    "chat.message",
+                    JSONObject()
+                        .put("session_id", "chat-pushed")
+                        .put("event", JSONObject()
+                            .put("event", "state_changed")
+                            .put("state", JSONObject().put("state", "working")))
+                )))
+                waitUntil("fake host receives chat session fallback fetch") {
+                    observedMethods.contains("mobile.chat.session")
+                }
+                waitUntil("fake host pushed chat session renders") {
+                    scenario.evaluateScript("document.getElementById('chatSessionList').textContent")
+                        .contains("Pushed Agent Chat")
+                }
                 scenario.evaluateScript(
                     """
                     document.querySelector('[data-chat-session="chat-fake"]').click();
@@ -304,6 +324,7 @@ class MainActivitySmokeTest {
             check("mobile.terminal.replay" in methods) { methods }
             check("dogfood.feedback.submit" in methods) { methods }
             check("mobile.chat.sessions" in methods) { methods }
+            check("mobile.chat.session" in methods) { methods }
             check("mobile.chat.history" in methods) { methods }
             check("mobile.chat.answer" in methods) { methods }
             check("mobile.chat.send" in methods) { methods }
@@ -2361,6 +2382,16 @@ class MainActivitySmokeTest {
                         .put("state", JSONObject().put("state", "idle"))
                         .put("version", 1)
                 ))
+            "mobile.chat.session" -> JSONObject()
+                .put("session", JSONObject()
+                    .put("session_id", "chat-pushed")
+                    .put("agent_kind", "codex")
+                    .put("title", "Pushed Agent Chat")
+                    .put("workspace_id", "workspace-fake")
+                    .put("terminal_id", "terminal-fake")
+                    .put("cwd", "/fake/pushed")
+                    .put("state", JSONObject().put("state", "working"))
+                    .put("version", 2))
             "mobile.chat.history" -> JSONObject()
                 .put("messages", org.json.JSONArray()
                     .put(
@@ -2430,6 +2461,18 @@ class MainActivitySmokeTest {
             .put("id", id)
             .put("ok", true)
             .put("result", result)
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+        return ByteBuffer.allocate(4 + payload.size)
+            .putInt(payload.size)
+            .put(payload)
+            .array()
+    }
+
+    private fun pushFrame(type: String, pushPayload: JSONObject): ByteArray {
+        val payload = JSONObject()
+            .put("topic", type)
+            .put("payload", pushPayload)
             .toString()
             .toByteArray(StandardCharsets.UTF_8)
         return ByteBuffer.allocate(4 + payload.size)
