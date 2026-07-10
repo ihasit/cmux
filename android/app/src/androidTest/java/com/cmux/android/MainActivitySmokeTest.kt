@@ -231,6 +231,18 @@ class MainActivitySmokeTest {
 
                 scenario.evaluateScript(
                     """
+                    document.getElementById('createWorkspace').click();
+                    document.querySelector('[data-create-terminal="workspace-fake"]').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives workspace and terminal create") {
+                    observedMethods.contains("workspace.create") &&
+                        observedMethods.contains("mobile.terminal.create")
+                }
+
+                scenario.evaluateScript(
+                    """
                     document.querySelector('[data-pin-workspace="workspace-fake"]').click();
                     document.querySelector('[data-read-workspace="workspace-fake"]').click();
                     document.querySelector('[data-toggle-group="group-fake"]').click();
@@ -428,6 +440,8 @@ class MainActivitySmokeTest {
             check("mobile.events.subscribe" in methods) { methods }
             check("mobile.host.status" in methods) { methods }
             check("mobile.workspace.list" in methods) { methods }
+            check("workspace.create" in methods) { methods }
+            check("mobile.terminal.create" in methods) { methods }
             check("workspace.action" in methods) { methods }
             check("workspace.group.collapse" in methods) { methods }
             check("workspace.close" in methods) { methods }
@@ -2453,28 +2467,12 @@ class MainActivitySmokeTest {
                     .put("workspace.close.v1")
                     .put("dogfood.v1")
                     .put("workspace.groups.v1"))
-            "mobile.workspace.list" -> JSONObject()
-                .put("workspaces", org.json.JSONArray().put(
-                    JSONObject()
-                        .put("id", "workspace-fake")
-                        .put("title", "Fake Workspace")
-                        .put("preview", "connected through websocket")
-                        .put("group_id", "group-fake")
-                        .put("is_pinned", false)
-                        .put("has_unread", true)
-                        .put("terminals", org.json.JSONArray().put(
-                            JSONObject()
-                                .put("id", "terminal-fake")
-                                .put("title", "Fake Shell")
-                                .put("current_directory", "/fake")
-                        ))
-                ))
-                .put("groups", org.json.JSONArray().put(
-                    JSONObject()
-                        .put("id", "group-fake")
-                        .put("name", "Fake Group")
-                        .put("is_collapsed", false)
-                ))
+            "mobile.workspace.list" -> fakeWorkspaceListResult()
+            "workspace.create" -> fakeWorkspaceListResult()
+                .put("created_workspace_id", "workspace-fake")
+            "mobile.terminal.create" -> fakeWorkspaceListResult()
+                .put("created_workspace_id", "workspace-fake")
+                .put("created_terminal_id", "terminal-fake")
             "mobile.terminal.replay" -> JSONObject()
                 .put("workspace_id", "workspace-fake")
                 .put("surface_id", "terminal-fake")
@@ -2580,6 +2578,31 @@ class MainActivitySmokeTest {
             .putInt(payload.size)
             .put(payload)
             .array()
+    }
+
+    private fun fakeWorkspaceListResult(): JSONObject {
+        return JSONObject()
+            .put("workspaces", org.json.JSONArray().put(
+                JSONObject()
+                    .put("id", "workspace-fake")
+                    .put("title", "Fake Workspace")
+                    .put("preview", "connected through websocket")
+                    .put("group_id", "group-fake")
+                    .put("is_pinned", false)
+                    .put("has_unread", true)
+                    .put("terminals", org.json.JSONArray().put(
+                        JSONObject()
+                            .put("id", "terminal-fake")
+                            .put("title", "Fake Shell")
+                            .put("current_directory", "/fake")
+                    ))
+            ))
+            .put("groups", org.json.JSONArray().put(
+                JSONObject()
+                    .put("id", "group-fake")
+                    .put("name", "Fake Group")
+                    .put("is_collapsed", false)
+            ))
     }
 
     private fun olderFakeChatMessages(): org.json.JSONArray {
