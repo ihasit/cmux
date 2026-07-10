@@ -299,6 +299,18 @@ class MainActivitySmokeTest {
 
                 scenario.evaluateScript(
                     """
+                    cmuxAndroid.reconcileNotifications('["fake-n-1"]');
+                    cmuxAndroid.dismissNotifications('["fake-n-2"]');
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives notification reconcile and dismiss") {
+                    observedMethods.contains("notification.reconcile") &&
+                        observedMethods.contains("notification.dismiss")
+                }
+
+                scenario.evaluateScript(
+                    """
                     document.getElementById('sendFeedback').click();
                     document.getElementById('feedbackText').value = 'android fake host feedback';
                     document.getElementById('submitFeedback').click();
@@ -423,6 +435,8 @@ class MainActivitySmokeTest {
             check("mobile.terminal.paste" in methods) { methods }
             check("mobile.terminal.scroll" in methods) { methods }
             check("mobile.terminal.mouse" in methods) { methods }
+            check("notification.reconcile" in methods) { methods }
+            check("notification.dismiss" in methods) { methods }
             check("dogfood.feedback.submit" in methods) { methods }
             check("mobile.terminal.paste_image" in methods) { methods }
             check("mobile.chat.sessions" in methods) { methods }
@@ -2499,6 +2513,12 @@ class MainActivitySmokeTest {
                 .put("workspace_id", "workspace-fake")
                 .put("surface_id", "terminal-fake")
                 .put("clicked", true)
+            "notification.reconcile" -> JSONObject()
+                .put("handled_ids", org.json.JSONArray().put("fake-n-1"))
+                .put("unread_count", 1)
+            "notification.dismiss" -> JSONObject()
+                .put("handled_ids", org.json.JSONArray().put("fake-n-2"))
+                .put("unread_count", 0)
             "dogfood.feedback.submit" -> JSONObject()
                 .put("accepted", true)
             "mobile.chat.sessions" -> JSONObject()
