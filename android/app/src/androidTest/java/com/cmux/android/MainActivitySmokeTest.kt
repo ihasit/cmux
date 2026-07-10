@@ -229,6 +229,21 @@ class MainActivitySmokeTest {
                     .withElement(findElement(Locator.ID, "workspaceList"))
                     .check(webMatches(getText(), containsString("Fake Shell")))
 
+                scenario.evaluateScript(
+                    """
+                    document.querySelector('[data-pin-workspace="workspace-fake"]').click();
+                    document.querySelector('[data-read-workspace="workspace-fake"]').click();
+                    document.querySelector('[data-toggle-group="group-fake"]').click();
+                    document.querySelector('[data-close-workspace="workspace-fake"]').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives workspace pin/read/group/close actions") {
+                    observedMethods.contains("workspace.action") &&
+                        observedMethods.contains("workspace.group.collapse") &&
+                        observedMethods.contains("workspace.close")
+                }
+
                 scenario.evaluateScript("openTerminal('workspace-fake', 'terminal-fake'); true;")
                 waitUntil("fake host terminal replay renders") {
                     scenario.evaluateScript("document.getElementById('terminalOutput').textContent")
@@ -369,6 +384,9 @@ class MainActivitySmokeTest {
             check("mobile.events.subscribe" in methods) { methods }
             check("mobile.host.status" in methods) { methods }
             check("mobile.workspace.list" in methods) { methods }
+            check("workspace.action" in methods) { methods }
+            check("workspace.group.collapse" in methods) { methods }
+            check("workspace.close" in methods) { methods }
             check("mobile.terminal.replay" in methods) { methods }
             check("dogfood.feedback.submit" in methods) { methods }
             check("mobile.chat.sessions" in methods) { methods }
@@ -2391,6 +2409,9 @@ class MainActivitySmokeTest {
                         .put("id", "workspace-fake")
                         .put("title", "Fake Workspace")
                         .put("preview", "connected through websocket")
+                        .put("group_id", "group-fake")
+                        .put("is_pinned", false)
+                        .put("has_unread", true)
                         .put("terminals", org.json.JSONArray().put(
                             JSONObject()
                                 .put("id", "terminal-fake")
@@ -2398,7 +2419,12 @@ class MainActivitySmokeTest {
                                 .put("current_directory", "/fake")
                         ))
                 ))
-                .put("groups", org.json.JSONArray())
+                .put("groups", org.json.JSONArray().put(
+                    JSONObject()
+                        .put("id", "group-fake")
+                        .put("name", "Fake Group")
+                        .put("is_collapsed", false)
+                ))
             "mobile.terminal.replay" -> JSONObject()
                 .put("workspace_id", "workspace-fake")
                 .put("surface_id", "terminal-fake")
