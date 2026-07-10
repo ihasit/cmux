@@ -267,6 +267,16 @@ class MainActivitySmokeTest {
 
                 scenario.evaluateScript(
                     """
+                    cmuxAndroid.pasteImage('workspace-fake', 'terminal-fake', 'aGVsbG8=', 'png', 80, 24);
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives terminal image paste") {
+                    observedMethods.contains("mobile.terminal.paste_image")
+                }
+
+                scenario.evaluateScript(
+                    """
                     document.getElementById('sendFeedback').click();
                     document.getElementById('feedbackText').value = 'android fake host feedback';
                     document.getElementById('submitFeedback').click();
@@ -389,6 +399,7 @@ class MainActivitySmokeTest {
             check("workspace.close" in methods) { methods }
             check("mobile.terminal.replay" in methods) { methods }
             check("dogfood.feedback.submit" in methods) { methods }
+            check("mobile.terminal.paste_image" in methods) { methods }
             check("mobile.chat.sessions" in methods) { methods }
             check("mobile.chat.session" in methods) { methods }
             check("mobile.chat.history" in methods) { methods }
@@ -2440,6 +2451,11 @@ class MainActivitySmokeTest {
                 .put("surface_id", "terminal-fake")
                 .put("queued", false)
                 .put("terminal_seq", 2)
+            "mobile.terminal.paste_image" -> JSONObject()
+                .put("workspace_id", "workspace-fake")
+                .put("surface_id", "terminal-fake")
+                .put("queued", false)
+                .put("terminal_seq", 3)
             "mobile.terminal.viewport" -> JSONObject()
                 .put("workspace_id", "workspace-fake")
                 .put("surface_id", "terminal-fake")
