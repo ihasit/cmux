@@ -1064,6 +1064,80 @@ function testChatRichTranscriptKindsRenderReadableCards() {
   assert(!html.includes('{"type":"tool_use"'), `expected readable tool card instead of raw JSON, got ${html}`);
 }
 
+function testChatTerminalBlocksRenderFromHistoryAndPush() {
+  const { hooks } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.chat.sessions", {
+    sessions: [{
+      session_id: "terminal-chat",
+      agent_kind: "terminal",
+      title: "Shell log",
+      state: { state: "idle" },
+    }],
+  });
+  hooks.state.activeChatSession = hooks.state.chatSessions[0];
+  hooks.handleRpcResult("mobile.chat.history", {
+    messages: [
+      {
+        id: "ignored-prose-for-terminal-session",
+        seq: 1,
+        role: "agent",
+        kind: { type: "prose", text: "raw fallback message" },
+      },
+    ],
+    terminal_blocks: [
+      {
+        id: 1,
+        command: "npm test",
+        output: "PASS\n",
+        exit_code: 0,
+        is_running: false,
+        is_interactive: false,
+      },
+    ],
+    has_more: false,
+  });
+  assert(
+    hooks.elements.chatMessages.innerHTML.includes("npm test") &&
+      hooks.elements.chatMessages.innerHTML.includes("PASS"),
+    `expected terminal block history to render, got ${hooks.elements.chatMessages.innerHTML}`
+  );
+  assert(
+    !hooks.elements.chatMessages.innerHTML.includes("raw fallback message"),
+    `expected terminal blocks to take precedence over messages, got ${hooks.elements.chatMessages.innerHTML}`
+  );
+
+  hooks.handlePushEvent("chat.message", {
+    session_id: "terminal-chat",
+    event: {
+      event: "terminal_blocks",
+      blocks: [
+        {
+          id: 1,
+          command: "npm test",
+          output: "PASS\nupdated\n",
+          exit_code: 0,
+          is_running: false,
+          is_interactive: false,
+        },
+        {
+          id: 2,
+          command: "vim src/main.js",
+          output: "",
+          exit_code: null,
+          is_running: true,
+          is_interactive: true,
+        },
+      ],
+    },
+  });
+
+  const html = hooks.elements.chatMessages.innerHTML;
+  assert(html.includes("updated"), `expected terminal block push to update existing block, got ${html}`);
+  assert(html.includes("vim src/main.js"), `expected terminal block push to append new block, got ${html}`);
+  assert(html.includes("interactive"), `expected interactive terminal block metadata, got ${html}`);
+}
+
 function testLateHostCapabilitiesRefreshRenderedWorkspaceControls() {
   const { hooks } = loadApp();
   hooks.state.connected = true;
@@ -2317,6 +2391,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testUnknownChatPushFetchesSessionSnapshotOnce();
   testChatQuestionAndPermissionActionsSendAnswers();
   testChatRichTranscriptKindsRenderReadableCards();
+  testChatTerminalBlocksRenderFromHistoryAndPush();
   testLateHostCapabilitiesRefreshRenderedWorkspaceControls();
   testWorkspaceCardActionsRequireHostCapabilities();
   testWorkspaceGroupToggleRequiresHostCapability();

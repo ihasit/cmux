@@ -346,6 +346,10 @@ textarea {
   font-size: 12px;
 }
 
+.terminal-command-block {
+  border-left: 3px solid #0d6efd;
+}
+
 .workspace-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

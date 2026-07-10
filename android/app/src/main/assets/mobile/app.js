@@ -28,6 +28,7 @@ const state = {
   chatSessions: [],
   activeChatSession: null,
   chatMessages: [],
+  chatTerminalBlocks: [],
   chatRefreshPending: false,
   chatHasMore: false,
   chatHistoryBeforeSeq: null,
@@ -137,6 +138,8 @@ const messages = {
     "chat.fileEdit": "File edit",
     "chat.attachment": "Attachment",
     "chat.status": "Status",
+    "chat.command": "Command",
+    "chat.interactive": "interactive",
     "chat.running": "running",
     "chat.exitCode": "exit {code}",
     "chat.additions": "+{count}",
@@ -306,6 +309,8 @@ const messages = {
     "chat.fileEdit": "ファイル編集",
     "chat.attachment": "添付",
     "chat.status": "ステータス",
+    "chat.command": "コマンド",
+    "chat.interactive": "対話型",
     "chat.running": "実行中",
     "chat.exitCode": "終了 {code}",
     "chat.additions": "+{count}",
@@ -836,6 +841,7 @@ function openChatSession(sessionId) {
   }
   state.activeChatSession = session;
   state.chatMessages = [];
+  state.chatTerminalBlocks = [];
   state.chatHasMore = false;
   state.chatHistoryBeforeSeq = null;
   state.chatHistoryPending = true;
@@ -930,8 +936,12 @@ function renderChatConversation() {
     agentDisplayName(session.agent_kind),
     chatStateLabel(session.state),
   ].filter(Boolean).join(" · ");
-  elements.chatMessages.innerHTML = state.chatMessages.length === 0
-    ? `<article class="card"><div class="card-subtitle">${escapeHtml(t("chat.empty"))}</div></article>`
+  elements.chatMessages.innerHTML = state.chatTerminalBlocks.length > 0
+    ? state.chatTerminalBlocks.map(renderTerminalCommandBlock).join("")
+    : state.chatMessages.length === 0
+    ? (
+      `<article class="card"><div class="card-subtitle">${escapeHtml(t("chat.empty"))}</div></article>`
+    )
     : state.chatMessages.map(renderChatMessage).join("");
   elements.loadOlderChat.classList.toggle("hidden", !state.chatHasMore && !state.chatHistoryPending);
   setDisabled(elements.loadOlderChat, !state.connected || state.chatHistoryPending || !state.chatHasMore);
@@ -1042,6 +1052,20 @@ function renderChatDetailCard(title, subtitle, body) {
   `;
 }
 
+function renderTerminalCommandBlock(block) {
+  const meta = [
+    block.is_running ? t("chat.running") : "",
+    block.is_interactive ? t("chat.interactive") : "",
+    Number.isInteger(block.exit_code) ? t("chat.exitCode").replace("{code}", String(block.exit_code)) : "",
+  ].filter(Boolean).join(" · ");
+  const body = [block.command, block.output].filter(Boolean).join("\n\n");
+  return `
+    <article class="chat-message terminal-command-block" data-terminal-command-block="${escapeHtml(block.id ?? "")}">
+      ${renderChatDetailCard(t("chat.command"), meta, body)}
+    </article>
+  `;
+}
+
 function chatMessageText(message) {
   const kind = message.kind || {};
   if (kind.text) return kind.text;
@@ -1075,6 +1099,15 @@ function upsertChatMessages(messages) {
     if (message?.id) byId.set(message.id, message);
   }
   state.chatMessages = Array.from(byId.values()).sort((left, right) => (left.seq || 0) - (right.seq || 0));
+  renderChatConversation();
+}
+
+function upsertChatTerminalBlocks(blocks) {
+  const byId = new Map(state.chatTerminalBlocks.map((block) => [block.id, block]));
+  for (const block of blocks || []) {
+    if (Number.isInteger(block?.id)) byId.set(block.id, block);
+  }
+  state.chatTerminalBlocks = Array.from(byId.values()).sort((left, right) => (left.id || 0) - (right.id || 0));
   renderChatConversation();
 }
 
@@ -2057,11 +2090,15 @@ function handleRpcResult(method, result) {
   }
   if (method === "mobile.chat.history") {
     const incoming = (result.messages || []).slice().sort((left, right) => (left.seq || 0) - (right.seq || 0));
+    const incomingBlocks = (result.terminal_blocks || []).slice().sort((left, right) => (left.id || 0) - (right.id || 0));
     if (state.chatHistoryBeforeSeq !== null) {
       const byId = new Map([...state.chatMessages, ...incoming].map((message) => [message.id, message]));
       state.chatMessages = Array.from(byId.values()).sort((left, right) => (left.seq || 0) - (right.seq || 0));
+      const blocksById = new Map([...state.chatTerminalBlocks, ...incomingBlocks].map((block) => [block.id, block]));
+      state.chatTerminalBlocks = Array.from(blocksById.values()).sort((left, right) => (left.id || 0) - (right.id || 0));
     } else {
       state.chatMessages = incoming;
+      state.chatTerminalBlocks = incomingBlocks;
     }
     state.chatHasMore = result.has_more === true;
     state.chatHistoryBeforeSeq = null;
@@ -2224,6 +2261,10 @@ function handleChatPushEvent(frame) {
   if (!state.activeChatSession || state.activeChatSession.session_id !== sessionId) return;
   if (event.event === "appended" || event.event === "updated") {
     upsertChatMessages(event.messages || []);
+    return;
+  }
+  if (event.event === "terminal_blocks") {
+    upsertChatTerminalBlocks(event.blocks || []);
     return;
   }
   if (event.event === "streaming_prose") {

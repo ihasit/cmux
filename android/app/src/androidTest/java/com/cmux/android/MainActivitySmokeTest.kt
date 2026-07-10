@@ -284,6 +284,35 @@ class MainActivitySmokeTest {
                 }
                 scenario.evaluateScript(
                     """
+                    document.querySelector('[data-chat-session="chat-pushed"]').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host terminal chat block history renders") {
+                    scenario.evaluateScript("document.getElementById('chatMessages').textContent")
+                        .contains("initial terminal block")
+                }
+                fakeSocket.get()?.send(ByteString.of(*pushFrame(
+                    "chat.message",
+                    JSONObject()
+                        .put("session_id", "chat-pushed")
+                        .put("event", JSONObject()
+                            .put("event", "terminal_blocks")
+                            .put("blocks", org.json.JSONArray()
+                                .put(JSONObject()
+                                    .put("id", 1)
+                                    .put("command", "fake tail")
+                                    .put("output", "updated terminal block\n")
+                                    .put("exit_code", 0)
+                                    .put("is_running", false)
+                                    .put("is_interactive", false))))
+                )))
+                waitUntil("fake host terminal chat block updates") {
+                    scenario.evaluateScript("document.getElementById('chatMessages').textContent")
+                        .contains("updated terminal block")
+                }
+                scenario.evaluateScript(
+                    """
                     document.querySelector('[data-chat-session="chat-fake"]').click();
                     true;
                     """.trimIndent()
@@ -2405,7 +2434,22 @@ class MainActivitySmokeTest {
                     .put("state", JSONObject().put("state", "working"))
                     .put("version", 2))
             "mobile.chat.history" -> JSONObject()
-                .put("messages", if (beforeSeq > 0) olderFakeChatMessages() else recentFakeChatMessages())
+                .put(
+                    "messages",
+                    when {
+                        params?.optString("session_id") == "chat-pushed" -> org.json.JSONArray()
+                        beforeSeq > 0 -> olderFakeChatMessages()
+                        else -> recentFakeChatMessages()
+                    }
+                )
+                .put(
+                    "terminal_blocks",
+                    if (params?.optString("session_id") == "chat-pushed" && beforeSeq == 0) {
+                        recentFakeTerminalBlocks()
+                    } else {
+                        org.json.JSONArray()
+                    }
+                )
                 .put("has_more", beforeSeq == 0)
             "mobile.chat.send" -> JSONObject()
                 .put("submitted", true)
@@ -2496,6 +2540,18 @@ class MainActivitySmokeTest {
                         .put("deletions", 1)
                         .put("unified_diff", "-old\n+new"))
             )
+    }
+
+    private fun recentFakeTerminalBlocks(): org.json.JSONArray {
+        return org.json.JSONArray().put(
+            JSONObject()
+                .put("id", 1)
+                .put("command", "fake tail")
+                .put("output", "initial terminal block\n")
+                .put("exit_code", JSONObject.NULL)
+                .put("is_running", true)
+                .put("is_interactive", false)
+        )
     }
 
     private fun pushFrame(type: String, pushPayload: JSONObject): ByteArray {
