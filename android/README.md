@@ -86,7 +86,7 @@ Implemented:
 - Fail pending mobile RPCs with explicit transport errors when the connection closes.
 - Avoid automatic reconnect after manual disconnects, forgotten Macs, or pairing payloads with no supported routes.
 - Run JVM unit tests for auth callback parsing, pairing URL parsing, WebSocket route parsing, route JSON round-trips, route auth policy, mobile TCP/WebSocket framing, and mobile RPC auth envelopes.
-- Provide Android instrumentation coverage for the launched WebView shell, Stack token save/clear bridge, attach deep links, workspace list rendering, and terminal render-grid updates.
+- Provide Android instrumentation coverage for the launched WebView shell, Stack token save/clear bridge, attach deep links, workspace list rendering, workspace actions, terminal render-grid/byte updates, terminal input/paste/image-paste round trips, dogfood feedback, notifications, and agent chat flows.
 - Provide English and Japanese WebView strings.
 
 Not verified yet:

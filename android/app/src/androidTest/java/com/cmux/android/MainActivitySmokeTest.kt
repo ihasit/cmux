@@ -267,6 +267,16 @@ class MainActivitySmokeTest {
 
                 scenario.evaluateScript(
                     """
+                    cmuxAndroid.pasteText('workspace-fake', 'terminal-fake', 'pasted from android', 'return', 80, 24);
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives terminal text paste") {
+                    observedMethods.contains("mobile.terminal.paste")
+                }
+
+                scenario.evaluateScript(
+                    """
                     cmuxAndroid.pasteImage('workspace-fake', 'terminal-fake', 'aGVsbG8=', 'png', 80, 24);
                     true;
                     """.trimIndent()
@@ -398,6 +408,7 @@ class MainActivitySmokeTest {
             check("workspace.group.collapse" in methods) { methods }
             check("workspace.close" in methods) { methods }
             check("mobile.terminal.replay" in methods) { methods }
+            check("mobile.terminal.paste" in methods) { methods }
             check("dogfood.feedback.submit" in methods) { methods }
             check("mobile.terminal.paste_image" in methods) { methods }
             check("mobile.chat.sessions" in methods) { methods }
@@ -2451,11 +2462,16 @@ class MainActivitySmokeTest {
                 .put("surface_id", "terminal-fake")
                 .put("queued", false)
                 .put("terminal_seq", 2)
-            "mobile.terminal.paste_image" -> JSONObject()
+            "mobile.terminal.paste" -> JSONObject()
                 .put("workspace_id", "workspace-fake")
                 .put("surface_id", "terminal-fake")
                 .put("queued", false)
                 .put("terminal_seq", 3)
+            "mobile.terminal.paste_image" -> JSONObject()
+                .put("workspace_id", "workspace-fake")
+                .put("surface_id", "terminal-fake")
+                .put("queued", false)
+                .put("terminal_seq", 4)
             "mobile.terminal.viewport" -> JSONObject()
                 .put("workspace_id", "workspace-fake")
                 .put("surface_id", "terminal-fake")
