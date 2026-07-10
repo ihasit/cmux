@@ -287,6 +287,18 @@ class MainActivitySmokeTest {
 
                 scenario.evaluateScript(
                     """
+                    cmuxAndroid.scrollTerminal('workspace-fake', 'terminal-fake', -3, 10, 4, 200, 80, 24);
+                    cmuxAndroid.clickTerminal('workspace-fake', 'terminal-fake', 12, 5);
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host receives terminal scroll and click") {
+                    observedMethods.contains("mobile.terminal.scroll") &&
+                        observedMethods.contains("mobile.terminal.mouse")
+                }
+
+                scenario.evaluateScript(
+                    """
                     document.getElementById('sendFeedback').click();
                     document.getElementById('feedbackText').value = 'android fake host feedback';
                     document.getElementById('submitFeedback').click();
@@ -409,6 +421,8 @@ class MainActivitySmokeTest {
             check("workspace.close" in methods) { methods }
             check("mobile.terminal.replay" in methods) { methods }
             check("mobile.terminal.paste" in methods) { methods }
+            check("mobile.terminal.scroll" in methods) { methods }
+            check("mobile.terminal.mouse" in methods) { methods }
             check("dogfood.feedback.submit" in methods) { methods }
             check("mobile.terminal.paste_image" in methods) { methods }
             check("mobile.chat.sessions" in methods) { methods }
@@ -2477,6 +2491,14 @@ class MainActivitySmokeTest {
                 .put("surface_id", "terminal-fake")
                 .put("columns", 80)
                 .put("rows", 24)
+            "mobile.terminal.scroll" -> JSONObject()
+                .put("workspace_id", "workspace-fake")
+                .put("surface_id", "terminal-fake")
+                .put("scrolled", true)
+            "mobile.terminal.mouse" -> JSONObject()
+                .put("workspace_id", "workspace-fake")
+                .put("surface_id", "terminal-fake")
+                .put("clicked", true)
             "dogfood.feedback.submit" -> JSONObject()
                 .put("accepted", true)
             "mobile.chat.sessions" -> JSONObject()
