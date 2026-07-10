@@ -301,12 +301,14 @@ class MobileRpcParamsTest {
 
     @Test
     fun chatHistoryClampsLimitAndTrimsSessionId() {
-        val low = MobileRpcParams.chatHistory(" session-1 ", 0)
-        val high = MobileRpcParams.chatHistory(" session-1 ", 500)
+        val low = MobileRpcParams.chatHistory(" session-1 ", 0, 0)
+        val high = MobileRpcParams.chatHistory(" session-1 ", 500, 42)
 
         assertEquals("session-1", low.getString("session_id"))
         assertEquals(1, low.getInt("limit"))
+        assertEquals(false, low.has("before_seq"))
         assertEquals(200, high.getInt("limit"))
+        assertEquals(42, high.getInt("before_seq"))
         assertEquals(MobileRpcParams.CLIENT_ID, high.getString("client_id"))
     }
 

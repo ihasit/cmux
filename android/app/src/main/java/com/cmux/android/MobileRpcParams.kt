@@ -63,11 +63,15 @@ object MobileRpcParams {
             .put("session_id", cleanId(sessionId))
     }
 
-    fun chatHistory(sessionId: String, limit: Int): JSONObject {
-        return JSONObject()
+    fun chatHistory(sessionId: String, limit: Int, beforeSeq: Int): JSONObject {
+        val params = JSONObject()
             .put("client_id", CLIENT_ID)
             .put("session_id", cleanId(sessionId))
             .put("limit", limit.coerceIn(1, 200))
+        if (beforeSeq > 0) {
+            params.put("before_seq", beforeSeq)
+        }
+        return params
     }
 
     fun chatSend(sessionId: String, text: String): JSONObject {

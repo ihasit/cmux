@@ -298,6 +298,16 @@ class MainActivitySmokeTest {
                 }
                 scenario.evaluateScript(
                     """
+                    document.getElementById('loadOlderChat').click();
+                    true;
+                    """.trimIndent()
+                )
+                waitUntil("fake host older chat history renders") {
+                    scenario.evaluateScript("document.getElementById('chatMessages').textContent")
+                        .contains("older fake chat")
+                }
+                scenario.evaluateScript(
+                    """
                     document.querySelector('[data-chat-answer="1"]').click();
                     true;
                     """.trimIndent()
@@ -2318,6 +2328,8 @@ class MainActivitySmokeTest {
     private fun rpcResponseFrame(request: JSONObject): ByteArray {
         val id = request.getInt("id")
         val method = request.getString("method")
+        val params = request.optJSONObject("params")
+        val beforeSeq = params?.optInt("before_seq", 0) ?: 0
         val result = when (method) {
             "mobile.host.status" -> JSONObject()
                 .put("mac_display_name", "Fake Android Host")
@@ -2393,63 +2405,8 @@ class MainActivitySmokeTest {
                     .put("state", JSONObject().put("state", "working"))
                     .put("version", 2))
             "mobile.chat.history" -> JSONObject()
-                .put("messages", org.json.JSONArray()
-                    .put(
-                        JSONObject()
-                            .put("id", "message-fake")
-                            .put("seq", 1)
-                            .put("role", "agent")
-                            .put("timestamp", "2026-07-10T00:00:00Z")
-                            .put("kind", JSONObject()
-                                .put("type", "prose")
-                                .put("text", "hello from fake chat"))
-                    )
-                    .put(
-                        JSONObject()
-                            .put("id", "question-fake")
-                            .put("seq", 2)
-                            .put("role", "agent")
-                            .put("timestamp", "2026-07-10T00:00:01Z")
-                            .put("kind", JSONObject()
-                                .put("type", "question")
-                                .put("prompt", "Choose Android validation")
-                                .put("options", org.json.JSONArray()
-                                    .put(JSONObject()
-                                        .put("label", "Quick")
-                                        .put("detail", "Unit checks"))
-                                    .put(JSONObject()
-                                        .put("label", "Full")
-                                        .put("detail", "Instrumentation checks"))))
-                    )
-                    .put(
-                        JSONObject()
-                            .put("id", "terminal-fake")
-                            .put("seq", 3)
-                            .put("role", "agent")
-                            .put("timestamp", "2026-07-10T00:00:02Z")
-                            .put("kind", JSONObject()
-                                .put("type", "terminal")
-                                .put("command", "gradle test")
-                                .put("output", "BUILD SUCCESSFUL")
-                                .put("exit_code", 0)
-                                .put("duration_seconds", 1.2)
-                                .put("is_running", false))
-                    )
-                    .put(
-                        JSONObject()
-                            .put("id", "file-fake")
-                            .put("seq", 4)
-                            .put("role", "agent")
-                            .put("timestamp", "2026-07-10T00:00:03Z")
-                            .put("kind", JSONObject()
-                                .put("type", "file_edit")
-                                .put("file_path", "FakeHost.kt")
-                                .put("operation", "edit")
-                                .put("additions", 2)
-                                .put("deletions", 1)
-                                .put("unified_diff", "-old\n+new"))
-                    ))
-                .put("has_more", false)
+                .put("messages", if (beforeSeq > 0) olderFakeChatMessages() else recentFakeChatMessages())
+                .put("has_more", beforeSeq == 0)
             "mobile.chat.send" -> JSONObject()
                 .put("submitted", true)
             "mobile.chat.answer" -> JSONObject()
@@ -2467,6 +2424,78 @@ class MainActivitySmokeTest {
             .putInt(payload.size)
             .put(payload)
             .array()
+    }
+
+    private fun olderFakeChatMessages(): org.json.JSONArray {
+        return org.json.JSONArray().put(
+            JSONObject()
+                .put("id", "older-message-fake")
+                .put("seq", 0)
+                .put("role", "agent")
+                .put("timestamp", "2026-07-10T00:00:00Z")
+                .put("kind", JSONObject()
+                    .put("type", "prose")
+                    .put("text", "older fake chat"))
+        )
+    }
+
+    private fun recentFakeChatMessages(): org.json.JSONArray {
+        return org.json.JSONArray()
+            .put(
+                JSONObject()
+                    .put("id", "message-fake")
+                    .put("seq", 1)
+                    .put("role", "agent")
+                    .put("timestamp", "2026-07-10T00:00:00Z")
+                    .put("kind", JSONObject()
+                        .put("type", "prose")
+                        .put("text", "hello from fake chat"))
+            )
+            .put(
+                JSONObject()
+                    .put("id", "question-fake")
+                    .put("seq", 2)
+                    .put("role", "agent")
+                    .put("timestamp", "2026-07-10T00:00:01Z")
+                    .put("kind", JSONObject()
+                        .put("type", "question")
+                        .put("prompt", "Choose Android validation")
+                        .put("options", org.json.JSONArray()
+                            .put(JSONObject()
+                                .put("label", "Quick")
+                                .put("detail", "Unit checks"))
+                            .put(JSONObject()
+                                .put("label", "Full")
+                                .put("detail", "Instrumentation checks"))))
+            )
+            .put(
+                JSONObject()
+                    .put("id", "terminal-fake")
+                    .put("seq", 3)
+                    .put("role", "agent")
+                    .put("timestamp", "2026-07-10T00:00:02Z")
+                    .put("kind", JSONObject()
+                        .put("type", "terminal")
+                        .put("command", "gradle test")
+                        .put("output", "BUILD SUCCESSFUL")
+                        .put("exit_code", 0)
+                        .put("duration_seconds", 1.2)
+                        .put("is_running", false))
+            )
+            .put(
+                JSONObject()
+                    .put("id", "file-fake")
+                    .put("seq", 4)
+                    .put("role", "agent")
+                    .put("timestamp", "2026-07-10T00:00:03Z")
+                    .put("kind", JSONObject()
+                        .put("type", "file_edit")
+                        .put("file_path", "FakeHost.kt")
+                        .put("operation", "edit")
+                        .put("additions", 2)
+                        .put("deletions", 1)
+                        .put("unified_diff", "-old\n+new"))
+            )
     }
 
     private fun pushFrame(type: String, pushPayload: JSONObject): ByteArray {

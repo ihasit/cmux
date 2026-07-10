@@ -724,7 +724,7 @@ function testChatSessionsRenderOpenHistoryAndSendMessage() {
     target: eventTarget({ "data-chat-session": "chat-1" }),
   });
   assert(
-    bridgeCalls.some((call) => call[0] === "loadChatHistory" && call[1] === "chat-1" && call[2] === 100),
+    bridgeCalls.some((call) => call[0] === "loadChatHistory" && call[1] === "chat-1" && call[2] === 100 && call[3] === 0),
     `expected opening chat to load history, got ${JSON.stringify(bridgeCalls)}`
   );
 
@@ -751,6 +751,57 @@ function testChatSessionsRenderOpenHistoryAndSendMessage() {
     `expected sendChatMessage call, got ${JSON.stringify(bridgeCalls)}`
   );
   assert.strictEqual(hooks.elements.chatInput.value, "", "expected chat input to clear after send");
+}
+
+function testChatHistoryCanLoadEarlierPage() {
+  const { hooks, bridgeCalls } = loadApp();
+  hooks.state.connected = true;
+  hooks.handleRpcResult("mobile.chat.sessions", {
+    sessions: [{
+      session_id: "chat-1",
+      agent_kind: "codex",
+      title: "Paged chat",
+      state: { state: "idle" },
+    }],
+  });
+  hooks.elements.chatSessionList.dispatchEvent("click", {
+    target: eventTarget({ "data-chat-session": "chat-1" }),
+  });
+  hooks.handleRpcResult("mobile.chat.history", {
+    messages: [
+      { id: "new-2", seq: 20, role: "agent", kind: { type: "prose", text: "newer two" } },
+      { id: "new-1", seq: 10, role: "user", kind: { type: "prose", text: "newer one" } },
+    ],
+    has_more: true,
+  });
+  assert(
+    !hooks.elements.loadOlderChat.classList.contains("hidden"),
+    "expected load older chat button to be visible when has_more is true"
+  );
+
+  hooks.elements.loadOlderChat.dispatchEvent("click", {
+    target: hooks.elements.loadOlderChat,
+  });
+  assert(
+    bridgeCalls.some((call) => call[0] === "loadChatHistory" && call[1] === "chat-1" && call[2] === 100 && call[3] === 10),
+    `expected load older chat history before first seq, got ${JSON.stringify(bridgeCalls)}`
+  );
+
+  hooks.handleRpcResult("mobile.chat.history", {
+    messages: [
+      { id: "old-1", seq: 1, role: "agent", kind: { type: "prose", text: "oldest" } },
+      { id: "new-1", seq: 10, role: "user", kind: { type: "prose", text: "newer one replacement" } },
+    ],
+    has_more: false,
+  });
+
+  const html = hooks.elements.chatMessages.innerHTML;
+  assert(html.indexOf("oldest") < html.indexOf("newer one replacement"), `expected older page prepended, got ${html}`);
+  assert(html.includes("newer two"), `expected existing newer message to remain, got ${html}`);
+  assert(
+    hooks.elements.loadOlderChat.classList.contains("hidden"),
+    "expected load older button to hide after has_more becomes false"
+  );
 }
 
 function testChatPushEventsUpdateSessionAndMessages() {
@@ -2261,6 +2312,7 @@ function testReconnectDoesNotReenableStaleWorkspaceActionsBeforeRefresh() {
   testFeedbackSubmitSendsNoteTerminalTextAndBuildStamp();
   testFeedbackSuccessClearsComposerAndClosesPanel();
   testChatSessionsRenderOpenHistoryAndSendMessage();
+  testChatHistoryCanLoadEarlierPage();
   testChatPushEventsUpdateSessionAndMessages();
   testUnknownChatPushFetchesSessionSnapshotOnce();
   testChatQuestionAndPermissionActionsSendAnswers();

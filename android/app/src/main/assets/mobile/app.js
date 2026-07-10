@@ -29,6 +29,9 @@ const state = {
   activeChatSession: null,
   chatMessages: [],
   chatRefreshPending: false,
+  chatHasMore: false,
+  chatHistoryBeforeSeq: null,
+  chatHistoryPending: false,
   chatSessionFetches: new Set(),
   workspaceFilter: "all",
   workspaceSearch: "",
@@ -120,6 +123,7 @@ const messages = {
     "chat.openSession": "Open chat",
     "chat.loading": "Loading chat...",
     "chat.empty": "No messages yet.",
+    "chat.loadOlder": "Load earlier messages",
     "chat.inputPlaceholder": "Send a prompt to the agent",
     "chat.interrupt": "Interrupt",
     "chat.sent": "Message sent.",
@@ -288,6 +292,7 @@ const messages = {
     "chat.openSession": "チャットを開く",
     "chat.loading": "チャットを読み込み中...",
     "chat.empty": "メッセージはまだありません。",
+    "chat.loadOlder": "以前のメッセージを読み込む",
     "chat.inputPlaceholder": "エージェントへプロンプトを送信",
     "chat.interrupt": "中断",
     "chat.sent": "メッセージを送信しました。",
@@ -426,6 +431,7 @@ const elements = {
   chatConversation: document.getElementById("chatConversation"),
   chatConversationTitle: document.getElementById("chatConversationTitle"),
   chatConversationMeta: document.getElementById("chatConversationMeta"),
+  loadOlderChat: document.getElementById("loadOlderChat"),
   chatMessages: document.getElementById("chatMessages"),
   chatInput: document.getElementById("chatInput"),
   interruptChat: document.getElementById("interruptChat"),
@@ -830,8 +836,11 @@ function openChatSession(sessionId) {
   }
   state.activeChatSession = session;
   state.chatMessages = [];
+  state.chatHasMore = false;
+  state.chatHistoryBeforeSeq = null;
+  state.chatHistoryPending = true;
   renderChatConversation();
-  bridge().loadChatHistory(sessionId, 100);
+  bridge().loadChatHistory(sessionId, 100, 0);
 }
 
 function sendChatMessage() {
@@ -850,6 +859,18 @@ function interruptChat() {
 function answerChat(optionIndex) {
   if (!state.connected || !state.activeChatSession) return;
   bridge().answerChat(state.activeChatSession.session_id, Number(optionIndex));
+}
+
+function loadOlderChatMessages() {
+  if (!state.connected || !state.activeChatSession || state.chatHistoryPending || !state.chatHasMore) return;
+  const firstSeq = state.chatMessages.reduce((min, message) => {
+    return Number.isInteger(message.seq) ? Math.min(min, message.seq) : min;
+  }, Number.POSITIVE_INFINITY);
+  if (!Number.isFinite(firstSeq)) return;
+  state.chatHistoryBeforeSeq = firstSeq;
+  state.chatHistoryPending = true;
+  renderChatConversation();
+  bridge().loadChatHistory(state.activeChatSession.session_id, 100, firstSeq);
 }
 
 function renderChatStatus() {
@@ -901,6 +922,7 @@ function renderChatConversation() {
   elements.chatConversation.classList.toggle("hidden", !session);
   if (!session) {
     elements.chatMessages.innerHTML = "";
+    elements.loadOlderChat.classList.add("hidden");
     return;
   }
   elements.chatConversationTitle.textContent = session.title || t("chat.defaultTitle");
@@ -911,6 +933,8 @@ function renderChatConversation() {
   elements.chatMessages.innerHTML = state.chatMessages.length === 0
     ? `<article class="card"><div class="card-subtitle">${escapeHtml(t("chat.empty"))}</div></article>`
     : state.chatMessages.map(renderChatMessage).join("");
+  elements.loadOlderChat.classList.toggle("hidden", !state.chatHasMore && !state.chatHistoryPending);
+  setDisabled(elements.loadOlderChat, !state.connected || state.chatHistoryPending || !state.chatHasMore);
   renderConnectionControls();
 }
 
@@ -2032,14 +2056,25 @@ function handleRpcResult(method, result) {
     return;
   }
   if (method === "mobile.chat.history") {
-    state.chatMessages = (result.messages || []).slice().sort((left, right) => (left.seq || 0) - (right.seq || 0));
+    const incoming = (result.messages || []).slice().sort((left, right) => (left.seq || 0) - (right.seq || 0));
+    if (state.chatHistoryBeforeSeq !== null) {
+      const byId = new Map([...state.chatMessages, ...incoming].map((message) => [message.id, message]));
+      state.chatMessages = Array.from(byId.values()).sort((left, right) => (left.seq || 0) - (right.seq || 0));
+    } else {
+      state.chatMessages = incoming;
+    }
+    state.chatHasMore = result.has_more === true;
+    state.chatHistoryBeforeSeq = null;
+    state.chatHistoryPending = false;
     renderChatConversation();
     return;
   }
   if (method === "mobile.chat.send") {
     showToast(t("chat.sent"));
     if (state.activeChatSession) {
-      bridge().loadChatHistory(state.activeChatSession.session_id, 100);
+      state.chatHistoryBeforeSeq = null;
+      state.chatHistoryPending = true;
+      bridge().loadChatHistory(state.activeChatSession.session_id, 100, 0);
     }
     return;
   }
@@ -2198,7 +2233,9 @@ function handleChatPushEvent(frame) {
     return;
   }
   if (event.event === "reset") {
-    bridge().loadChatHistory(sessionId, 100);
+    state.chatHistoryBeforeSeq = null;
+    state.chatHistoryPending = true;
+    bridge().loadChatHistory(sessionId, 100, 0);
   }
 }
 
@@ -2383,6 +2420,7 @@ elements.submitFeedback.addEventListener("click", submitFeedback);
 elements.backToWorkspacesFromPairing.addEventListener("click", () => showScreen("workspaces"));
 elements.backToWorkspacesFromChat.addEventListener("click", () => showScreen("workspaces"));
 elements.refreshChatSessions.addEventListener("click", refreshChatSessions);
+elements.loadOlderChat.addEventListener("click", loadOlderChatMessages);
 elements.chatSessionList.addEventListener("click", (event) => {
   const sessionId = eventTargetAttribute(event, "data-chat-session");
   if (sessionId) openChatSession(sessionId);

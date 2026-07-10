@@ -68,7 +68,7 @@ Implemented:
 - Provide terminal quick keys for Enter, Tab, Esc, Backspace, Ctrl-A/C/D/E/L/U/W/Z, arrow keys, Home/End, and Page Up/Down in the WebView terminal.
 - Disable workspace and terminal controls while disconnected, while keeping paired Mac reconnect actions available.
 - Gate workspace create, terminal create, workspace actions, read-state changes, close, and workspace groups on the capabilities reported by `mobile.host.status`.
-- List agent chat sessions, open chat history, send prompts, answer question/permission cards, render common transcript cards, and apply `chat.message` push updates in the WebView.
+- List agent chat sessions, open paginated chat history, send prompts, answer question/permission cards, render common transcript cards, and apply `chat.message` push updates in the WebView.
 - Submit privileged dogfood feedback to the paired Mac when it advertises `dogfood.v1`.
 - Sync Mac notification badge state and reconcile/dismiss delivered notification ids.
 - Show a native Android summary notification for unread agent notifications when notification permission is available.
